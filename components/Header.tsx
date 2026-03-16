@@ -13,27 +13,23 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
   const { player, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Lógica de navegación según rol
   const getNavItems = () => {
     const baseItems = [
       { label: 'Escalerilla', page: 'escalerilla', path: '/' },
-      { label: 'Ver Partidos', page: 'partidos', path: '/fixture-publico' }, // 👈 TODOS pueden ver esto
+      { label: 'Ver Partidos', page: 'partidos', path: '/fixture-publico' },
     ];
 
     if (!player) {
-      // Usuario público - Escalerilla + Ver Partidos
       return baseItems;
     }
 
     if (player.is_admin) {
-      // Admin - Escalerilla + Ver Partidos + Admin
       return [
         ...baseItems,
         { label: '⚙️ Admin', page: 'admin', path: '/admin' },
       ];
     }
 
-    // Player normal - Todo menos Admin
     return [
       ...baseItems,
       { label: 'Mis desafíos', page: 'fixture', path: '/fixture' },
@@ -44,7 +40,7 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
   const navItems = getNavItems();
 
   return (
-    <header className="bg-gradient-to-r from-ctg-forest to-ctg-dark text-white shadow-lg sticky top-0 z-50">
+    <header className="bg-[#f5f5f5] shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
@@ -52,12 +48,12 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
             <img 
               src="/images/Logo_CTG_horizontal.png" 
               alt="Club de Tenis Graneros" 
-              className="h-20 hidden md:block"
+              className="h-16 hidden md:block"
             />
             <img 
               src="/images/Logo_CTG.png" 
               alt="CTG" 
-              className="h-20 md:hidden"
+              className="h-16 md:hidden"
             />
           </Link>
 
@@ -69,8 +65,8 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
                 href={item.path}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   currentPage === item.page
-                    ? 'bg-ctg-green text-ctg-dark font-medium'
-                    : 'hover:bg-white/10'
+                    ? 'bg-ctg-green text-white font-medium shadow-md'
+                    : 'text-ctg-dark hover:bg-ctg-green/10'
                 }`}
               >
                 {item.label}
@@ -80,14 +76,14 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
             {player ? (
               <div className="flex items-center gap-4 ml-4">
                 <div className="flex flex-col items-end">
-                  <span className="text-sm">Hola, {player.name.split(' ')[0]}</span>
+                  <span className="text-sm text-ctg-dark font-medium">Hola, {player.name.split(' ')[0]}</span>
                   {player.is_admin && (
-                    <span className="text-xs text-ctg-lime">Administrador</span>
+                    <span className="text-xs text-ctg-green">Administrador</span>
                   )}
                 </div>
                 <button
                   onClick={logout}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-md"
                 >
                   Salir
                 </button>
@@ -95,7 +91,7 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
             ) : (
               <button
                 onClick={onLoginClick}
-                className="ml-4 px-4 py-2 bg-ctg-green text-ctg-dark rounded-lg hover:bg-ctg-lime transition-colors font-medium"
+                className="ml-4 px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-green/90 transition-colors font-medium shadow-md"
               >
                 Iniciar Sesión
               </button>
@@ -105,7 +101,7 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
           {/* Mobile menu button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-white/10"
+            className="md:hidden p-2 rounded-lg hover:bg-ctg-green/10 text-ctg-dark"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isMenuOpen ? (
@@ -126,8 +122,8 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
                 href={item.path}
                 className={`block px-4 py-2 rounded-lg mb-1 ${
                   currentPage === item.page
-                    ? 'bg-ctg-green text-ctg-dark font-medium'
-                    : 'hover:bg-white/10'
+                    ? 'bg-ctg-green text-white font-medium shadow-md'
+                    : 'text-ctg-dark hover:bg-ctg-green/10'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -137,10 +133,10 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
             
             {player ? (
               <>
-                <div className="px-4 py-2 text-sm border-t border-white/20 mt-2 pt-2">
-                  <div>Hola, {player.name.split(' ')[0]}</div>
+                <div className="px-4 py-2 text-sm border-t border-ctg-dark/20 mt-2 pt-2">
+                  <div className="text-ctg-dark font-medium">Hola, {player.name.split(' ')[0]}</div>
                   {player.is_admin && (
-                    <div className="text-xs text-ctg-lime mt-1">Administrador</div>
+                    <div className="text-xs text-ctg-green mt-1">Administrador</div>
                   )}
                 </div>
                 <button
@@ -148,7 +144,7 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
                     logout();
                     setIsMenuOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg mt-1"
+                  className="w-full text-left px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg mt-1 shadow-md"
                 >
                   Salir
                 </button>
@@ -159,7 +155,7 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
                   onLoginClick();
                   setIsMenuOpen(false);
                 }}
-                className="w-full text-left px-4 py-2 bg-ctg-green text-ctg-dark rounded-lg hover:bg-ctg-lime font-medium mt-2"
+                className="w-full text-left px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-green/90 font-medium mt-2 shadow-md"
               >
                 Iniciar Sesión
               </button>
