@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Challenge, Player } from '@/types';
 
 interface ResultModalProps {
-  challenge: Challenge;
-  currentPlayer: Player;
+  challenge: Challenge | null;
+  currentPlayer: Player | null;
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (winnerId: string, score: string) => void;
@@ -30,7 +30,7 @@ export default function ResultModal({
   const [stPlayer2, setStPlayer2] = useState('');
   const [hasRetirement, setHasRetirement] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || !challenge || !currentPlayer) return null;
 
   const player1 = challenge.challenger!;
   const player2 = challenge.challenged!;
