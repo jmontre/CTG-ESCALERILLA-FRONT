@@ -78,6 +78,37 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
     }
   };
 
+  // Función para obtener emoji de estado del desafío
+  const getChallengeEmoji = (player: Player): string | null => {
+    // Si le desafiaron y está pendiente de responder
+    if (player.challenged_challenge?.status === 'pending') {
+      return '⏰';
+    }
+    // Si tiene un partido aceptado por jugar
+    if (player.challenger_challenge?.status === 'accepted' || player.challenged_challenge?.status === 'accepted') {
+      return '🎾';
+    }
+    // Si él desafió y está esperando respuesta
+    if (player.challenger_challenge?.status === 'pending') {
+      return '📤';
+    }
+    return null;
+  };
+
+  // Función para obtener tooltip del emoji
+  const getChallengeTooltip = (player: Player): string => {
+    if (player.challenged_challenge?.status === 'pending') {
+      return 'Desafío recibido (pendiente de respuesta)';
+    }
+    if (player.challenger_challenge?.status === 'accepted' || player.challenged_challenge?.status === 'accepted') {
+      return 'Tiene partido por jugar';
+    }
+    if (player.challenger_challenge?.status === 'pending') {
+      return 'Desafío enviado (esperando respuesta)';
+    }
+    return '';
+  };
+
   return (
     <div className="space-y-8">
       {levels.map((level, levelIdx) => (
@@ -113,6 +144,8 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
                       const isCurrentPlayer = player.id === currentPlayerId;
                       const isImmune = player.immune_until && new Date(player.immune_until) > new Date();
                       const isVulnerable = player.vulnerable_until && new Date(player.vulnerable_until) > new Date();
+                      const challengeEmoji = getChallengeEmoji(player);
+                      const challengeTooltip = getChallengeTooltip(player);
 
                       return (
                         <button
@@ -144,17 +177,24 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
                             {pos}
                           </div>
 
-                          {/* Status Indicators */}
-                          {isImmune && (
-                            <div className="absolute -top-2 -right-2 text-lg" title="Inmune">
-                              🛡️
-                            </div>
-                          )}
-                          {isVulnerable && (
-                            <div className="absolute -top-2 -right-2 text-lg" title="Vulnerable">
-                              ⚠️
-                            </div>
-                          )}
+                          {/* Status Indicators - Agrupados en la esquina superior derecha */}
+                          <div className="absolute -top-2 -right-2 flex gap-1">
+                            {isImmune && (
+                              <div className="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center shadow-md" title="Inmune (no puede ser desafiado)">
+                                <span className="text-sm">🛡️</span>
+                              </div>
+                            )}
+                            {isVulnerable && (
+                              <div className="w-7 h-7 bg-yellow-500 rounded-full flex items-center justify-center shadow-md" title="Vulnerable (no puede desafiar)">
+                                <span className="text-sm">⚠️</span>
+                              </div>
+                            )}
+                            {challengeEmoji && (
+                              <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center shadow-md" title={challengeTooltip}>
+                                <span className="text-sm">{challengeEmoji}</span>
+                              </div>
+                            )}
+                          </div>
 
                           {/* Player Info */}
                           <div className="text-left pl-2">
@@ -191,6 +231,18 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
           <div className="flex items-center gap-2">
             <span className="text-lg">⚠️</span>
             <span className="text-gray-600">Vulnerable (no puede desafiar)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⏰</span>
+            <span className="text-gray-600">Desafío recibido (pendiente de respuesta)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎾</span>
+            <span className="text-gray-600">Tiene partido por jugar</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📤</span>
+            <span className="text-gray-600">Desafío enviado (esperando respuesta)</span>
           </div>
         </div>
         

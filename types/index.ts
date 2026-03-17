@@ -20,6 +20,8 @@ export interface Player {
   created_at: string;
   is_admin?: boolean;
   user?: User;
+  challenger_challenge?: Challenge | null;
+  challenged_challenge?: Challenge | null;
 }
 
 export interface Challenge {
