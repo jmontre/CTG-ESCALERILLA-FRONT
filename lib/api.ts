@@ -81,6 +81,12 @@ export const api = {
         challenged_id: challengedId,
       }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al crear desafío');
+    }
+
     return res.json();
   },
 
@@ -90,6 +96,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_id: playerId }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al aceptar desafío');
+    }
+
     return res.json();
   },
 
@@ -99,6 +111,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_id: playerId }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al rechazar desafío');
+    }
+
     return res.json();
   },
 
@@ -117,6 +135,12 @@ export const api = {
         score,
       }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al enviar resultado');
+    }
+
     return res.json();
   },
 
@@ -149,13 +173,24 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al actualizar jugador');
+    }
+
     return res.json();
   },
 
   deletePlayer: async (id: string): Promise<void> => {
-    await fetch(`${API_URL}/admin/players/${id}`, {
+    const res = await fetch(`${API_URL}/admin/players/${id}`, {
       method: 'DELETE',
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al eliminar jugador');
+    }
   },
 
   movePlayer: async (id: string, newPosition: number): Promise<Player> => {
@@ -164,6 +199,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ newPosition }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al mover jugador');
+    }
+
     return res.json();
   },
 
@@ -171,6 +212,12 @@ export const api = {
     const res = await fetch(`${API_URL}/admin/players/${id}/reset-immunity`, {
       method: 'POST',
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al resetear inmunidad');
+    }
+
     return res.json();
   },
 
@@ -178,6 +225,12 @@ export const api = {
     const res = await fetch(`${API_URL}/admin/players/${id}/reset-vulnerability`, {
       method: 'POST',
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al resetear vulnerabilidad');
+    }
+
     return res.json();
   },
 
@@ -188,13 +241,24 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ winnerId, score }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al resolver desafío');
+    }
+
     return res.json();
   },
 
   cancelChallenge: async (challengeId: string): Promise<void> => {
-    await fetch(`${API_URL}/admin/challenges/${challengeId}`, {
+    const res = await fetch(`${API_URL}/admin/challenges/${challengeId}`, {
       method: 'DELETE',
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al cancelar desafío');
+    }
   },
 
   extendDeadline: async (challengeId: string, hours: number, type: 'accept' | 'play'): Promise<Challenge> => {
@@ -203,6 +267,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hours, type }),
     });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al extender deadline');
+    }
+
     const data = await res.json();
     return data.challenge;
   },

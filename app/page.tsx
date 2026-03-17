@@ -63,11 +63,14 @@ export default function Home() {
     setChallengeLoading(true);
     try {
       await api.createChallenge(currentPlayer.id, selectedPlayer.id);
+      // ✅ Solo si llegamos aquí (sin error), cerramos modal y mostramos success
       setChallengeModalOpen(false);
       success(`¡Desafío creado! ${selectedPlayer.name} tiene 24 horas para responder.`);
       await loadPlayers();
     } catch (err: any) {
+      // ✅ Si hay error, mostramos el toast rojo pero NO cerramos el modal
       error(err.message || 'Error al crear desafío');
+      // El modal se queda abierto para que el usuario pueda leer el error y cerrar manualmente
     } finally {
       setChallengeLoading(false);
     }
