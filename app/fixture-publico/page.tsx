@@ -12,7 +12,6 @@ export default function FixturePublicoPage() {
   const [filteredChallenges, setFilteredChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Filtros
   const [searchPlayer, setSearchPlayer] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'accepted' | 'completed' | 'disputed' | 'cancelled'>('all');
   const [filterDate, setFilterDate] = useState<'all' | 'week' | 'month' | 'year'>('all');
@@ -40,7 +39,6 @@ export default function FixturePublicoPage() {
   const applyFilters = () => {
     let filtered = [...challenges];
 
-    // Filtro por jugador
     if (searchPlayer) {
       filtered = filtered.filter((c) => {
         const challengerName = c.challenger?.name?.toLowerCase() || '';
@@ -50,18 +48,16 @@ export default function FixturePublicoPage() {
       });
     }
 
-    // Filtro por estado
     if (filterStatus !== 'all') {
       filtered = filtered.filter((c) => c.status === filterStatus);
     }
 
-    // Filtro por fecha
     if (filterDate !== 'all') {
       const now = new Date();
       const filterTime = {
-        week: 7 * 24 * 60 * 60 * 1000,
-        month: 30 * 24 * 60 * 60 * 1000,
-        year: 365 * 24 * 60 * 60 * 1000,
+        week:  7   * 24 * 60 * 60 * 1000,
+        month: 30  * 24 * 60 * 60 * 1000,
+        year:  365 * 24 * 60 * 60 * 1000,
       }[filterDate];
 
       filtered = filtered.filter((c) => {
@@ -70,7 +66,6 @@ export default function FixturePublicoPage() {
       });
     }
 
-    // Ordenar
     filtered.sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();
@@ -78,6 +73,16 @@ export default function FixturePublicoPage() {
     });
 
     setFilteredChallenges(filtered);
+  };
+
+  const formatScheduledDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const weekday = d.toLocaleDateString('es-CL', { weekday: 'long' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('es-CL', { month: 'long' });
+    const hour = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    return `${cap(weekday)} ${day} ${cap(month)} - ${hour} hrs`;
   };
 
   const getStatusDisplay = (challenge: Challenge) => {
@@ -90,16 +95,23 @@ export default function FixturePublicoPage() {
             </span>
           </div>
         );
-      
+
       case 'accepted':
         return (
-          <div className="text-center">
+          <div className="text-center space-y-1">
             <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
               🎾 Por jugar
             </span>
+            {challenge.scheduled_date ? (
+              <p className="text-xs font-semibold text-ctg-dark mt-1">
+                📅 {formatScheduledDate(challenge.scheduled_date)}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">Sin fecha agendada</p>
+            )}
           </div>
         );
-      
+
       case 'completed':
         return (
           <div className="text-center">
@@ -107,13 +119,13 @@ export default function FixturePublicoPage() {
               {challenge.final_score}
             </div>
             <div className="text-sm text-green-600 font-medium">
-              👑 {challenge.winner_id === challenge.challenger_id 
-                ? challenge.challenger?.name 
+              👑 {challenge.winner_id === challenge.challenger_id
+                ? challenge.challenger?.name
                 : challenge.challenged?.name}
             </div>
           </div>
         );
-      
+
       case 'disputed':
         return (
           <div className="text-center">
@@ -122,7 +134,7 @@ export default function FixturePublicoPage() {
             </span>
           </div>
         );
-      
+
       case 'cancelled':
       case 'rejected':
         return (
@@ -132,26 +144,10 @@ export default function FixturePublicoPage() {
             </span>
           </div>
         );
-      
+
       default:
         return null;
     }
-  };
-
-  const getTimeLeft = (deadline: string) => {
-    const now = new Date();
-    const end = new Date(deadline);
-    const diff = end.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Expirado';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) {
-      return `${days}d ${hours % 24}h`;
-    }
-    return `${hours}h`;
   };
 
   if (loading) {
@@ -163,11 +159,11 @@ export default function FixturePublicoPage() {
   }
 
   const stats = {
-    total: challenges.length,
-    pending: challenges.filter(c => c.status === 'pending').length,
-    active: challenges.filter(c => c.status === 'accepted').length,
+    total:     challenges.length,
+    pending:   challenges.filter(c => c.status === 'pending').length,
+    active:    challenges.filter(c => c.status === 'accepted').length,
     completed: challenges.filter(c => c.status === 'completed').length,
-    disputed: challenges.filter(c => c.status === 'disputed').length,
+    disputed:  challenges.filter(c => c.status === 'disputed').length,
   };
 
   return (
@@ -175,7 +171,6 @@ export default function FixturePublicoPage() {
       <Header currentPage="partidos" onLoginClick={() => {}} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-ctg-dark mb-2">Ver Partidos</h1>
           <p className="text-gray-600">Todos los desafíos y partidos de la escalerilla</p>
@@ -209,9 +204,7 @@ export default function FixturePublicoPage() {
         <div className="bg-white rounded-xl shadow-card p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Buscar jugador
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Buscar jugador</label>
               <input
                 type="text"
                 value={searchPlayer}
@@ -222,9 +215,7 @@ export default function FixturePublicoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Estado
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as any)}
@@ -240,9 +231,7 @@ export default function FixturePublicoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Período
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Período</label>
               <select
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value as any)}
@@ -256,9 +245,7 @@ export default function FixturePublicoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ordenar por
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ordenar por</label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
@@ -271,7 +258,7 @@ export default function FixturePublicoPage() {
           </div>
         </div>
 
-        {/* Lista de partidos */}
+        {/* Lista */}
         <div className="bg-white rounded-xl shadow-card overflow-hidden">
           {filteredChallenges.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
@@ -280,55 +267,30 @@ export default function FixturePublicoPage() {
           ) : (
             <div className="divide-y divide-gray-200">
               {filteredChallenges.map((challenge) => (
-                <div
-                  key={challenge.id}
-                  className="p-6 hover:bg-gray-50 transition-colors"
-                >
+                <div key={challenge.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+
                     {/* Jugadores */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-4 mb-3">
+                      <div className="flex items-center gap-4 mb-2">
                         <div className="text-center">
-                          <p className="font-bold text-lg text-ctg-dark">
-                            {challenge.challenger?.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Pos #{challenge.challenger?.position}
-                          </p>
+                          <p className="font-bold text-lg text-ctg-dark">{challenge.challenger?.name}</p>
+                          <p className="text-xs text-gray-500">Pos #{challenge.challenger?.position}</p>
                         </div>
-                        
                         <span className="text-2xl">⚔️</span>
-                        
                         <div className="text-center">
-                          <p className="font-bold text-lg text-ctg-dark">
-                            {challenge.challenged?.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Pos #{challenge.challenged?.position}
-                          </p>
+                          <p className="font-bold text-lg text-ctg-dark">{challenge.challenged?.name}</p>
+                          <p className="text-xs text-gray-500">Pos #{challenge.challenged?.position}</p>
                         </div>
                       </div>
 
-                      {/* Info adicional */}
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                        <span>📅 {new Date(challenge.created_at).toLocaleDateString('es-CL', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}</span>
-                        
-                        {challenge.status === 'pending' && (
-                          <span className="text-orange-600">
-                            ⏰ {getTimeLeft(challenge.accept_deadline)} para responder
-                          </span>
-                        )}
-                        
-                        {challenge.status === 'accepted' && (
-                          <span className="text-blue-600">
-                            ⏰ {getTimeLeft(challenge.play_deadline)} para jugar
-                          </span>
-                        )}
-                      </div>
+                      {challenge.status !== 'accepted' && (
+                        <p className="text-sm text-gray-500">
+                          📅 {new Date(challenge.created_at).toLocaleDateString('es-CL', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                          })}
+                        </p>
+                      )}
                     </div>
 
                     {/* Estado / Resultado */}

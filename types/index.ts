@@ -31,6 +31,7 @@ export interface Challenge {
   status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'expired_not_accepted' | 'expired_not_played' | 'disputed' | 'cancelled';
   accept_deadline: string;
   play_deadline: string;
+  scheduled_date?: string | null;
   created_at: string;
   accepted_at: string | null;
   played_at: string | null;

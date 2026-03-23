@@ -174,6 +174,25 @@ export const api = {
     return res.json();
   },
 
+  scheduleMatch: async (
+    challengeId: string,
+    playerId: string,
+    scheduledDate: string
+  ): Promise<{ message: string; challenge: Challenge }> => {
+    const res = await fetch(`${API_URL}/challenges/${challengeId}/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: playerId, scheduled_date: scheduledDate }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al fijar la fecha del partido');
+    }
+
+    return res.json();
+  },
+
   // Admin - Players
   createPlayer: async (data: {
     username: string;

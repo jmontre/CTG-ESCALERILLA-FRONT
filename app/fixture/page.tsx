@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ChallengesList from '@/components/ChallengesList';
 import ResultModal from '@/components/ResultModal';
+import ScheduleDateModal from '@/components/ScheduleDateModal';
 import { Challenge, Player } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,14 +12,17 @@ import Header from '@/components/Header';
 export default function FixturePage() {
   const router = useRouter();
   const { player: currentPlayer, loading: authLoading } = useAuth();
-  
+
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
 
+  const [scheduleDateModalOpen, setScheduleDateModalOpen] = useState(false);
+  const [scheduleChallenge, setScheduleChallenge] = useState<Challenge | null>(null);
+
   useEffect(() => {
-    // Redirigir si no está logueado o si es admin
     if (!authLoading) {
       if (!currentPlayer) {
         router.push('/');
@@ -40,8 +44,8 @@ export default function FixturePage() {
 
     try {
       const allChallenges = await api.getChallenges();
-      
-      // Filtrar solo mis desafíos
+
+      // Todos mis desafíos, sin filtrar por estado
       const myChallenges = allChallenges.filter(
         (c) => c.challenger_id === currentPlayer.id || c.challenged_id === currentPlayer.id
       );
@@ -106,6 +110,17 @@ export default function FixturePage() {
     }
   };
 
+  const handleOpenScheduleDate = (challenge: Challenge) => {
+    setScheduleChallenge(challenge);
+    setScheduleDateModalOpen(true);
+  };
+
+  const handleSubmitScheduleDate = async (scheduledDate: string) => {
+    if (!currentPlayer || !scheduleChallenge) return;
+    await api.scheduleMatch(scheduleChallenge.id, currentPlayer.id, scheduledDate);
+    await fetchChallenges();
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
@@ -114,7 +129,6 @@ export default function FixturePage() {
     );
   }
 
-  // No renderizar nada si es admin o no está logueado
   if (!currentPlayer || currentPlayer.is_admin) {
     return null;
   }
@@ -122,11 +136,11 @@ export default function FixturePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
       <Header currentPage="fixture" onLoginClick={() => {}} />
-      
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-ctg-dark mb-2">Mis Desafíos</h1>
-          <p className="text-gray-600">Gestiona tus desafíos pendientes y completados</p>
+          <p className="text-gray-600">Historial completo de tus desafíos</p>
         </div>
 
         <ChallengesList
@@ -135,6 +149,7 @@ export default function FixturePage() {
           onAccept={handleAccept}
           onReject={handleReject}
           onSubmitResult={handleReportResult}
+          onScheduleDate={handleOpenScheduleDate}
         />
 
         <ResultModal
@@ -146,6 +161,17 @@ export default function FixturePage() {
           challenge={selectedChallenge}
           currentPlayer={currentPlayer}
           onSubmit={handleSubmitResult}
+        />
+
+        <ScheduleDateModal
+          isOpen={scheduleDateModalOpen}
+          onClose={() => {
+            setScheduleDateModalOpen(false);
+            setScheduleChallenge(null);
+          }}
+          challenge={scheduleChallenge}
+          currentPlayerId={currentPlayer.id}
+          onSubmit={handleSubmitScheduleDate}
         />
       </div>
     </div>
