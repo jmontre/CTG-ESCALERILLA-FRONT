@@ -23,7 +23,7 @@ export default function Home() {
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
-  const { player: currentPlayer } = useAuth();
+  const { player: currentPlayer, refreshPlayer } = useAuth();
   const { toasts, removeToast, success, error, warning } = useToast();
 
   useEffect(() => {
@@ -40,6 +40,11 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Recarga jugadores Y refresca los datos del usuario autenticado
+  const refreshAll = async () => {
+    await Promise.all([loadPlayers(), refreshPlayer()]);
   };
 
   const handlePlayerClick = (player: Player) => {
@@ -63,14 +68,11 @@ export default function Home() {
     setChallengeLoading(true);
     try {
       await api.createChallenge(currentPlayer.id, selectedPlayer.id);
-      // ✅ Solo si llegamos aquí (sin error), cerramos modal y mostramos success
       setChallengeModalOpen(false);
       success(`¡Desafío creado! ${selectedPlayer.name} tiene 24 horas para responder.`);
-      await loadPlayers();
+      await refreshAll();
     } catch (err: any) {
-      // ✅ Si hay error, mostramos el toast rojo pero NO cerramos el modal
       error(err.message || 'Error al crear desafío');
-      // El modal se queda abierto para que el usuario pueda leer el error y cerrar manualmente
     } finally {
       setChallengeLoading(false);
     }
