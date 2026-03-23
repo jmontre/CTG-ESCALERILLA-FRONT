@@ -50,6 +50,36 @@ export const api = {
     return res.json();
   },
 
+  forgotPassword: async (username: string): Promise<{ message: string }> => {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al procesar la solicitud');
+    }
+
+    return res.json();
+  },
+
+  resetPassword: async (token: string, password: string): Promise<{ message: string }> => {
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al restablecer la contraseña');
+    }
+
+    return res.json();
+  },
+
   // Players
   getPlayers: async (): Promise<Player[]> => {
     const res = await fetch(`${API_URL}/players`);
