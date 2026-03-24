@@ -336,4 +336,43 @@ export const api = {
     const data = await res.json();
     return data.challenge;
   },
+
+  updateProfile: async (data: {
+    name?: string;
+    phone?: string;
+    current_password?: string;
+    new_password?: string;
+  }): Promise<{ message: string; player: any }> => {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`${API_URL}/players/me`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al actualizar perfil');
+    }
+    return res.json();
+  },
+
+  uploadAvatar: async (base64Image: string): Promise<{ message: string; avatar_url: string }> => {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`${API_URL}/players/me/avatar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ image: base64Image }),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al subir avatar');
+    }
+    return res.json();
+  },
 };

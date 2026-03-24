@@ -27,10 +27,10 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
     return               { name: 'D', bg: 'bg-green-100',  color: 'text-green-700',  gradient: 'from-green-400 to-green-500'   };
   };
 
-  const category  = getCategory(player.position);
-  const isImmune     = player.immune_until    && new Date(player.immune_until)    > new Date();
+  const category    = getCategory(player.position);
+  const isImmune    = player.immune_until    && new Date(player.immune_until)    > new Date();
   const isVulnerable = player.vulnerable_until && new Date(player.vulnerable_until) > new Date();
-  const initials  = getInitials(player.name);
+  const initials    = getInitials(player.name);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -45,11 +45,14 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
             ✕
           </button>
 
-          {/* Avatar + info */}
           <div className="flex items-center gap-4">
-            {/* Círculo de iniciales */}
-            <div className="w-16 h-16 rounded-full bg-white/25 border-2 border-white/50 flex items-center justify-center shrink-0 shadow-md">
-              <span className="text-2xl font-bold text-white">{initials}</span>
+            {/* Avatar */}
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-white/25 border-2 border-white/50 flex items-center justify-center shrink-0 shadow-md">
+              {player.avatar_url ? (
+                <img src={player.avatar_url} alt={player.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold text-white">{initials}</span>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
@@ -65,7 +68,6 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
             </div>
           </div>
 
-          {/* Estados */}
           {(isImmune || isVulnerable) && (
             <div className="flex gap-2 mt-3">
               {isImmune && (
@@ -99,7 +101,6 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
             </div>
           </div>
 
-          {/* Win Rate */}
           {player.total_matches > 0 && (
             <div className="mb-6">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
@@ -115,7 +116,6 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
             </div>
           )}
 
-          {/* Botón desafío */}
           {canChallenge ? (
             <button
               onClick={() => onChallenge(player)}
@@ -125,8 +125,8 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
             </button>
           ) : (
             <div className="bg-gray-100 text-gray-500 text-center py-3 rounded-lg text-sm">
-              {isImmune     && '🛡️ Este jugador está inmune'}
-              {isVulnerable && '⚠️ No puedes desafiar (estás vulnerable)'}
+              {isImmune      && '🛡️ Este jugador está inmune'}
+              {isVulnerable  && '⚠️ No puedes desafiar (estás vulnerable)'}
               {!isImmune && !isVulnerable && 'No puedes desafiar a este jugador'}
             </div>
           )}

@@ -5,8 +5,14 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
-  currentPage: 'escalerilla' | 'fixture' | 'historial' | 'partidos' | 'admin';
+  currentPage: 'escalerilla' | 'fixture' | 'historial' | 'partidos' | 'admin' | 'perfil';
   onLoginClick: () => void;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 export default function Header({ currentPage, onLoginClick }: HeaderProps) {
@@ -19,15 +25,10 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
       { label: 'Ver Partidos', page: 'partidos', path: '/fixture-publico' },
     ];
 
-    if (!player) {
-      return baseItems;
-    }
+    if (!player) return baseItems;
 
     if (player.is_admin) {
-      return [
-        ...baseItems,
-        { label: '⚙️ Admin', page: 'admin', path: '/admin' },
-      ];
+      return [...baseItems, { label: '⚙️ Admin', page: 'admin', path: '/admin' }];
     }
 
     return [
@@ -39,22 +40,27 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
 
   const navItems = getNavItems();
 
+  const AvatarCircle = ({ size = 'sm' }: { size?: 'sm' | 'md' }) => {
+    const dim = size === 'sm' ? 'w-8 h-8 text-sm' : 'w-10 h-10 text-base';
+    return (
+      <div className={`${dim} rounded-full overflow-hidden bg-gradient-to-br from-ctg-green to-ctg-lime flex items-center justify-center font-bold text-white shadow-sm shrink-0`}>
+        {player?.avatar_url ? (
+          <img src={player.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+        ) : (
+          <span>{player ? getInitials(player.name) : ''}</span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <header className="bg-[#f5f5f5] shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <img 
-              src="/images/Logo_CTG_horizontal.png" 
-              alt="Club de Tenis Graneros" 
-              className="h-16 hidden md:block"
-            />
-            <img 
-              src="/images/Logo_CTG.png" 
-              alt="CTG" 
-              className="h-16 md:hidden"
-            />
+            <img src="/images/Logo_CTG_horizontal.png" alt="Club de Tenis Graneros" className="h-16 hidden md:block" />
+            <img src="/images/Logo_CTG.png" alt="CTG" className="h-16 md:hidden" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -72,18 +78,27 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
                 {item.label}
               </Link>
             ))}
-            
+
             {player ? (
-              <div className="flex items-center gap-4 ml-4">
-                <div className="flex flex-col items-end">
-                  <span className="text-sm text-ctg-dark font-medium">Hola, {player.name.split(' ')[0]}</span>
-                  {player.is_admin && (
-                    <span className="text-xs text-ctg-green">Administrador</span>
-                  )}
-                </div>
+              <div className="flex items-center gap-3 ml-4">
+                {/* Avatar + nombre → link a Mi Perfil */}
+                <Link
+                  href="/perfil"
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
+                    currentPage === 'perfil'
+                      ? 'bg-ctg-green/10 text-ctg-dark'
+                      : 'hover:bg-ctg-green/10'
+                  }`}
+                >
+                  <AvatarCircle />
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm text-ctg-dark font-medium leading-tight">{player.name.split(' ')[0]}</span>
+                    {player.is_admin && <span className="text-xs text-ctg-green leading-tight">Administrador</span>}
+                  </div>
+                </Link>
                 <button
                   onClick={logout}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-md"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-md text-sm"
                 >
                   Salir
                 </button>
@@ -130,20 +145,22 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
                 {item.label}
               </Link>
             ))}
-            
+
             {player ? (
               <>
-                <div className="px-4 py-2 text-sm border-t border-ctg-dark/20 mt-2 pt-2">
-                  <div className="text-ctg-dark font-medium">Hola, {player.name.split(' ')[0]}</div>
-                  {player.is_admin && (
-                    <div className="text-xs text-ctg-green mt-1">Administrador</div>
-                  )}
-                </div>
+                <Link
+                  href="/perfil"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 border-t border-ctg-dark/20 mt-2 pt-3 hover:bg-ctg-green/10 rounded-lg"
+                >
+                  <AvatarCircle size="md" />
+                  <div>
+                    <div className="text-ctg-dark font-medium text-sm">{player.name.split(' ')[0]}</div>
+                    <div className="text-xs text-ctg-green">Mi Perfil</div>
+                  </div>
+                </Link>
                 <button
-                  onClick={() => {
-                    logout();
-                    setIsMenuOpen(false);
-                  }}
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg mt-1 shadow-md"
                 >
                   Salir
@@ -151,10 +168,7 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
               </>
             ) : (
               <button
-                onClick={() => {
-                  onLoginClick();
-                  setIsMenuOpen(false);
-                }}
+                onClick={() => { onLoginClick(); setIsMenuOpen(false); }}
                 className="w-full text-left px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-green/90 font-medium mt-2 shadow-md"
               >
                 Iniciar Sesión

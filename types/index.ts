@@ -11,6 +11,7 @@ export interface Player {
   name: string;
   email: string;
   phone?: string;
+  avatar_url?: string | null;
   position: number;
   wins: number;
   losses: number;
