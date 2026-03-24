@@ -85,6 +85,20 @@ export default function FixturePublicoPage() {
     return `${cap(weekday)} ${day} ${cap(month)} - ${hour} hrs`;
   };
 
+  const getTimeLeft = (deadline: string) => {
+    const now = new Date();
+    const end = new Date(deadline);
+    const diff = end.getTime() - now.getTime();
+
+    if (diff <= 0) return 'Expirado';
+
+    const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+    if (days > 0) return `${days}d ${hours}h restantes`;
+    return `${hours}h restantes`;
+  };
+
   const getStatusDisplay = (challenge: Challenge) => {
     switch (challenge.status) {
       case 'pending':
@@ -107,7 +121,9 @@ export default function FixturePublicoPage() {
                 📅 {formatScheduledDate(challenge.scheduled_date)}
               </p>
             ) : (
-              <p className="text-xs text-gray-400 mt-1">Sin fecha agendada</p>
+              <p className="text-xs text-orange-500 font-medium mt-1">
+                ⏰ {getTimeLeft(challenge.play_deadline)}
+              </p>
             )}
           </div>
         );
