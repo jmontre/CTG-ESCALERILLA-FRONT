@@ -19,14 +19,15 @@ export default function PerfilPage() {
   const { player, loading: authLoading, refreshPlayer } = useAuth();
   const { toasts, removeToast, success, error } = useToast();
 
-  const [name, setName]               = useState('');
-  const [phone, setPhone]             = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [saving, setSaving]           = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [name, setName]                         = useState('');
+  const [phone, setPhone]                       = useState('');
+  const [currentPassword, setCurrentPassword]   = useState('');
+  const [newPassword, setNewPassword]           = useState('');
+  const [confirmPassword, setConfirmPassword]   = useState('');
+  const [saving, setSaving]                     = useState(false);
+  const [uploadingAvatar, setUploadingAvatar]   = useState(false);
+  const [avatarPreview, setAvatarPreview]       = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,7 +88,7 @@ export default function PerfilPage() {
         const base64 = ev.target?.result as string;
         setAvatarPreview(base64);
         try {
-          const data = await api.uploadAvatar(base64);
+          await api.uploadAvatar(base64);
           await refreshPlayer();
           success('Foto de perfil actualizada.');
         } catch (err: any) {
@@ -100,6 +101,18 @@ export default function PerfilPage() {
       reader.readAsDataURL(file);
     } catch {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    setShowDeleteConfirm(false);
+    try {
+      await api.deleteAvatar();
+      await refreshPlayer();
+      setAvatarPreview(null);
+      success('Foto de perfil eliminada.');
+    } catch (err: any) {
+      error(err.message || 'Error al eliminar foto');
     }
   };
 
@@ -144,14 +157,25 @@ export default function PerfilPage() {
               )}
             </div>
             <div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAvatar}
-                className="px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-lime transition font-medium disabled:opacity-50"
-              >
-                {uploadingAvatar ? 'Subiendo...' : 'Cambiar foto'}
-              </button>
-              <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Máx 5MB.</p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-lime transition font-medium disabled:opacity-50"
+                >
+                  {uploadingAvatar ? 'Subiendo...' : 'Cambiar foto'}
+                </button>
+                {avatarPreview && (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={uploadingAvatar}
+                    className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition font-medium disabled:opacity-50"
+                  >
+                    Eliminar foto
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">JPG, PNG o WebP. Máx 5MB.</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -235,7 +259,7 @@ export default function PerfilPage() {
           </div>
         </div>
 
-        {/* Stats (solo lectura) */}
+        {/* Stats */}
         <div className="bg-white rounded-2xl shadow-card p-6 mb-8">
           <h2 className="text-lg font-semibold text-ctg-dark mb-4">Estadísticas</h2>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -262,6 +286,30 @@ export default function PerfilPage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
+
+      {/* Modal confirmación eliminar foto */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-scale-in">
+            <h3 className="text-lg font-bold text-ctg-dark mb-2">¿Eliminar foto de perfil?</h3>
+            <p className="text-gray-500 text-sm mb-6">Se eliminará tu foto y se mostrará tu inicial.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteAvatar}
+                className="flex-1 px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toasts.map((toast) => (
         <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
