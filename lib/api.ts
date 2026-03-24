@@ -375,4 +375,17 @@ export const api = {
     }
     return res.json();
   },
+
+  deleteAvatar: async (): Promise<{ message: string }> => {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`${API_URL}/players/me/avatar`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al eliminar foto');
+    }
+    return res.json();
+  },
 };
