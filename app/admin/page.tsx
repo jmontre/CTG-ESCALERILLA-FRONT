@@ -17,7 +17,7 @@ export default function AdminPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'challenges'>('dashboard');
   const [loadingData, setLoadingData] = useState(true);
-  
+
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -108,6 +108,18 @@ export default function AdminPage() {
     }
   };
 
+  const handleForceDeleteChallenge = async (challengeId: string) => {
+    if (!confirm('⚠️ ELIMINAR PERMANENTEMENTE\n\nEsto borrará el desafío de la base de datos sin posibilidad de recuperación.\n\n¿Estás seguro?')) return;
+
+    try {
+      await api.forceDeleteChallenge(challengeId);
+      await fetchData();
+      alert('Desafío eliminado permanentemente');
+    } catch (error) {
+      alert('Error al eliminar desafío');
+    }
+  };
+
   const handleExtendDeadline = async (challengeId: string, hours: number, type: 'accept' | 'play') => {
     try {
       await api.extendDeadline(challengeId, hours, type);
@@ -141,7 +153,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="admin" onLoginClick={() => {}} />
+      <Header currentPage="admin" onLoginClick={() => { }} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -154,31 +166,28 @@ export default function AdminPage() {
         <div className="flex gap-2 mb-6 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('dashboard')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'dashboard'
-                ? 'text-ctg-dark border-b-2 border-ctg-green'
-                : 'text-gray-500 hover:text-ctg-dark'
-            }`}
+            className={`px-6 py-3 font-medium transition-colors ${activeTab === 'dashboard'
+              ? 'text-ctg-dark border-b-2 border-ctg-green'
+              : 'text-gray-500 hover:text-ctg-dark'
+              }`}
           >
             📊 Dashboard
           </button>
           <button
             onClick={() => setActiveTab('players')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'players'
-                ? 'text-ctg-dark border-b-2 border-ctg-green'
-                : 'text-gray-500 hover:text-ctg-dark'
-            }`}
+            className={`px-6 py-3 font-medium transition-colors ${activeTab === 'players'
+              ? 'text-ctg-dark border-b-2 border-ctg-green'
+              : 'text-gray-500 hover:text-ctg-dark'
+              }`}
           >
             👥 Jugadores
           </button>
           <button
             onClick={() => setActiveTab('challenges')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'challenges'
-                ? 'text-ctg-dark border-b-2 border-ctg-green'
-                : 'text-gray-500 hover:text-ctg-dark'
-            }`}
+            className={`px-6 py-3 font-medium transition-colors ${activeTab === 'challenges'
+              ? 'text-ctg-dark border-b-2 border-ctg-green'
+              : 'text-gray-500 hover:text-ctg-dark'
+              }`}
           >
             🎾 Desafíos
           </button>
@@ -231,7 +240,7 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl shadow-card p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-ctg-dark">Gestión de Jugadores</h2>
-              <button 
+              <button
                 onClick={() => setShowAddModal(true)}
                 className="px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-lime transition-colors"
               >
@@ -278,9 +287,9 @@ export default function AdminPage() {
                             </span>
                           )}
                           {(!p.immune_until || new Date(p.immune_until) <= new Date()) &&
-                           (!p.vulnerable_until || new Date(p.vulnerable_until) <= new Date()) && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Normal</span>
-                          )}
+                            (!p.vulnerable_until || new Date(p.vulnerable_until) <= new Date()) && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Normal</span>
+                            )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
@@ -299,7 +308,7 @@ export default function AdminPage() {
         {activeTab === 'challenges' && (
           <div className="bg-white rounded-xl shadow-card p-6">
             <h2 className="text-xl font-bold text-ctg-dark mb-6">Gestión de Desafíos</h2>
-            
+
             <div className="space-y-4">
               {challenges.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No hay desafíos registrados</p>
@@ -329,13 +338,19 @@ export default function AdminPage() {
                             setSelectedChallenge(challenge);
                             setShowChallengeModal(true);
                           }}
-                          className={`px-3 py-1 text-sm rounded ${
-                            challenge.status === 'disputed'
-                              ? 'bg-red-500 text-white hover:bg-red-600'
-                              : 'bg-ctg-green text-white hover:bg-ctg-lime'
-                          }`}
+                          className={`px-3 py-1 text-sm rounded ${challenge.status === 'disputed'
+                            ? 'bg-red-500 text-white hover:bg-red-600'
+                            : 'bg-ctg-green text-white hover:bg-ctg-lime'
+                            }`}
                         >
                           {challenge.status === 'disputed' ? 'Resolver Disputa' : 'Gestionar'}
+                        </button>
+                        <button
+                          onClick={() => handleForceDeleteChallenge(challenge.id)}
+                          className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                          title="Eliminar permanentemente"
+                        >
+                          🗑️ Eliminar
                         </button>
                       </div>
                     </div>
@@ -348,8 +363,8 @@ export default function AdminPage() {
       </div>
 
       {/* Modals */}
-      <AddPlayerModal 
-        isOpen={showAddModal} 
+      <AddPlayerModal
+        isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSuccess={() => {
           fetchData();

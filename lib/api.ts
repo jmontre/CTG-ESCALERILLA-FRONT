@@ -207,12 +207,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    
+
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.message || 'Error al crear jugador');
     }
-    
+
     return res.json();
   },
 
@@ -307,6 +307,17 @@ export const api = {
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.message || 'Error al cancelar desafío');
+    }
+  },
+
+  forceDeleteChallenge: async (challengeId: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/admin/challenges/${challengeId}/force`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al eliminar desafío');
     }
   },
 
