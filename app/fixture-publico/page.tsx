@@ -151,12 +151,39 @@ export default function FixturePublicoPage() {
           </div>
         );
 
-      case 'cancelled':
       case 'rejected':
         return (
           <div className="text-center">
-            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-              ❌ Cancelado
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+              🏆 W.O. — {challenge.challenger?.name}
+            </span>
+          </div>
+        );
+
+      case 'expired_not_accepted':
+        return (
+          <div className="text-center">
+            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+              🏆 W.O. — {challenge.challenger?.name}
+            </span>
+            <p className="text-xs text-gray-400 mt-1">No respondió a tiempo</p>
+          </div>
+        );
+
+      case 'expired_not_played':
+        return (
+          <div className="text-center">
+            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+              ⏰ No se jugó
+            </span>
+          </div>
+        );
+
+      case 'cancelled':
+        return (
+          <div className="text-center">
+            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+              🚫 Cancelado
             </span>
           </div>
         );
