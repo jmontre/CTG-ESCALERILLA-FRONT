@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
+import LoginModal from '@/components/LoginModal';
 import { Challenge } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,7 +12,8 @@ export default function FixturePublicoPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [filteredChallenges, setFilteredChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+
   const [searchPlayer, setSearchPlayer] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'accepted' | 'completed' | 'disputed' | 'cancelled'>('all');
   const [filterDate, setFilterDate] = useState<'all' | 'week' | 'month' | 'year'>('all');
@@ -89,12 +91,9 @@ export default function FixturePublicoPage() {
     const now = new Date();
     const end = new Date(deadline);
     const diff = end.getTime() - now.getTime();
-
     if (diff <= 0) return 'Expirado';
-
     const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
     if (days > 0) return `${days}d ${hours}h restantes`;
     return `${hours}h restantes`;
   };
@@ -109,7 +108,6 @@ export default function FixturePublicoPage() {
             </span>
           </div>
         );
-
       case 'accepted':
         return (
           <div className="text-center space-y-1">
@@ -127,13 +125,10 @@ export default function FixturePublicoPage() {
             )}
           </div>
         );
-
       case 'completed':
         return (
           <div className="text-center">
-            <div className="text-2xl font-bold text-ctg-dark mb-1">
-              {challenge.final_score}
-            </div>
+            <div className="text-2xl font-bold text-ctg-dark mb-1">{challenge.final_score}</div>
             <div className="text-sm text-green-600 font-medium">
               👑 {challenge.winner_id === challenge.challenger_id
                 ? challenge.challenger?.name
@@ -141,16 +136,12 @@ export default function FixturePublicoPage() {
             </div>
           </div>
         );
-
       case 'disputed':
         return (
           <div className="text-center">
-            <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
-              ⚠️ En disputa
-            </span>
+            <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">⚠️ En disputa</span>
           </div>
         );
-
       case 'rejected':
         return (
           <div className="text-center">
@@ -159,7 +150,6 @@ export default function FixturePublicoPage() {
             </span>
           </div>
         );
-
       case 'expired_not_accepted':
         return (
           <div className="text-center">
@@ -169,25 +159,18 @@ export default function FixturePublicoPage() {
             <p className="text-xs text-gray-400 mt-1">No respondió a tiempo</p>
           </div>
         );
-
       case 'expired_not_played':
         return (
           <div className="text-center">
-            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
-              ⏰ No se jugó
-            </span>
+            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">⏰ No se jugó</span>
           </div>
         );
-
       case 'cancelled':
         return (
           <div className="text-center">
-            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-              🚫 Cancelado
-            </span>
+            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">🚫 Cancelado</span>
           </div>
         );
-
       default:
         return null;
     }
@@ -211,7 +194,7 @@ export default function FixturePublicoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="partidos" onLoginClick={() => {}} />
+      <Header currentPage="partidos" onLoginClick={() => setLoginModalOpen(true)} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -221,26 +204,18 @@ export default function FixturePublicoPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white rounded-xl shadow-card p-4">
-            <p className="text-gray-500 text-xs mb-1">Total</p>
-            <p className="text-2xl font-bold text-ctg-dark">{stats.total}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-card p-4">
-            <p className="text-gray-500 text-xs mb-1">Esperando Respuesta</p>
-            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-card p-4">
-            <p className="text-gray-500 text-xs mb-1">Por Jugar</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-card p-4">
-            <p className="text-gray-500 text-xs mb-1">Completados</p>
-            <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-card p-4">
-            <p className="text-gray-500 text-xs mb-1">En Disputa</p>
-            <p className="text-2xl font-bold text-red-600">{stats.disputed}</p>
-          </div>
+          {[
+            { label: 'Total',              value: stats.total,     color: 'text-ctg-dark'   },
+            { label: 'Esperando Respuesta', value: stats.pending,   color: 'text-yellow-600' },
+            { label: 'Por Jugar',          value: stats.active,    color: 'text-blue-600'   },
+            { label: 'Completados',        value: stats.completed, color: 'text-green-600'  },
+            { label: 'En Disputa',         value: stats.disputed,  color: 'text-red-600'    },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-xl shadow-card p-4">
+              <p className="text-gray-500 text-xs mb-1">{s.label}</p>
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            </div>
+          ))}
         </div>
 
         {/* Filtros */}
@@ -256,14 +231,9 @@ export default function FixturePublicoPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              >
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green">
                 <option value="all">Todos</option>
                 <option value="pending">Esperando Respuesta</option>
                 <option value="accepted">Por Jugar</option>
@@ -272,28 +242,18 @@ export default function FixturePublicoPage() {
                 <option value="cancelled">Cancelados</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Período</label>
-              <select
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              >
+              <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as any)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green">
                 <option value="all">Todo el tiempo</option>
                 <option value="week">Última semana</option>
                 <option value="month">Último mes</option>
                 <option value="year">Último año</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Ordenar por</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              >
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green">
                 <option value="newest">Más recientes</option>
                 <option value="oldest">Más antiguos</option>
               </select>
@@ -304,16 +264,12 @@ export default function FixturePublicoPage() {
         {/* Lista */}
         <div className="bg-white rounded-xl shadow-card overflow-hidden">
           {filteredChallenges.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              No se encontraron partidos con los filtros seleccionados
-            </div>
+            <div className="p-12 text-center text-gray-500">No se encontraron partidos con los filtros seleccionados</div>
           ) : (
             <div className="divide-y divide-gray-200">
               {filteredChallenges.map((challenge) => (
                 <div key={challenge.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-
-                    {/* Jugadores */}
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-2">
                         <div className="text-center">
@@ -326,17 +282,12 @@ export default function FixturePublicoPage() {
                           <p className="text-xs text-gray-500">Pos #{challenge.challenged?.position}</p>
                         </div>
                       </div>
-
                       {challenge.status !== 'accepted' && (
                         <p className="text-sm text-gray-500">
-                          📅 {new Date(challenge.created_at).toLocaleDateString('es-CL', {
-                            day: 'numeric', month: 'short', year: 'numeric',
-                          })}
+                          📅 {new Date(challenge.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       )}
                     </div>
-
-                    {/* Estado / Resultado */}
                     <div className="flex items-center justify-center md:w-48">
                       {getStatusDisplay(challenge)}
                     </div>
@@ -347,6 +298,12 @@ export default function FixturePublicoPage() {
           )}
         </div>
       </div>
+
+      <LoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        onSuccess={() => window.location.reload()}
+      />
     </div>
   );
 }
