@@ -1,4 +1,4 @@
-import { Player, Challenge, AuthResponse } from '@/types';
+import { Player, Challenge, AuthResponse, MasterSeason } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -386,6 +386,18 @@ export const api = {
       const error = await res.json();
       throw new Error(error.message || 'Error al eliminar foto');
     }
+    return res.json();
+  },
+
+  getMaster: async (): Promise<MasterSeason[]> => {
+    const res = await fetch(`${API_URL}/master`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  getMasterCategory: async (category: string): Promise<MasterSeason | null> => {
+    const res = await fetch(`${API_URL}/master/${category}`);
+    if (!res.ok) return null;
     return res.json();
   },
 };

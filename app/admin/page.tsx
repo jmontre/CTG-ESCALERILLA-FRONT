@@ -6,11 +6,21 @@ import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
-import { Player, Challenge } from '@/types';
+import { Player, Challenge, MasterSeason } from '@/types';
 import { api } from '@/lib/api';
 import AddPlayerModal from '@/components/admin/AddPlayerModal';
 import EditPlayerModal from '@/components/admin/EditPlayerModal';
 import ChallengeManagementModal from '@/components/admin/ChallengeManagementModal';
+
+const CATEGORIES = ['A', 'B', 'C', 'D'];
+const CATEGORY_NAMES: Record<string, string> = { A: 'Oro', B: 'Plata', C: 'Bronce', D: 'Verde' };
+const CATEGORY_RANGES: Record<string, string> = { A: '1-12', B: '13-24', C: '25-36', D: '37-48' };
+const CATEGORY_COLORS: Record<string, string> = {
+  A: 'border-yellow-300 bg-yellow-50',
+  B: 'border-gray-300 bg-gray-50',
+  C: 'border-orange-300 bg-orange-50',
+  D: 'border-green-300 bg-green-50',
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -19,7 +29,8 @@ export default function AdminPage() {
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'challenges'>('dashboard');
+  const [masterSeasons, setMasterSeasons] = useState<MasterSeason[]>([]);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'challenges' | 'master'>('dashboard');
   const [loadingData, setLoadingData] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -30,6 +41,16 @@ export default function AdminPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Master
+  const [generatingCategory, setGeneratingCategory] = useState<string | null>(null);
+  const [deletingSeasonId, setDeletingSeasonId] = useState<string | null>(null);
+  const [masterDates, setMasterDates] = useState({
+    name: '1er Semestre 2026',
+    round_robin_start: '2026-06-22',
+    round_robin_end:   '2026-07-10',
+    final_date:        '2026-07-18',
+  });
+
   useEffect(() => {
     if (!loading && (!player || !player.is_admin)) { router.push('/'); return; }
     if (player?.is_admin) fetchData();
@@ -37,12 +58,14 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [playersData, challengesData] = await Promise.all([
+      const [playersData, challengesData, masterData] = await Promise.all([
         api.getPlayers(),
         api.getChallenges(),
+        api.getMaster(),
       ]);
       setPlayers(playersData);
       setChallenges(challengesData);
+      setMasterSeasons(masterData || []);
     } catch (err) {
       console.error('Error cargando datos:', err);
     } finally {
@@ -56,41 +79,26 @@ export default function AdminPage() {
       await api.deletePlayer(id);
       await fetchData();
       success(`Jugador ${name} eliminado correctamente.`);
-    } catch (err: any) {
-      error(err.message || 'Error al eliminar jugador');
-    }
+    } catch (err: any) { error(err.message || 'Error al eliminar jugador'); }
   };
 
   const handleResetImmunity = async (id: string) => {
-    try {
-      await api.resetImmunity(id);
-      await fetchData();
-      success('Inmunidad reseteada.');
-    } catch (err: any) {
-      error(err.message || 'Error al resetear inmunidad');
-    }
+    try { await api.resetImmunity(id); await fetchData(); success('Inmunidad reseteada.'); }
+    catch (err: any) { error(err.message || 'Error'); }
   };
 
   const handleResetVulnerability = async (id: string) => {
-    try {
-      await api.resetVulnerability(id);
-      await fetchData();
-      success('Vulnerabilidad reseteada.');
-    } catch (err: any) {
-      error(err.message || 'Error al resetear vulnerabilidad');
-    }
+    try { await api.resetVulnerability(id); await fetchData(); success('Vulnerabilidad reseteada.'); }
+    catch (err: any) { error(err.message || 'Error'); }
   };
 
   const handleResolveChallenge = async (challengeId: string, winnerId: string, score: string) => {
     try {
       await api.resolveChallenge(challengeId, winnerId, score);
       await fetchData();
-      setShowChallengeModal(false);
-      setSelectedChallenge(null);
+      setShowChallengeModal(false); setSelectedChallenge(null);
       success('Desafío resuelto correctamente.');
-    } catch (err: any) {
-      error(err.message || 'Error al resolver desafío');
-    }
+    } catch (err: any) { error(err.message || 'Error al resolver desafío'); }
   };
 
   const handleCancelChallenge = async (challengeId: string, fromModal = false) => {
@@ -100,44 +108,76 @@ export default function AdminPage() {
       ? '⚠️ Este desafío ya está completado.\n\nSe revertirán las estadísticas (W-L) pero NO los cambios de ranking.\n\n¿Continuar?'
       : '¿Estás seguro de cancelar este desafío?';
     if (!confirm(message)) return;
-
     setCancellingId(challengeId);
     try {
       await api.cancelChallenge(challengeId);
       await fetchData();
       if (fromModal) { setShowChallengeModal(false); setSelectedChallenge(null); }
       success('Desafío cancelado correctamente.');
-    } catch (err: any) {
-      error(err.message || 'Error al cancelar desafío');
-    } finally {
-      setCancellingId(null);
-    }
+    } catch (err: any) { error(err.message || 'Error al cancelar desafío'); }
+    finally { setCancellingId(null); }
   };
 
   const handleForceDelete = async (challengeId: string) => {
     if (!confirm('⚠️ ELIMINAR PERMANENTEMENTE\n\nEsto borrará el desafío de la base de datos sin posibilidad de recuperación.\n\n¿Estás seguro?')) return;
-
     setDeletingId(challengeId);
     try {
       await api.forceDeleteChallenge(challengeId);
       await fetchData();
       success('Desafío eliminado permanentemente.');
-    } catch (err: any) {
-      error(err.message || 'Error al eliminar desafío');
-    } finally {
-      setDeletingId(null);
-    }
+    } catch (err: any) { error(err.message || 'Error al eliminar desafío'); }
+    finally { setDeletingId(null); }
   };
 
   const handleExtendDeadline = async (challengeId: string, hours: number, type: 'accept' | 'play') => {
     try {
       await api.extendDeadline(challengeId, hours, type);
       await fetchData();
-      setShowChallengeModal(false);
-      setSelectedChallenge(null);
+      setShowChallengeModal(false); setSelectedChallenge(null);
       success(`Plazo extendido ${hours} horas correctamente.`);
+    } catch (err: any) { error(err.message || 'Error al extender plazo'); }
+  };
+
+  // ── Master ───────────────────────────────────────────────────────────────────
+
+  const handleGenerateMaster = async (category: string) => {
+    if (!confirm(`¿Generar torneo Master para Categoría ${category}?\n\nSe tomarán los 8 primeros jugadores de la categoría y se armarán los grupos con serpenteo.`)) return;
+    setGeneratingCategory(category);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...masterDates, category }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Error al generar torneo');
+      }
+      await fetchData();
+      success(`✅ Torneo Master Categoría ${category} generado correctamente.`);
     } catch (err: any) {
-      error(err.message || 'Error al extender plazo');
+      error(err.message || 'Error al generar torneo');
+    } finally {
+      setGeneratingCategory(null);
+    }
+  };
+
+  const handleDeleteSeason = async (seasonId: string, category: string) => {
+    if (!confirm(`¿Eliminar el torneo Master de Categoría ${category}?\n\nSe borrarán todos los grupos y partidos.`)) return;
+    setDeletingSeasonId(seasonId);
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/${seasonId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await fetchData();
+      success(`Torneo Categoría ${category} eliminado.`);
+    } catch (err: any) {
+      error(err.message || 'Error al eliminar torneo');
+    } finally {
+      setDeletingSeasonId(null);
     }
   };
 
@@ -156,8 +196,7 @@ export default function AdminPage() {
     return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${s.color}`}>{s.label}</span>;
   };
 
-  const canCancel = (status: string) =>
-    ['pending', 'accepted', 'disputed', 'completed'].includes(status);
+  const canCancel = (status: string) => ['pending', 'accepted', 'disputed', 'completed'].includes(status);
 
   if (loading || loadingData) {
     return (
@@ -187,16 +226,19 @@ export default function AdminPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
-          {(['dashboard', 'players', 'challenges'] as const).map((tab) => (
+        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
+          {(['dashboard', 'players', 'challenges', 'master'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-medium transition-colors ${
+              className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab ? 'text-ctg-dark border-b-2 border-ctg-green' : 'text-gray-500 hover:text-ctg-dark'
               }`}
             >
-              {tab === 'dashboard' ? '📊 Dashboard' : tab === 'players' ? '👥 Jugadores' : '🎾 Desafíos'}
+              {tab === 'dashboard' ? '📊 Dashboard'
+                : tab === 'players' ? '👥 Jugadores'
+                : tab === 'challenges' ? '🎾 Desafíos'
+                : '🏆 Master'}
             </button>
           ))}
         </div>
@@ -314,9 +356,7 @@ export default function AdminPage() {
                           )}
                         </div>
                       </div>
-
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* Cancelar — solo en estados activos */}
                         {canCancel(challenge.status) && (
                           <button
                             onClick={() => handleCancelChallenge(challenge.id)}
@@ -326,8 +366,6 @@ export default function AdminPage() {
                             {cancellingId === challenge.id ? '...' : '🚫 Cancelar'}
                           </button>
                         )}
-
-                        {/* Eliminar permanentemente */}
                         <button
                           onClick={() => handleForceDelete(challenge.id)}
                           disabled={deletingId === challenge.id}
@@ -336,8 +374,6 @@ export default function AdminPage() {
                         >
                           {deletingId === challenge.id ? '...' : '🗑️'}
                         </button>
-
-                        {/* Gestionar */}
                         <button
                           onClick={() => { setSelectedChallenge(challenge); setShowChallengeModal(true); }}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
@@ -353,6 +389,105 @@ export default function AdminPage() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Master */}
+        {activeTab === 'master' && (
+          <div className="space-y-6">
+            {/* Config fechas */}
+            <div className="bg-white rounded-xl shadow-card p-6">
+              <h2 className="text-xl font-bold text-ctg-dark mb-1">⚙️ Configuración del Master</h2>
+              <p className="text-sm text-gray-500 mb-4">Estas fechas se aplicarán al generar cada categoría.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de temporada</label>
+                  <input
+                    type="text"
+                    value={masterDates.name}
+                    onChange={(e) => setMasterDates(d => ({ ...d, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Inicio Round Robin</label>
+                  <input
+                    type="date"
+                    value={masterDates.round_robin_start}
+                    onChange={(e) => setMasterDates(d => ({ ...d, round_robin_start: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fin Round Robin</label>
+                  <input
+                    type="date"
+                    value={masterDates.round_robin_end}
+                    onChange={(e) => setMasterDates(d => ({ ...d, round_robin_end: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Final</label>
+                  <input
+                    type="date"
+                    value={masterDates.final_date}
+                    onChange={(e) => setMasterDates(d => ({ ...d, final_date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Categorías */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {CATEGORIES.map(cat => {
+                const season = masterSeasons.find(s => s.category === cat);
+                const isGenerating = generatingCategory === cat;
+                const isDeleting = deletingSeasonId === season?.id;
+
+                return (
+                  <div key={cat} className={`rounded-xl shadow-card p-5 border-2 ${CATEGORY_COLORS[cat]}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-ctg-dark">Categoría {cat} — {CATEGORY_NAMES[cat]}</h3>
+                        <p className="text-sm text-gray-500">Posiciones {CATEGORY_RANGES[cat]}</p>
+                      </div>
+                      {season ? (
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">✅ Activo</span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-full">Sin generar</span>
+                      )}
+                    </div>
+
+                    {season ? (
+                      <div className="space-y-3">
+                        <div className="bg-white/70 rounded-lg p-3 text-sm text-gray-600 space-y-1">
+                          <p>📊 Estado: <strong className="text-ctg-dark">{season.status}</strong></p>
+                          <p>👥 Grupos generados: <strong>{season.groups.length}</strong></p>
+                          <p>🎾 Partidos: <strong>{season.groups.flatMap(g => g.matches).length}</strong></p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteSeason(season.id, cat)}
+                          disabled={isDeleting}
+                          className="w-full px-3 py-2 text-sm font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
+                        >
+                          {isDeleting ? 'Eliminando...' : '🗑️ Eliminar torneo'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleGenerateMaster(cat)}
+                        disabled={isGenerating}
+                        className="w-full px-4 py-3 bg-ctg-green text-white font-bold rounded-lg hover:bg-ctg-lime transition disabled:opacity-50"
+                      >
+                        {isGenerating ? 'Generando...' : '🏆 Generar Master'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
-  currentPage: 'escalerilla' | 'fixture' | 'historial' | 'partidos' | 'admin' | 'perfil';
+  currentPage: 'escalerilla' | 'fixture' | 'historial' | 'partidos' | 'admin' | 'perfil' | 'master';
   onLoginClick: () => void;
 }
 
@@ -22,7 +22,8 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
   const getNavItems = () => {
     const baseItems = [
       { label: 'Escalerilla', page: 'escalerilla', path: '/' },
-      { label: 'Ver Partidos', page: 'partidos', path: '/fixture-publico' },
+      { label: 'Ver Partidos', page: 'partidos',   path: '/fixture-publico' },
+      { label: '🏆 Master',   page: 'master',      path: '/master' },
     ];
 
     if (!player) return baseItems;
@@ -33,8 +34,8 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
 
     return [
       ...baseItems,
-      { label: 'Mis desafíos', page: 'fixture', path: '/fixture' },
-      { label: 'Historial', page: 'historial', path: '/historial' },
+      { label: 'Mis desafíos', page: 'fixture',   path: '/fixture' },
+      { label: 'Historial',    page: 'historial',  path: '/historial' },
     ];
   };
 
@@ -81,13 +82,10 @@ export default function Header({ currentPage, onLoginClick }: HeaderProps) {
 
             {player ? (
               <div className="flex items-center gap-3 ml-4">
-                {/* Avatar + nombre → link a Mi Perfil */}
                 <Link
                   href="/perfil"
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                    currentPage === 'perfil'
-                      ? 'bg-ctg-green/10 text-ctg-dark'
-                      : 'hover:bg-ctg-green/10'
+                    currentPage === 'perfil' ? 'bg-ctg-green/10' : 'hover:bg-ctg-green/10'
                   }`}
                 >
                   <AvatarCircle />

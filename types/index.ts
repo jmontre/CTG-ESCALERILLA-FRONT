@@ -41,14 +41,8 @@ export interface Challenge {
   final_score: string | null;
   challenger?: Player;
   challenged?: Player;
-  challenger_result?: {
-    winnerId: string;
-    score: string;
-  } | null;
-  challenged_result?: {
-    winnerId: string;
-    score: string;
-  } | null;
+  challenger_result?: { winnerId: string; score: string } | null;
+  challenged_result?: { winnerId: string; score: string } | null;
   results_match?: boolean;
 }
 
@@ -56,4 +50,54 @@ export interface AuthResponse {
   token: string;
   user: User;
   player: Player;
+}
+
+// ─── MASTER TOURNAMENT ────────────────────────────────────────────────────────
+
+export interface MasterGroupPlayer {
+  id: string;
+  group_id: string;
+  player_id: string;
+  wins: number;
+  losses: number;
+  sets_won: number;
+  sets_lost: number;
+  player: Player;
+}
+
+export interface MasterMatch {
+  id: string;
+  group_id: string | null;
+  season_id: string;
+  round: 'group' | 'semifinal' | 'final';
+  player1_id: string;
+  player2_id: string;
+  winner_id: string | null;
+  score: string | null;
+  status: 'pending' | 'completed';
+  played_at: string | null;
+  created_at: string;
+  player1: Player;
+  player2: Player;
+  winner?: Player | null;
+}
+
+export interface MasterGroup {
+  id: string;
+  season_id: string;
+  name: string;
+  players: MasterGroupPlayer[];
+  matches: MasterMatch[];
+}
+
+export interface MasterSeason {
+  id: string;
+  name: string;
+  category: string;
+  status: 'pending' | 'active' | 'semifinals' | 'final' | 'completed';
+  round_robin_start: string | null;
+  round_robin_end: string | null;
+  final_date: string | null;
+  created_at: string;
+  groups: MasterGroup[];
 }
