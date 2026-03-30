@@ -91,10 +91,11 @@ export default function FixturePage() {
     setScheduleDateModalOpen(true);
   };
 
-  const handleSubmitScheduleDate = async (scheduledDate: string) => {
+  // Línea ~87 — cambia la firma:
+  const handleSubmitScheduleDate = async (scheduledDate: string, courtId: string) => {
     if (!currentPlayer || !scheduleChallenge) return;
     try {
-      await api.scheduleMatch(scheduleChallenge.id, currentPlayer.id, scheduledDate);
+      await api.scheduleMatch(scheduleChallenge.id, currentPlayer.id, scheduledDate, courtId);
       await fetchChallenges();
       success('Fecha del partido fijada correctamente.');
     } catch (err: any) {
@@ -114,7 +115,7 @@ export default function FixturePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="fixture" onLoginClick={() => {}} />
+      <Header currentPage="fixture" onLoginClick={() => { }} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">

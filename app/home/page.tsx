@@ -28,6 +28,7 @@ export default function HomePage() {
 
         {/* Contenido */}
         <div className="relative z-10 text-center px-6 max-w-2xl mx-auto animate-fade-in">
+          <img src="/images/Logo_CTG.png" alt="CTG" className="h-20 mx-auto mb-6 drop-shadow-lg" />
 
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg">
             Club de Tenis Graneros

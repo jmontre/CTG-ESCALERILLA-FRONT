@@ -3,6 +3,7 @@ export interface User {
   username: string;
   email: string;
   is_admin: boolean;
+  admin_role: 'escalerilla' | 'reservas' | 'all' | null;
 }
 
 export interface Player {
@@ -12,14 +13,18 @@ export interface Player {
   email: string;
   phone?: string;
   avatar_url?: string | null;
-  position: number;
+  position?: number | null;
   wins: number;
   losses: number;
   total_matches: number;
   immune_until: string | null;
   vulnerable_until: string | null;
+  member_type: 'socio' | 'hijo_socio';
+  parent_id?: string | null;
+  has_debt: boolean;
   created_at: string;
   is_admin?: boolean;
+  admin_role?: 'escalerilla' | 'reservas' | 'all' | null;
   user?: User;
   challenger_challenge?: Challenge | null;
   challenged_challenge?: Challenge | null;
@@ -51,8 +56,6 @@ export interface AuthResponse {
   user: User;
   player: Player;
 }
-
-// ─── MASTER TOURNAMENT ────────────────────────────────────────────────────────
 
 export interface MasterGroupPlayer {
   id: string;

@@ -47,8 +47,8 @@ export default function AdminPage() {
   const [masterDates, setMasterDates] = useState({
     name: '1er Semestre 2026',
     round_robin_start: '2026-06-22',
-    round_robin_end:   '2026-07-10',
-    final_date:        '2026-07-18',
+    round_robin_end: '2026-07-10',
+    final_date: '2026-07-18',
   });
 
   useEffect(() => {
@@ -183,14 +183,14 @@ export default function AdminPage() {
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { label: string; color: string }> = {
-      pending:              { label: '⏳ Pendiente',        color: 'bg-yellow-100 text-yellow-700' },
-      accepted:             { label: '🎾 Por jugar',        color: 'bg-blue-100 text-blue-700' },
-      completed:            { label: '✅ Completado',       color: 'bg-green-100 text-green-700' },
-      disputed:             { label: '⚠️ Disputa',          color: 'bg-red-100 text-red-700' },
-      cancelled:            { label: '🚫 Cancelado',        color: 'bg-gray-100 text-gray-600' },
-      rejected:             { label: '🏆 W.O.',             color: 'bg-green-100 text-green-700' },
+      pending: { label: '⏳ Pendiente', color: 'bg-yellow-100 text-yellow-700' },
+      accepted: { label: '🎾 Por jugar', color: 'bg-blue-100 text-blue-700' },
+      completed: { label: '✅ Completado', color: 'bg-green-100 text-green-700' },
+      disputed: { label: '⚠️ Disputa', color: 'bg-red-100 text-red-700' },
+      cancelled: { label: '🚫 Cancelado', color: 'bg-gray-100 text-gray-600' },
+      rejected: { label: '🏆 W.O.', color: 'bg-green-100 text-green-700' },
       expired_not_accepted: { label: '⏰ Expiró (no resp)', color: 'bg-orange-100 text-orange-700' },
-      expired_not_played:   { label: '⏰ Expiró (no jugó)', color: 'bg-orange-100 text-orange-700' },
+      expired_not_played: { label: '⏰ Expiró (no jugó)', color: 'bg-orange-100 text-orange-700' },
     };
     const s = map[status] || { label: status, color: 'bg-gray-100 text-gray-600' };
     return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${s.color}`}>{s.label}</span>;
@@ -209,15 +209,15 @@ export default function AdminPage() {
   if (!player?.is_admin) return null;
 
   const stats = {
-    totalPlayers:     players.filter(p => p.position > 0).length,
+    totalPlayers: players.filter(p => (p.position ?? 0) > 0).length,
     activeChallenges: challenges.filter(c => c.status === 'pending' || c.status === 'accepted').length,
     completedMatches: challenges.filter(c => c.status === 'completed').length,
-    disputes:         challenges.filter(c => c.status === 'disputed').length,
+    disputes: challenges.filter(c => c.status === 'disputed').length,
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="admin" onLoginClick={() => {}} />
+      <Header currentPage="admin" onLoginClick={() => { }} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -231,14 +231,13 @@ export default function AdminPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${
-                activeTab === tab ? 'text-ctg-dark border-b-2 border-ctg-green' : 'text-gray-500 hover:text-ctg-dark'
-              }`}
+              className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${activeTab === tab ? 'text-ctg-dark border-b-2 border-ctg-green' : 'text-gray-500 hover:text-ctg-dark'
+                }`}
             >
               {tab === 'dashboard' ? '📊 Dashboard'
                 : tab === 'players' ? '👥 Jugadores'
-                : tab === 'challenges' ? '🎾 Desafíos'
-                : '🏆 Master'}
+                  : tab === 'challenges' ? '🎾 Desafíos'
+                    : '🏆 Master'}
             </button>
           ))}
         </div>
@@ -247,10 +246,10 @@ export default function AdminPage() {
         {activeTab === 'dashboard' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: '👥', label: 'Jugadores',       value: stats.totalPlayers,     bg: 'bg-blue-100' },
+              { icon: '👥', label: 'Jugadores', value: stats.totalPlayers, bg: 'bg-blue-100' },
               { icon: '⏳', label: 'Desafíos Activos', value: stats.activeChallenges, bg: 'bg-amber-100' },
               { icon: '✅', label: 'Partidos Jugados', value: stats.completedMatches, bg: 'bg-green-100' },
-              { icon: '⚠️', label: 'Disputas',         value: stats.disputes,         bg: 'bg-red-100' },
+              { icon: '⚠️', label: 'Disputas', value: stats.disputes, bg: 'bg-red-100' },
             ].map((s) => (
               <div key={s.label} className="bg-white rounded-xl shadow-card p-6">
                 <div className="flex items-center gap-4">
@@ -288,9 +287,9 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {players.filter(p => p.position > 0).map((p) => (
+                  {players.filter(p => (p.position ?? 0) > 0).map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-ctg-dark">#{p.position}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-ctg-dark">#{p.position ?? '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{p.name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{p.email}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{p.phone || '-'}</td>
@@ -313,9 +312,9 @@ export default function AdminPage() {
                             </span>
                           )}
                           {(!p.immune_until || new Date(p.immune_until) <= new Date()) &&
-                           (!p.vulnerable_until || new Date(p.vulnerable_until) <= new Date()) && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Normal</span>
-                          )}
+                            (!p.vulnerable_until || new Date(p.vulnerable_until) <= new Date()) && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Normal</span>
+                            )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
@@ -376,11 +375,10 @@ export default function AdminPage() {
                         </button>
                         <button
                           onClick={() => { setSelectedChallenge(challenge); setShowChallengeModal(true); }}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                            challenge.status === 'disputed'
-                              ? 'bg-red-500 text-white hover:bg-red-600'
-                              : 'bg-ctg-green text-white hover:bg-ctg-lime'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${challenge.status === 'disputed'
+                            ? 'bg-red-500 text-white hover:bg-red-600'
+                            : 'bg-ctg-green text-white hover:bg-ctg-lime'
+                            }`}
                         >
                           {challenge.status === 'disputed' ? '⚠️ Resolver' : '⚙️ Gestionar'}
                         </button>
@@ -495,7 +493,7 @@ export default function AdminPage() {
 
       {/* Modals */}
       <AddPlayerModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSuccess={() => { fetchData(); setShowAddModal(false); }} />
-      <EditPlayerModal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setSelectedPlayer(null); }} onSuccess={() => { fetchData(); setShowEditModal(false); setSelectedPlayer(null); }} player={selectedPlayer} />
+      <EditPlayerModal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setSelectedPlayer(null); }} onSuccess={() => { fetchData(); setShowEditModal(false); setSelectedPlayer(null); }} player={selectedPlayer} allPlayers={players} />
       <ChallengeManagementModal
         isOpen={showChallengeModal}
         onClose={() => { setShowChallengeModal(false); setSelectedChallenge(null); }}
