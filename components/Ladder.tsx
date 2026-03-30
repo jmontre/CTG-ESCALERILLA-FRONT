@@ -12,32 +12,40 @@ interface LadderProps {
 export default function Ladder({ players, currentPlayerId, onPlayerClick }: LadderProps) {
   // Filtrar jugadores activos (position > 0) y ordenar
   const activePlayers = players
-    .filter(p => p.position > 0)
-    .sort((a, b) => a.position - b.position);
+    .filter(p => (p.position ?? 0) > 0)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
   // Definir la estructura de niveles según la nueva distribución (4 categorías)
   const levels = [
-    { category: 'A', rows: [
-      [1],
-      [2, 3, 4],
-      [5, 6, 7, 8],
-      [9, 10, 11, 12],
-    ]},
-    { category: 'B', rows: [
-      [13, 14, 15],
-      [16, 17, 18, 19],
-      [20, 21, 22, 23, 24],
-    ]},
-    { category: 'C', rows: [
-      [25, 26, 27],
-      [28, 29, 30, 31],
-      [32, 33, 34, 35, 36],
-    ]},
-    { category: 'D', rows: [
-      [37, 38, 39],
-      [40, 41, 42, 43],
-      [44, 45, 46, 47, 48],
-    ]},
+    {
+      category: 'A', rows: [
+        [1],
+        [2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12],
+      ]
+    },
+    {
+      category: 'B', rows: [
+        [13, 14, 15],
+        [16, 17, 18, 19],
+        [20, 21, 22, 23, 24],
+      ]
+    },
+    {
+      category: 'C', rows: [
+        [25, 26, 27],
+        [28, 29, 30, 31],
+        [32, 33, 34, 35, 36],
+      ]
+    },
+    {
+      category: 'D', rows: [
+        [37, 38, 39],
+        [40, 41, 42, 43],
+        [44, 45, 46, 47, 48],
+      ]
+    },
   ];
 
   const getPlayerByPosition = (pos: number) => {
@@ -132,8 +140,8 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
               if (!hasPlayers) return null;
 
               return (
-                <div 
-                  key={rowIdx} 
+                <div
+                  key={rowIdx}
                   className={`p-4 ${getRowBackground(level.category, rowIdx)}`}
                 >
                   <div className="flex flex-wrap justify-center gap-3">
@@ -159,8 +167,8 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
                             border-2
                             transition-all duration-200
                             hover:scale-105 hover:shadow-lg
-                            ${isCurrentPlayer 
-                              ? 'bg-gradient-to-br from-ctg-green to-ctg-lime border-ctg-dark shadow-lg' 
+                            ${isCurrentPlayer
+                              ? 'bg-gradient-to-br from-ctg-green to-ctg-lime border-ctg-dark shadow-lg'
                               : 'bg-white border-gray-200 hover:border-ctg-green'
                             }
                           `}
@@ -245,7 +253,7 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
             <span className="text-gray-600">Desafío enviado (esperando respuesta)</span>
           </div>
         </div>
-        
+
         {/* Explicación de niveles */}
         <div className="mt-4 pt-4 border-t border-gray-200">
           <p className="text-sm text-gray-600 mb-2 font-semibold">Niveles de desafío:</p>
