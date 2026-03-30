@@ -27,7 +27,7 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
     return               { name: 'D', bg: 'bg-green-100',  color: 'text-green-700',  gradient: 'from-green-400 to-green-500'   };
   };
 
-  const category    = getCategory(player.position);
+  const category = getCategory(player.position ?? 0);
   const isImmune    = player.immune_until    && new Date(player.immune_until)    > new Date();
   const isVulnerable = player.vulnerable_until && new Date(player.vulnerable_until) > new Date();
   const initials    = getInitials(player.name);
