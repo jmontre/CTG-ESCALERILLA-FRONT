@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Escalerilla - Club de Tenis Graneros",
-  description: "Sistema de escalerilla del Club de Tenis Graneros",
+  title: "Clubde Tenis Graneros",
+  description: "Sistema de reservas y desafíos Club de Tenis Graneros",
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
