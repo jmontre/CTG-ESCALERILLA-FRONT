@@ -13,15 +13,12 @@ const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto
 function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
-
 function formatDate(d: Date) {
   return d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 }
-
 function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-
 function isSlotPast(dateStr: string, slot: string): boolean {
   const [h, m] = slot.split(':').map(Number);
   const slotTime = new Date(dateStr + 'T00:00:00');
@@ -81,11 +78,15 @@ export default function ReservarPage() {
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
 
+  const isProfe = (player as any)?.member_type === 'profe';
+
+  // Steps: 1=cancha(opcional), 2=fecha/hora, 3=confirmar
   const [step, setStep] = useState<1|2|3>(1);
 
-  // Step 1
-  const [courts, setCourts]           = useState<any[]>([]);
+  // Step 1 — Cancha (opcional)
+  const [courts, setCourts]               = useState<any[]>([]);
   const [selectedCourt, setSelectedCourt] = useState<any | null>(null);
+  const [anyCourtMode, setAnyCourtMode]   = useState(false); // true = sin preferencia
 
   // Step 2
   const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
@@ -94,57 +95,105 @@ export default function ReservarPage() {
   const [loadingSlots, setLoadingSlots]   = useState(false);
 
   // Step 3
-  const [allPlayers, setAllPlayers]       = useState<any[]>([]);
-  const [partnerPlayerId, setPartnerPlayerId] = useState('');  // socio seleccionado
-  const [hasGuest, setHasGuest]           = useState(false);
-  const [guestName, setGuestName]         = useState('');
-  const [submitting, setSubmitting]       = useState(false);
-  const [error, setError]                 = useState('');
-  const [success, setSuccess]             = useState(false);
+  const [allPlayers, setAllPlayers]           = useState<any[]>([]);
+  const [partnerPlayerId, setPartnerPlayerId] = useState('');
+  const [hasGuest, setHasGuest]               = useState(false);
+  const [guestName, setGuestName]             = useState('');
+  const [schoolName, setSchoolName]           = useState(''); // para profes
+  const [submitting, setSubmitting]           = useState(false);
+  const [error, setError]                     = useState('');
+  const [success, setSuccess]                 = useState(false);
+  const [confirmedCourt, setConfirmedCourt]   = useState<any | null>(null); // cancha real asignada
 
   useEffect(() => {
     api.getCourts().then(setCourts);
     api.getPlayers().then(setAllPlayers);
   }, []);
 
+  // Cargar disponibilidad cuando cambia fecha (si hay cancha seleccionada o modo any)
   useEffect(() => {
-    if (!selectedDate || !selectedCourt) return;
+    if (!selectedDate) return;
+    if (!selectedCourt && !anyCourtMode) return;
     setLoadingSlots(true);
     setSelectedSlot(null);
     api.getAvailability(toDateStr(selectedDate))
       .then(data => setAvailability(data))
       .finally(() => setLoadingSlots(false));
-  }, [selectedDate, selectedCourt]);
+  }, [selectedDate, selectedCourt, anyCourtMode]);
 
-  const allCourtSlots  = availability?.courts?.find((c: any) => c.id === selectedCourt?.id)?.slots || [];
   const highDemandSlots: string[] = availability?.high_demand_slots || [];
   const dateStr = selectedDate ? toDateStr(selectedDate) : '';
-  const courtSlots = allCourtSlots.filter((s: any) => !isSlotPast(dateStr, s.slot));
 
-  // Compañeros disponibles: socios activos, excluir el jugador actual y admins puros
+  // Slots para mostrar según modo
+  const getSlotsToShow = () => {
+    if (!availability) return [];
+    if (anyCourtMode) {
+      // Mostrar todos los slots — un slot está disponible si AL MENOS una cancha lo tiene libre
+      const allSlots = availability.courts[0]?.slots || [];
+      return allSlots
+        .filter((s: any) => !isSlotPast(dateStr, s.slot))
+        .map((s: any) => {
+          const availableInAnyCourt = availability.courts.some((c: any) =>
+            c.slots.find((cs: any) => cs.slot === s.slot)?.available
+          );
+          return { ...s, available: availableInAnyCourt };
+        });
+    } else {
+      const courtSlots = availability?.courts?.find((c: any) => c.id === selectedCourt?.id)?.slots || [];
+      return courtSlots.filter((s: any) => !isSlotPast(dateStr, s.slot));
+    }
+  };
+
+  const courtSlots = getSlotsToShow();
+
+  // Encontrar qué cancha asignar automáticamente (modo anyCourtMode)
+  const getAutoAssignedCourt = (slot: string) => {
+    if (!anyCourtMode || !availability) return selectedCourt;
+    for (const court of availability.courts) {
+      const s = court.slots.find((cs: any) => cs.slot === slot);
+      if (s?.available) return court;
+    }
+    return null;
+  };
+
   const availablePartners = allPlayers.filter(p =>
-    p.id !== player?.id &&
-    !p.admin_role
+    p.id !== player?.id && !p.admin_role && p.member_type !== 'profe'
   );
   const selectedPartnerName = availablePartners.find(p => p.id === partnerPlayerId)?.name || '';
+  const schoolNames: string[] = (player as any)?.school_names || [];
 
   const handleSubmit = async () => {
     if (!player) { setShowLogin(true); return; }
-    if (!selectedCourt || !selectedDate || !selectedSlot) return;
-    if (!hasGuest && !partnerPlayerId) { setError('Debes seleccionar con quién vas o marcar que traes un invitado externo.'); return; }
-    if (hasGuest && !guestName.trim()) { setError('Ingresa el nombre del invitado.'); return; }
+    if (!selectedDate || !selectedSlot) return;
+
+    // Resolver cancha final
+    const finalCourt = anyCourtMode ? getAutoAssignedCourt(selectedSlot) : selectedCourt;
+    if (!finalCourt) { setError('No hay cancha disponible para ese horario.'); return; }
+
+    // Validaciones según tipo de usuario
+    if (!isProfe) {
+      if (!hasGuest && !partnerPlayerId) {
+        setError('Debes seleccionar con quién vas o marcar que traes un invitado externo.');
+        return;
+      }
+      if (hasGuest && !guestName.trim()) { setError('Ingresa el nombre del invitado.'); return; }
+    } else {
+      if (!schoolName) { setError('Debes seleccionar el nombre de la escuela.'); return; }
+    }
 
     setSubmitting(true);
     setError('');
     try {
       await api.createReservation({
-        court_id:     selectedCourt.id,
+        court_id:     finalCourt.id,
         date:         toDateStr(selectedDate),
         time_slot:    selectedSlot,
-        has_guest:    hasGuest,
-        guest_name:   hasGuest ? guestName.trim() : undefined,
-        partner_name: !hasGuest && partnerPlayerId ? selectedPartnerName : undefined,
+        has_guest:    isProfe ? false : hasGuest,
+        guest_name:   isProfe ? undefined : (hasGuest ? guestName.trim() : undefined),
+        partner_name: isProfe ? undefined : (!hasGuest && partnerPlayerId ? selectedPartnerName : undefined),
+        school_name:  isProfe ? schoolName : undefined,
       });
+      setConfirmedCourt(finalCourt);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Error al crear reserva');
@@ -153,6 +202,8 @@ export default function ReservarPage() {
     }
   };
 
+  const canProceedToStep2 = selectedCourt || anyCourtMode;
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
@@ -160,72 +211,95 @@ export default function ReservarPage() {
         <div className="max-w-lg mx-auto px-4 py-16 text-center">
           <div className="text-6xl mb-4">✅</div>
           <h2 className="text-2xl font-bold text-ctg-dark mb-2">¡Reserva confirmada!</h2>
-          <p className="text-gray-500 mb-2">{selectedCourt?.name}</p>
-          <p className="text-gray-500 mb-2">{selectedDate ? formatDate(selectedDate) : ''} · {selectedSlot} hrs</p>
-          {!hasGuest && partnerPlayerId && <p className="text-sm text-gray-400 mb-2">Con: {selectedPartnerName}</p>}
-          {hasGuest && <p className="text-sm text-gray-400 mb-2">Visita: {guestName} — $3.000</p>}
-          <div className="flex gap-3 justify-center mt-4">
-            <button onClick={() => router.push('/mis-reservas')} className="px-6 py-2 bg-ctg-green text-white rounded-lg font-medium">Ver mis reservas</button>
-            <button onClick={() => { setSuccess(false); setStep(1); setSelectedCourt(null); setSelectedDate(null); setSelectedSlot(null); setHasGuest(false); setGuestName(''); setPartnerPlayerId(''); }}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-600">Nueva reserva</button>
-          </div>
+          <p className="text-gray-500 mb-1">{confirmedCourt?.name || selectedCourt?.name}</p>
+          <p className="text-gray-500 mb-1">{selectedDate ? formatDate(selectedDate) : ''} · {selectedSlot} hrs</p>
+          {isProfe && schoolName && <p className="text-sm text-ctg-green font-semibold mb-1">Escuela {schoolName}</p>}
+          {!isProfe && !hasGuest && partnerPlayerId && <p className="text-sm text-gray-400 mb-1">Con: {selectedPartnerName}</p>}
+          {!isProfe && hasGuest && <p className="text-sm text-gray-400 mb-1">Visita: {guestName} (+$3.000)</p>}
+          <button onClick={() => window.location.reload()}
+            className="mt-6 px-6 py-3 bg-ctg-green text-white font-bold rounded-xl hover:bg-ctg-lime transition">
+            Hacer otra reserva
+          </button>
         </div>
       </div>
     );
   }
 
+  if (authLoading) return null;
+
+  const stepLabels = ['Cancha', 'Fecha y hora', 'Confirmar'];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
       <Header currentPage="reservar" onLoginClick={() => setShowLogin(true)} />
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="mb-6">
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <div className="mb-8">
           <h1 className="text-3xl font-bold text-ctg-dark mb-1">Reservar cancha</h1>
-          <p className="text-gray-500">Club de Tenis Graneros</p>
+          <p className="text-gray-500 text-sm">Club de Tenis Graneros</p>
         </div>
 
-        {/* Progress */}
-        <div className="flex items-center gap-2 mb-8">
+        {/* Steps indicator */}
+        <div className="flex items-center justify-center gap-1 mb-8">
           {[1,2,3].map(s => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all
-                ${step >= s ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>{s}</div>
-              <span className={`text-sm ${step >= s ? 'text-ctg-dark font-medium' : 'text-gray-400'}`}>
-                {s === 1 ? 'Cancha' : s === 2 ? 'Fecha y hora' : 'Confirmar'}
+            <div key={s} className="flex items-center gap-1">
+              <span className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-all
+                ${step === s ? 'bg-ctg-green text-white shadow-md' : step > s ? 'bg-ctg-green/30 text-ctg-dark' : 'bg-gray-200 text-gray-400'}`}>
+                {s}
               </span>
-              {s < 3 && <div className={`flex-1 h-0.5 w-8 ${step > s ? 'bg-ctg-green' : 'bg-gray-200'}`} />}
+              <span className={`text-xs ${step === s ? 'text-ctg-dark font-semibold' : 'text-gray-400'}`}>{stepLabels[s-1]}</span>
+              {s < 3 && <div className={`w-8 h-0.5 ${step > s ? 'bg-ctg-green' : 'bg-gray-200'}`} />}
             </div>
           ))}
         </div>
 
-        {/* Step 1 — Cancha */}
+        {/* ── Step 1 — Cancha (opcional) ── */}
         {step === 1 && (
           <div className="bg-white rounded-2xl shadow-card p-6">
-            <h2 className="text-lg font-bold text-ctg-dark mb-4">Selecciona la cancha</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <h2 className="text-lg font-bold text-ctg-dark mb-1">Selecciona la cancha</h2>
+            <p className="text-sm text-gray-400 mb-4">Opcional — puedes dejar que el sistema elija</p>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
               {courts.map(court => (
-                <button key={court.id} onClick={() => setSelectedCourt(court)}
-                  className={`p-6 rounded-xl border-2 transition-all text-center
-                    ${selectedCourt?.id === court.id ? 'border-ctg-green bg-ctg-light/30 shadow-md' : 'border-gray-200 hover:border-ctg-green/50'}`}>
-                  <div className="text-3xl mb-2">🎾</div>
-                  <p className="font-bold text-ctg-dark">{court.name}</p>
+                <button key={court.id} onClick={() => { setSelectedCourt(court); setAnyCourtMode(false); }}
+                  className={`p-5 rounded-xl border-2 transition-all text-center
+                    ${selectedCourt?.id === court.id && !anyCourtMode
+                      ? 'border-ctg-green bg-ctg-light/30 shadow-md'
+                      : 'border-gray-200 hover:border-ctg-green/50'}`}>
+                  <div className="text-3xl mb-1">🎾</div>
+                  <p className="font-bold text-ctg-dark text-sm">{court.name}</p>
                 </button>
               ))}
             </div>
-            <button onClick={() => { if (selectedCourt) setStep(2); }} disabled={!selectedCourt}
-              className="w-full mt-6 py-3 bg-ctg-green text-white font-bold rounded-xl disabled:opacity-40 hover:bg-ctg-lime transition">
+
+            {/* Opción sin preferencia */}
+            <button onClick={() => { setAnyCourtMode(true); setSelectedCourt(null); }}
+              className={`w-full py-3 rounded-xl border-2 text-sm font-medium transition-all mb-4
+                ${anyCourtMode ? 'border-ctg-green bg-ctg-light/30 text-ctg-dark shadow-md' : 'border-dashed border-gray-300 text-gray-500 hover:border-ctg-green/50'}`}>
+              🎲 Sin preferencia — asignar automáticamente
+            </button>
+
+            <button onClick={() => { if (canProceedToStep2) setStep(2); }} disabled={!canProceedToStep2}
+              className="w-full py-3 bg-ctg-green text-white font-bold rounded-xl disabled:opacity-40 hover:bg-ctg-lime transition">
               Continuar →
             </button>
           </div>
         )}
 
-        {/* Step 2 — Fecha y hora */}
+        {/* ── Step 2 — Fecha y hora ── */}
         {step === 2 && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-ctg-dark">Selecciona la fecha</h2>
-                <button onClick={() => setStep(1)} className="text-sm text-ctg-green hover:underline">← Cambiar cancha</button>
+                <button onClick={() => setStep(1)} className="text-sm text-ctg-green hover:underline">← Cancha</button>
+              </div>
+              {/* Badge cancha seleccionada */}
+              <div className="mb-3">
+                {anyCourtMode
+                  ? <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">🎲 Cualquier cancha disponible</span>
+                  : <span className="text-xs bg-ctg-light text-ctg-dark px-2 py-1 rounded-full">🎾 {selectedCourt?.name}</span>
+                }
               </div>
               <Calendar selectedDate={selectedDate} onSelect={setSelectedDate} />
               {selectedDate && <p className="text-xs text-ctg-dark font-semibold mt-3">📆 {formatDate(selectedDate)}</p>}
@@ -243,6 +317,8 @@ export default function ReservarPage() {
                     {courtSlots.map((s: any) => {
                       const isHighDemand = highDemandSlots.includes(s.slot);
                       const isSelected   = selectedSlot === s.slot;
+                      // En modo any, mostrar qué cancha quedará asignada
+                      const assignedCourt = anyCourtMode && s.available ? getAutoAssignedCourt(s.slot) : null;
                       return (
                         <button key={s.slot} disabled={!s.available} onClick={() => setSelectedSlot(s.slot)}
                           className={`p-3 rounded-xl border-2 text-sm font-medium transition-all
@@ -252,6 +328,8 @@ export default function ReservarPage() {
                           <div>{s.slot} hrs</div>
                           {isHighDemand && <div className={`text-xs mt-0.5 ${isSelected ? 'text-white/80' : 'text-orange-500'}`}>🔥 Alta demanda</div>}
                           {!s.available && <div className="text-xs mt-0.5 text-gray-400">Ocupado</div>}
+                          {assignedCourt && !isSelected && <div className="text-xs mt-0.5 text-gray-400">{assignedCourt.name}</div>}
+                          {assignedCourt && isSelected && <div className="text-xs mt-0.5 text-white/80">{assignedCourt.name}</div>}
                         </button>
                       );
                     })}
@@ -267,7 +345,7 @@ export default function ReservarPage() {
           </div>
         )}
 
-        {/* Step 3 — Confirmar */}
+        {/* ── Step 3 — Confirmar ── */}
         {step === 3 && (
           <div className="bg-white rounded-2xl shadow-card p-6">
             <div className="flex items-center justify-between mb-6">
@@ -279,7 +357,11 @@ export default function ReservarPage() {
             <div className="bg-ctg-light/50 rounded-xl p-4 mb-6 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Cancha</span>
-                <span className="font-semibold text-ctg-dark">{selectedCourt?.name}</span>
+                <span className="font-semibold text-ctg-dark">
+                  {anyCourtMode
+                    ? selectedSlot ? `${getAutoAssignedCourt(selectedSlot)?.name || '—'} (auto)` : '—'
+                    : selectedCourt?.name}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Fecha</span>
@@ -297,43 +379,63 @@ export default function ReservarPage() {
               )}
             </div>
 
-            {/* Compañero */}
-            <div className="mb-6 space-y-3">
-              {/* Dropdown socio — solo si no hay invitado */}
-              {!hasGuest && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ¿Con quién vas? <span className="text-red-500">*</span>
-                  </label>
-                  <select value={partnerPlayerId} onChange={e => setPartnerPlayerId(e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green
-                      ${!partnerPlayerId ? 'border-gray-300' : 'border-ctg-green'}`}>
-                    <option value="">— Selecciona un socio —</option>
-                    {availablePartners.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">Voy con alguien externo, marca la opción de abajo</p>
+            {/* ── Cuenta Profe — selector de nombre ── */}
+            {isProfe && schoolNames.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre de la escuela <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {schoolNames.map(name => (
+                    <button key={name} type="button" onClick={() => setSchoolName(name)}
+                      className={`py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-all text-left
+                        ${schoolName === name
+                          ? 'border-ctg-green bg-ctg-light/30 text-ctg-dark shadow-md'
+                          : 'border-gray-200 text-gray-600 hover:border-ctg-green/50'}`}>
+                      🎾 Escuela {name}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Checkbox invitado externo */}
-              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
-                <input type="checkbox" checked={hasGuest}
-                  onChange={e => { setHasGuest(e.target.checked); if (e.target.checked) setPartnerPlayerId(''); }}
-                  className="w-4 h-4 accent-ctg-green" />
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Traigo un invitado externo (+$3.000)</span>
-                  <p className="text-xs text-gray-400">Persona que no es socio del club</p>
-                </div>
-              </label>
+            {/* ── Socio normal — compañero ── */}
+            {!isProfe && (
+              <div className="mb-6 space-y-3">
+                {!hasGuest && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ¿Con quién vas? <span className="text-red-500">*</span>
+                    </label>
+                    <select value={partnerPlayerId} onChange={e => setPartnerPlayerId(e.target.value)}
+                      className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green
+                        ${!partnerPlayerId ? 'border-gray-300' : 'border-ctg-green'}`}>
+                      <option value="">— Selecciona un socio —</option>
+                      {availablePartners.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Si vas con alguien externo, marca la opción de abajo</p>
+                  </div>
+                )}
 
-              {hasGuest && (
-                <input type="text" value={guestName} onChange={e => setGuestName(e.target.value)}
-                  placeholder="Nombre del invitado"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
-              )}
-            </div>
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
+                  <input type="checkbox" checked={hasGuest}
+                    onChange={e => { setHasGuest(e.target.checked); if (e.target.checked) setPartnerPlayerId(''); }}
+                    className="w-4 h-4 accent-ctg-green" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Voy solo o traigo un invitado externo (+$3.000)</span>
+                    <p className="text-xs text-gray-400">Persona que no es socio del club</p>
+                  </div>
+                </label>
+
+                {hasGuest && (
+                  <input type="text" value={guestName} onChange={e => setGuestName(e.target.value)}
+                    placeholder="Nombre del invitado"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                )}
+              </div>
+            )}
 
             {!player && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700 mb-4">

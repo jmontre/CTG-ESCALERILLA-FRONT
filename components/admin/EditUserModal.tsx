@@ -21,7 +21,10 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, player, allP
     has_debt:                false,
     extra_high_demand_slots: 0,
     admin_role:              '',
+    school_names:            [] as string[],
   });
+
+  const [newSchoolName, setNewSchoolName] = useState('');
 
   const [loading, setLoading]                       = useState(false);
   const [error, setError]                           = useState('');
@@ -41,6 +44,7 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, player, allP
         has_debt:                player.has_debt     || false,
         extra_high_demand_slots: player.extra_high_demand_slots ?? 0,
         admin_role:              player.admin_role   || '',
+        school_names:            player.school_names || [],
       });
       loadPlayerReservations(player.id);
     }
@@ -88,6 +92,7 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, player, allP
         has_debt:                formData.has_debt,
         extra_high_demand_slots: formData.extra_high_demand_slots,
         admin_role:              formData.admin_role || null,
+        school_names:            formData.school_names,
       });
       onSuccess();
       onClose();
@@ -181,13 +186,16 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, player, allP
               <div>
                 <label className={labelClass}>Tipo de socio</label>
                 <select value={formData.member_type}
-                  onChange={e => setFormData({...formData, member_type: e.target.value, parent_id: ''})}
+                  onChange={e => setFormData({...formData, member_type: e.target.value, parent_id: '', school_names: []})}
                   className={inputClass}>
                   <option value="socio">Socio</option>
                   <option value="hijo_socio">Hijo de socio</option>
+                  <option value="profe">Profe / Escuela</option>
                 </select>
                 <p className="text-xs text-gray-400 mt-1">
-                  {formData.member_type === 'socio' ? '2 turnos alta demanda/semana base' : '1 turno alta demanda/semana'}
+                  {formData.member_type === 'socio'      && '2 turnos alta demanda/semana base'}
+                  {formData.member_type === 'hijo_socio' && '1 turno alta demanda/semana'}
+                  {formData.member_type === 'profe'      && 'Sin límite de reservas ni alta demanda'}
                 </p>
               </div>
 
@@ -203,6 +211,54 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, player, allP
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* Nombres de escuela — solo si es profe */}
+              {formData.member_type === 'profe' && (
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Nombres de la escuela</label>
+                  <p className="text-xs text-gray-400 mb-2">Ej: Nano, Mondaca, Isma — aparecerán como "Escuela Nano"</p>
+                  <div className="flex gap-2 mb-2">
+                    <input type="text" value={newSchoolName}
+                      onChange={e => setNewSchoolName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const name = newSchoolName.trim();
+                          if (name && !formData.school_names.includes(name)) {
+                            setFormData({...formData, school_names: [...formData.school_names, name]});
+                            setNewSchoolName('');
+                          }
+                        }
+                      }}
+                      placeholder="Nombre y Enter para agregar"
+                      className={inputClass} />
+                    <button type="button"
+                      onClick={() => {
+                        const name = newSchoolName.trim();
+                        if (name && !formData.school_names.includes(name)) {
+                          setFormData({...formData, school_names: [...formData.school_names, name]});
+                          setNewSchoolName('');
+                        }
+                      }}
+                      className="px-4 py-2 bg-ctg-green text-white rounded-lg text-sm font-medium hover:bg-ctg-lime transition">
+                      +
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.school_names.map(name => (
+                      <div key={name} className="flex items-center gap-1 bg-ctg-light text-ctg-dark px-3 py-1 rounded-full text-sm font-medium">
+                        <span>Escuela {name}</span>
+                        <button type="button"
+                          onClick={() => setFormData({...formData, school_names: formData.school_names.filter(n => n !== name)})}
+                          className="text-gray-400 hover:text-red-500 ml-1 font-bold">×</button>
+                      </div>
+                    ))}
+                    {formData.school_names.length === 0 && (
+                      <p className="text-xs text-gray-400">Sin nombres configurados</p>
+                    )}
+                  </div>
                 </div>
               )}
 

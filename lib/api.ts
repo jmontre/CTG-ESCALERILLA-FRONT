@@ -258,7 +258,7 @@ export const api = {
   },
 
   createReservation: async (data: {
-    court_id: string; date: string; time_slot: string; has_guest?: boolean; guest_name?: string; partner_name?: string;
+    court_id: string; date: string; time_slot: string; has_guest?: boolean; guest_name?: string; partner_name?: string; school_name?: string;
   }) => {
     const res = await fetch(`${API_URL}/reservations`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(data),
@@ -286,6 +286,13 @@ export const api = {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al actualizar temporada'); }
+    return res.json();
+  },
+
+  getStats: async (month?: string) => {
+    const url = month ? `${API_URL}/reservations/stats?month=${month}` : `${API_URL}/reservations/stats`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Error al obtener estadísticas');
     return res.json();
   },
 };

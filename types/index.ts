@@ -19,9 +19,11 @@ export interface Player {
   total_matches: number;
   immune_until: string | null;
   vulnerable_until: string | null;
-  member_type: 'socio' | 'hijo_socio';
+  member_type: 'socio' | 'hijo_socio' | 'profe';  // ← agrega 'profe'
   parent_id?: string | null;
   has_debt: boolean;
+  extra_high_demand_slots?: number;
+  school_names?: string[];                          // ← nuevo
   created_at: string;
   is_admin?: boolean;
   admin_role?: 'escalerilla' | 'reservas' | 'all' | null;

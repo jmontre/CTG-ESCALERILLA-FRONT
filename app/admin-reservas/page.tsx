@@ -20,7 +20,7 @@ export default function AdminReservasPage() {
   const { player, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'reservas' | 'usuarios'>('reservas');
+  const [activeTab, setActiveTab] = useState<'reservas' | 'usuarios' | 'stats'>('reservas');
 
   // Reservas
   const [reservations, setReservations] = useState<any[]>([]);
@@ -28,6 +28,14 @@ export default function AdminReservasPage() {
   const [selectedDate, setSelectedDate] = useState(toDateStr(new Date()));
   const [loading, setLoading]           = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  // Stats
+  const [stats, setStats]           = useState<any | null>(null);
+  const [statsMonth, setStatsMonth] = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+  });
+  const [loadingStats, setLoadingStats] = useState(false);
   const [savingSeason, setSavingSeason] = useState(false);
   const [message, setMessage]           = useState('');
   const [error, setError]               = useState('');
@@ -82,6 +90,19 @@ export default function AdminReservasPage() {
       setLoadingPlayers(false);
     }
   };
+
+  const loadStats = async (month: string) => {
+    setLoadingStats(true);
+    try {
+      const data = await api.getStats(month);
+      setStats(data);
+    } catch { setStats(null); }
+    finally { setLoadingStats(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'stats') loadStats(statsMonth);
+  }, [activeTab, statsMonth]);
 
   const handleCancelReservation = async (id: string) => {
     if (!confirm('¿Cancelar esta reserva?')) return;
@@ -180,12 +201,12 @@ export default function AdminReservasPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-200">
-          {(['reservas', 'usuarios'] as const).map(tab => (
+          {(['reservas', 'usuarios', 'stats'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-6 py-3 font-medium transition-colors capitalize ${
                 activeTab === tab ? 'text-ctg-dark border-b-2 border-ctg-green' : 'text-gray-500 hover:text-ctg-dark'
               }`}>
-              {tab === 'reservas' ? '📅 Reservas' : '👥 Usuarios'}
+              {tab === 'reservas' ? '📅 Reservas' : tab === 'usuarios' ? '👥 Usuarios' : '📊 Stats'}
             </button>
           ))}
         </div>
@@ -339,6 +360,7 @@ export default function AdminReservasPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green">
                       <option value="socio">Socio</option>
                       <option value="hijo_socio">Hijo de socio</option>
+                      <option value="profe">Profe / Escuela</option>
                     </select>
                   </div>
                   {newUser.member_type === 'hijo_socio' && (
@@ -435,7 +457,189 @@ export default function AdminReservasPage() {
         )}
       </div>
 
-      {/* Modal editar usuario */}
+        {/* ── TAB STATS ── */}
+        {activeTab === 'stats' && (
+          <>
+            {/* Selector de mes */}
+            <div className="flex items-center gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mes</label>
+                <input type="month" value={statsMonth} onChange={e => setStatsMonth(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+              </div>
+              {stats && <p className="text-sm text-gray-500 mt-5 capitalize">{stats.month_label}</p>}
+            </div>
+
+            {loadingStats ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-ctg-green"></div>
+              </div>
+            ) : !stats ? (
+              <div className="text-center py-16 text-gray-400">No hay datos para este mes.</div>
+            ) : (
+              <div className="space-y-6">
+
+                {/* KPIs principales */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Reservas activas', value: stats.totals.active, icon: '✅', color: 'text-ctg-green' },
+                    { label: 'Canceladas', value: stats.totals.cancelled, icon: '🚫', color: 'text-red-500' },
+                    { label: 'vs mes anterior', value: `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`, icon: stats.totals.growth >= 0 ? '📈' : '📉', color: stats.totals.growth >= 0 ? 'text-ctg-green' : 'text-red-500' },
+                    { label: 'Con visita externa', value: stats.guest.count, icon: '👤', color: 'text-purple-600' },
+                  ].map((kpi, i) => (
+                    <div key={i} className="bg-white rounded-xl shadow-card p-4 text-center">
+                      <p className="text-2xl mb-1">{kpi.icon}</p>
+                      <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                      <p className="text-xs text-gray-500 mt-1">{kpi.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recaudación visitas + Alta vs Baja + Desafíos */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl shadow-card p-4">
+                    <p className="text-sm font-semibold text-gray-500 mb-2">💰 Recaudación visitas</p>
+                    <p className="text-3xl font-bold text-ctg-dark">${stats.guest.revenue.toLocaleString('es-CL')}</p>
+                    <p className="text-xs text-gray-400 mt-1">{stats.guest.count} visitas × $3.000</p>
+                  </div>
+                  <div className="bg-white rounded-xl shadow-card p-4">
+                    <p className="text-sm font-semibold text-gray-500 mb-2">🔥 Demanda</p>
+                    <div className="flex gap-4">
+                      <div>
+                        <p className="text-2xl font-bold text-orange-500">{stats.demand.high}</p>
+                        <p className="text-xs text-gray-400">Alta demanda</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-ctg-green">{stats.demand.low}</p>
+                        <p className="text-xs text-gray-400">Baja demanda</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl shadow-card p-4">
+                    <p className="text-sm font-semibold text-gray-500 mb-2">⚔️ Tipo</p>
+                    <div className="flex gap-4">
+                      <div>
+                        <p className="text-2xl font-bold text-blue-600">{stats.type.challenges}</p>
+                        <p className="text-xs text-gray-400">Desafíos</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-ctg-dark">{stats.type.normal}</p>
+                        <p className="text-xs text-gray-400">Normales</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reservas por día */}
+                <div className="bg-white rounded-xl shadow-card p-5">
+                  <h3 className="font-bold text-ctg-dark mb-4">📆 Reservas por día del mes</h3>
+                  <div className="flex items-end gap-1 h-24 overflow-x-auto pb-2">
+                    {stats.by_day.map((d: any) => {
+                      const max = Math.max(...stats.by_day.map((x: any) => x.count), 1);
+                      const h   = max > 0 ? Math.max(4, Math.round((d.count / max) * 80)) : 4;
+                      return (
+                        <div key={d.day} className="flex flex-col items-center gap-1 min-w-[20px]">
+                          <span className="text-xs text-gray-500">{d.count > 0 ? d.count : ''}</span>
+                          <div style={{ height: `${h}px` }}
+                            className={`w-4 rounded-t ${d.count > 0 ? 'bg-ctg-green' : 'bg-gray-100'}`} />
+                          <span className="text-[10px] text-gray-400">{d.day}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Por cancha */}
+                <div className="bg-white rounded-xl shadow-card p-5">
+                  <h3 className="font-bold text-ctg-dark mb-4">🎾 Ocupación por cancha</h3>
+                  <div className="space-y-3">
+                    {stats.by_court.map((c: any) => (
+                      <div key={c.court}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium text-ctg-dark">{c.court}</span>
+                          <span className="text-gray-500">{c.count} reservas · {c.occupancy}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div className="bg-ctg-green h-2 rounded-full transition-all" style={{ width: `${c.occupancy}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top horarios + Top socios */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-xl shadow-card p-5">
+                    <h3 className="font-bold text-ctg-dark mb-4">🕐 Horarios más populares</h3>
+                    <div className="space-y-2">
+                      {stats.by_slot.slice(0, 6).map((s: any, i: number) => (
+                        <div key={s.slot} className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-gray-400 w-4">{i+1}</span>
+                          <span className="text-sm font-mono text-ctg-dark w-12">{s.slot}</span>
+                          <div className="flex-1 bg-gray-100 rounded-full h-2">
+                            <div className="bg-ctg-green h-2 rounded-full"
+                              style={{ width: `${stats.by_slot[0].count > 0 ? (s.count / stats.by_slot[0].count) * 100 : 0}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500 w-6 text-right">{s.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-card p-5">
+                    <h3 className="font-bold text-ctg-dark mb-4">🏆 Socios más activos</h3>
+                    <div className="space-y-2">
+                      {stats.top_players.slice(0, 8).map((p: any, i: number) => (
+                        <div key={p.player_id} className="flex items-center gap-3">
+                          <span className={`text-xs font-bold w-4 ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>{i+1}</span>
+                          <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
+                          <span className="text-xs font-bold text-ctg-green">{p.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lista reservas con visita */}
+                {stats.guest.list.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-card overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                      <h3 className="font-bold text-ctg-dark">👤 Reservas con visita externa ({stats.guest.count})</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Socio</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Cancha</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Fecha</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Hora</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Invitado</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {stats.guest.list.map((r: any) => (
+                            <tr key={r.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
+                              <td className="px-4 py-3 text-gray-600">{r.court}</td>
+                              <td className="px-4 py-3 text-gray-600">{formatDate(new Date(r.date).toISOString().split('T')[0])}</td>
+                              <td className="px-4 py-3 font-mono text-gray-600">{r.time_slot}</td>
+                              <td className="px-4 py-3 text-gray-600">{r.guest_name || '—'}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </>
+        )}
+
       <EditUserModal
         isOpen={!!editingPlayer}
         onClose={() => setEditingPlayer(null)}
