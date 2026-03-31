@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import EditUserModal from '@/components/admin/EditUserModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 
@@ -36,6 +37,7 @@ export default function AdminReservasPage() {
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [searchQuery, setSearchQuery]   = useState('');
   const [showAddUser, setShowAddUser]   = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<any | null>(null);
   const [newUser, setNewUser]           = useState({ name: '', email: '', phone: '', username: '', password: '', member_type: 'socio', parent_id: '' });
   const [savingUser, setSavingUser]     = useState(false);
   const [userMessage, setUserMessage]   = useState('');
@@ -382,6 +384,7 @@ export default function AdminReservasPage() {
                         <th className="px-4 py-3 text-left font-medium text-gray-600">Tipo</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-600">Escalerilla</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-600">Deuda</th>
+                        <th className="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -415,6 +418,12 @@ export default function AdminReservasPage() {
                               {(p as any).has_debt ? '⚠️ Con deuda' : 'Sin deuda'}
                             </button>
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            <button onClick={() => setEditingPlayer(p)}
+                              className="text-xs px-3 py-1.5 bg-ctg-green/10 text-ctg-green rounded-lg hover:bg-ctg-green/20 transition font-medium">
+                              Editar
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -425,6 +434,15 @@ export default function AdminReservasPage() {
           </>
         )}
       </div>
+
+      {/* Modal editar usuario */}
+      <EditUserModal
+        isOpen={!!editingPlayer}
+        onClose={() => setEditingPlayer(null)}
+        onSuccess={() => { loadPlayers(); setEditingPlayer(null); setUserMessage('Usuario actualizado.'); setTimeout(() => setUserMessage(''), 3000); }}
+        player={editingPlayer}
+        allPlayers={allPlayers}
+      />
     </div>
   );
 }
