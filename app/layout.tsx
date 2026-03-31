@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clubde Tenis Graneros",
-  description: "Sistema de reservas y desafíos Club de Tenis Graneros",
+  title: "Club de Tenis Graneros",
+  description: "Plataforma oficial de escalerilla y reservas del Club de Tenis Graneros",
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
@@ -34,10 +35,11 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-club-bg`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-club-bg flex flex-col min-h-screen`}>
+        <div className="flex-1">
+          {children}
+        </div>
+        <Footer />
       </body>
     </html>
   );

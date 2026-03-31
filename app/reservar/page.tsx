@@ -313,7 +313,7 @@ export default function ReservarPage() {
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-400 mt-1">Si vas solo o con alguien externo, marca la opción de abajo</p>
+                  <p className="text-xs text-gray-400 mt-1">Voy con alguien externo, marca la opción de abajo</p>
                 </div>
               )}
 
