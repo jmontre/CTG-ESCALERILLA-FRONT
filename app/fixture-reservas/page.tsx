@@ -126,6 +126,9 @@ export default function FixtureReservasPage() {
                                   {isChallenge ? 'vs' : 'con'} {s.reservation.partner_name}
                                 </p>
                               )}
+                              {s.reservation?.school_name && (
+                                <p className="text-xs text-ctg-green font-medium">🎾 Escuela {s.reservation.school_name}</p>
+                              )}
                               {!isChallenge && s.reservation?.has_guest && (
                                 <p className="text-xs text-gray-400">
                                   + visita{s.reservation?.guest_name ? `: ${s.reservation.guest_name}` : ''}
