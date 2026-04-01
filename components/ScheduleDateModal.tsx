@@ -86,12 +86,24 @@ export default function ScheduleDateModal({ isOpen, onClose, challenge, currentP
   const [selectedCourt, setSelectedCourt] = useState<any | null>(null);
   const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot]   = useState<string | null>(null);
+  const [availability, setAvailability]   = useState<any | null>(null);
+  const [loadingSlots, setLoadingSlots]   = useState(false);
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState('');
 
   useEffect(() => {
     if (isOpen) api.getCourts().then(setCourts);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!selectedCourt || !selectedDate) return;
+    setLoadingSlots(true);
+    setSelectedSlot(null);
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
+    api.getAvailability(dateStr)
+      .then(data => setAvailability(data))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedCourt, selectedDate]);
 
   if (!isOpen || !challenge) return null;
 
@@ -106,12 +118,23 @@ export default function ScheduleDateModal({ isOpen, onClose, challenge, currentP
   const formatDisplayDate = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const getAvailableSlots = () => {
-    if (!selectedDate) return TIME_SLOTS;
-    if (!isSameDay(selectedDate, now)) return TIME_SLOTS;
-    return TIME_SLOTS.filter(slot => {
-      const [h, m] = slot.start.split(':').map(Number);
-      const t = new Date(selectedDate); t.setHours(h, m, 0, 0);
-      return t > now;
+    if (!selectedDate) return [];
+    const courtSlots = availability?.courts?.find((c: any) => c.id === selectedCourt?.id)?.slots || [];
+    const highDemand: string[] = availability?.high_demand_slots || [];
+
+    return TIME_SLOTS.map(slot => {
+      const courtSlot = courtSlots.find((cs: any) => cs.slot === slot.start);
+      const isOccupied = courtSlot ? !courtSlot.available : false;
+      const isPast = isSameDay(selectedDate, now) && (() => {
+        const [h, m] = slot.start.split(':').map(Number);
+        const t = new Date(selectedDate); t.setHours(h, m, 0, 0);
+        return t <= now;
+      })();
+      return {
+        ...slot,
+        available: !isOccupied && !isPast,
+        isHighDemand: highDemand.includes(slot.start),
+      };
     });
   };
 
@@ -141,6 +164,7 @@ export default function ScheduleDateModal({ isOpen, onClose, challenge, currentP
     setSelectedCourt(null);
     setSelectedDate(null);
     setSelectedSlot(null);
+    setAvailability(null);
     setError('');
     onClose();
   };
@@ -212,17 +236,23 @@ export default function ScheduleDateModal({ isOpen, onClose, challenge, currentP
             </p>
             {!selectedDate ? (
               <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige una fecha en el calendario</div>
-            ) : availableSlots.length === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-orange-200 py-6 text-center text-orange-500 text-sm">No hay horarios disponibles para este día</div>
+            ) : loadingSlots ? (
+              <div className="text-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-ctg-green mx-auto"></div></div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {availableSlots.map(slot => (
-                  <button key={slot.start} type="button" onClick={() => { setSelectedSlot(slot.start); setError(''); }}
+                {getAvailableSlots().map(slot => (
+                  <button key={slot.start} type="button"
+                    disabled={!slot.available}
+                    onClick={() => { if (slot.available) { setSelectedSlot(slot.start); setError(''); } }}
                     className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
-                      ${selectedSlot === slot.start
-                        ? 'bg-ctg-dark border-ctg-dark text-white shadow-md scale-[1.02]'
-                        : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green hover:bg-ctg-light'}`}>
-                    {slot.label}
+                      ${!slot.available
+                        ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
+                        : selectedSlot === slot.start
+                          ? 'bg-ctg-dark border-ctg-dark text-white shadow-md scale-[1.02]'
+                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green hover:bg-ctg-light'}`}>
+                    <div>{slot.label}</div>
+                    {slot.isHighDemand && slot.available && <div className={`text-xs mt-0.5 ${selectedSlot === slot.start ? 'text-white/70' : 'text-orange-500'}`}>🔥 Alta demanda</div>}
+                    {!slot.available && <div className="text-xs mt-0.5 text-gray-400">Ocupado</div>}
                   </button>
                 ))}
               </div>
