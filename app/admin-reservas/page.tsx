@@ -29,6 +29,16 @@ export default function AdminReservasPage() {
   const [loading, setLoading]           = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
+  // Bloqueos
+  const [courts, setCourts]             = useState<any[]>([]);
+  const [blockDate, setBlockDate]       = useState(toDateStr(new Date()));
+  const [blockCourt, setBlockCourt]     = useState('');
+  const [blockedSlots, setBlockedSlots] = useState<string[]>([]);
+  const [blockReason, setBlockReason]   = useState('');
+  const [savingBlocks, setSavingBlocks] = useState(false);
+  const [blockMessage, setBlockMessage] = useState('');
+  const [loadingBlocks, setLoadingBlocks] = useState(false);
+
   // Stats
   const [stats, setStats]           = useState<any | null>(null);
   const [statsMonth, setStatsMonth] = useState(() => {
@@ -57,6 +67,7 @@ export default function AdminReservasPage() {
       loadData();
       api.getSeason().then(d => setSeason(d.season));
       loadPlayers();
+      api.getCourts().then(data => { setCourts(data); if (data.length > 0) setBlockCourt(data[0].id); });
     }
   }, [player, authLoading]);
 
@@ -99,6 +110,43 @@ export default function AdminReservasPage() {
     } catch { setStats(null); }
     finally { setLoadingStats(false); }
   };
+
+  const loadBlocks = async (courtId: string, date: string) => {
+    if (!courtId) return;
+    setLoadingBlocks(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/blocks?date=${date}`);
+      if (res.ok) {
+        const data = await res.json();
+        const courtBlocks = data.filter((b: any) => b.court_id === courtId);
+        setBlockedSlots(courtBlocks.map((b: any) => b.time_slot).filter(Boolean));
+      }
+    } finally { setLoadingBlocks(false); }
+  };
+
+  const handleSaveBlocks = async () => {
+    setSavingBlocks(true);
+    setBlockMessage('');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/blocks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ court_id: blockCourt, date: blockDate, slots: blockedSlots, reason: blockReason || undefined }),
+      });
+      if (res.ok) {
+        setBlockMessage('Bloqueos guardados correctamente.');
+        setTimeout(() => setBlockMessage(''), 3000);
+      }
+    } finally { setSavingBlocks(false); }
+  };
+
+  const toggleSlot = (slot: string) => {
+    setBlockedSlots(prev => prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot]);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reservas' && blockCourt) loadBlocks(blockCourt, blockDate);
+  }, [blockCourt, blockDate, activeTab]);
 
   useEffect(() => {
     if (activeTab === 'stats') loadStats(statsMonth);
@@ -236,6 +284,60 @@ export default function AdminReservasPage() {
                   {season === 'verano' ? 'Alta demanda: 7:45, 9:30, 18:15, 20:00' : 'Alta demanda: 9:30, 11:15, 16:30, 18:15'}
                 </p>
               </div>
+            </div>
+
+            {/* Bloqueos de canchas */}
+            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+              <h2 className="text-lg font-bold text-ctg-dark mb-4">🔒 Bloquear horarios</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cancha</label>
+                  <select value={blockCourt} onChange={e => setBlockCourt(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green">
+                    {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Motivo (opcional)</label>
+                  <input type="text" value={blockReason} onChange={e => setBlockReason(e.target.value)}
+                    placeholder="Ej: Mantenimiento"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                </div>
+              </div>
+
+              {loadingBlocks ? (
+                <div className="text-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-ctg-green mx-auto"></div></div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 mb-3">Selecciona los horarios a bloquear:</p>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => (
+                      <label key={slot} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition text-sm font-medium
+                        ${blockedSlots.includes(slot) ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                        <input type="checkbox" checked={blockedSlots.includes(slot)} onChange={() => toggleSlot(slot)}
+                          className="accent-red-500" />
+                        {slot}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleSaveBlocks} disabled={savingBlocks}
+                      className="px-4 py-2 bg-ctg-dark text-white rounded-lg text-sm font-medium hover:bg-ctg-green transition disabled:opacity-50">
+                      {savingBlocks ? 'Guardando...' : '🔒 Guardar bloqueos'}
+                    </button>
+                    <button onClick={() => setBlockedSlots([])}
+                      className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                      Limpiar todo
+                    </button>
+                    {blockMessage && <span className="text-sm text-green-600">{blockMessage}</span>}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Filtro fecha */}
