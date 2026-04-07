@@ -181,6 +181,7 @@ export default function AdminReservasPage() {
 
   const activeReservations    = reservations.filter(r => r.status === 'active');
   const cancelledReservations = reservations.filter(r => r.status === 'cancelled');
+  const completedReservations = reservations.filter(r => r.status === 'completed');
 
   const filteredPlayers = allPlayers.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -247,6 +248,7 @@ export default function AdminReservasPage() {
                 </div>
                 <div className="flex gap-4 text-sm mt-4">
                   <span className="text-green-600 font-medium">✅ Activas: {activeReservations.length}</span>
+                  <span className="text-blue-500 font-medium">🏁 Completadas: {completedReservations.length}</span>
                   <span className="text-gray-400">🚫 Canceladas: {cancelledReservations.length}</span>
                 </div>
               </div>
@@ -277,7 +279,7 @@ export default function AdminReservasPage() {
                       {reservations
                         .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
                         .map(r => (
-                          <tr key={r.id} className={r.status === 'cancelled' ? 'opacity-50' : 'hover:bg-gray-50'}>
+                          <tr key={r.id} className={r.status === 'active' ? 'hover:bg-gray-50' : 'opacity-50'}>
                             <td className="px-4 py-3 font-mono font-bold text-ctg-dark">{r.time_slot}</td>
                             <td className="px-4 py-3 text-gray-700">{r.court?.name}</td>
                             <td className="px-4 py-3">
@@ -296,8 +298,12 @@ export default function AdminReservasPage() {
                               {r.partner_name ? `🤝 ${r.partner_name}` : r.has_guest ? `👤 ${r.guest_name || 'Visita'}` : '—'}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                {r.status === 'active' ? '✅ Activa' : '🚫 Cancelada'}
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                r.status === 'active'    ? 'bg-green-100 text-green-700'  :
+                                r.status === 'completed' ? 'bg-blue-100 text-blue-600'    :
+                                                           'bg-gray-100 text-gray-500'
+                              }`}>
+                                {r.status === 'active' ? '✅ Activa' : r.status === 'completed' ? '🏁 Completada' : '🚫 Cancelada'}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
