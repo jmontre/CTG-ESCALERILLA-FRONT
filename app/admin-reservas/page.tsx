@@ -315,6 +315,16 @@ export default function AdminReservasPage() {
               ) : (
                 <>
                   <p className="text-xs text-gray-500 mb-3">Selecciona los horarios a bloquear:</p>
+                  <div className="flex gap-2 mb-3">
+                    <button type="button" onClick={() => setBlockedSlots(['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'])}
+                      className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition font-medium">
+                      🔒 Bloquear día completo
+                    </button>
+                    <button type="button" onClick={() => setBlockedSlots([])}
+                      className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition font-medium">
+                      🔓 Desbloquear todo
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
                     {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => (
                       <label key={slot} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition text-sm font-medium
@@ -328,13 +338,15 @@ export default function AdminReservasPage() {
                   <div className="flex items-center gap-3">
                     <button onClick={handleSaveBlocks} disabled={savingBlocks}
                       className="px-4 py-2 bg-ctg-dark text-white rounded-lg text-sm font-medium hover:bg-ctg-green transition disabled:opacity-50">
-                      {savingBlocks ? 'Guardando...' : '🔒 Guardar bloqueos'}
-                    </button>
-                    <button onClick={() => setBlockedSlots([])}
-                      className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-                      Limpiar todo
+                      {savingBlocks ? 'Guardando...' : '💾 Guardar cambios'}
                     </button>
                     {blockMessage && <span className="text-sm text-green-600">{blockMessage}</span>}
+                    {blockedSlots.length > 0 && (
+                      <span className="text-xs text-red-600 font-medium">{blockedSlots.length} horario(s) bloqueado(s)</span>
+                    )}
+                    {blockedSlots.length === 0 && (
+                      <span className="text-xs text-green-600 font-medium">Sin bloqueos</span>
+                    )}
                   </div>
                 </>
               )}
