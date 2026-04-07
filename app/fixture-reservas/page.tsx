@@ -85,7 +85,13 @@ export default function FixtureReservasPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {availability?.courts?.map((court: any) => {
-              const occupiedSlots = court.slots.filter((s: any) => !s.available && !isPast(s.slot));
+              const isToday = toDateStr(selectedDate) === toDateStr(new Date());
+              const occupiedSlots = court.slots.filter((s: any) => {
+                if (s.available) return false;
+                // Para días futuros, ocultar slots pasados. Para hoy, mostrar todos.
+                if (!isToday && isPast(s.slot)) return false;
+                return true;
+              });
               return (
                 <div key={court.id} className="bg-white rounded-2xl shadow-card overflow-hidden">
                   <div className="bg-ctg-dark px-5 py-3 flex items-center justify-between">
@@ -106,7 +112,7 @@ export default function FixtureReservasPage() {
                         const isHighDemand  = availability.high_demand_slots?.includes(s.slot);
                         const isChallenge   = s.reservation?.is_challenge;
                         return (
-                          <div key={s.slot} className={`flex items-center justify-between px-5 py-3 ${isChallenge ? 'bg-blue-50/50' : ''}`}>
+                          <div key={s.slot} className={`flex items-center justify-between px-5 py-3 ${isChallenge ? 'bg-blue-50/50' : ''} ${isToday && isPast(s.slot) ? 'opacity-50' : ''}`}>
                             {/* Hora */}
                             <div className="flex items-center gap-2 min-w-[80px]">
                               <span className="text-sm font-mono font-bold text-ctg-dark">{s.slot}</span>
