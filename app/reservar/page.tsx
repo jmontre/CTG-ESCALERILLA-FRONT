@@ -448,8 +448,13 @@ export default function ReservarPage() {
             )}
 
             <button onClick={player ? handleSubmit : () => setShowLogin(true)} disabled={submitting}
-              className="w-full py-3 bg-ctg-green text-white font-bold rounded-xl hover:bg-ctg-lime transition disabled:opacity-50">
-              {submitting ? 'Reservando...' : player ? 'Confirmar reserva' : 'Iniciar sesión para reservar'}
+              className="w-full py-3 bg-ctg-green text-white font-bold rounded-xl hover:bg-ctg-lime transition disabled:opacity-50 flex items-center justify-center gap-2">
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Reservando...
+                </>
+              ) : player ? 'Confirmar reserva' : 'Iniciar sesión para reservar'}
             </button>
           </div>
         )}

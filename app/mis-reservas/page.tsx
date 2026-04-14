@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import ModifyReservationModal from '@/components/ModifyReservationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
 
 function formatDate(dateStr: string) {
-  // Tomar solo la parte de fecha si viene con hora
   const datePart = dateStr.split('T')[0];
   const d = new Date(datePart + 'T12:00:00');
   return d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -17,13 +17,19 @@ export default function MisReservasPage() {
   const { player, loading: authLoading } = useAuth();
   const router = useRouter();
   const [reservations, setReservations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allPlayers, setAllPlayers]     = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [modifyingReservation, setModifyingReservation] = useState<any | null>(null);
+  const [error, setError]               = useState('');
+  const [successMsg, setSuccessMsg]     = useState('');
 
   useEffect(() => {
     if (!authLoading && !player) { router.push('/'); return; }
-    if (player) loadReservations();
+    if (player) {
+      loadReservations();
+      api.getPlayers().then(setAllPlayers);
+    }
   }, [player, authLoading]);
 
   const loadReservations = async () => {
@@ -37,9 +43,13 @@ export default function MisReservasPage() {
 
   const handleCancel = async (id: string) => {
     setError('');
+    setSuccessMsg('');
     setCancellingId(id);
     try {
-      await api.cancelReservation(id);
+      const result = await api.cancelReservation(id);
+      if (result?.late_cancellation) {
+        setSuccessMsg(result.message);
+      }
       await loadReservations();
     } catch (err: any) {
       setError(err.message || 'Error al cancelar');
@@ -48,8 +58,16 @@ export default function MisReservasPage() {
     }
   };
 
-  const active   = reservations.filter(r => r.status === 'active');
-  const past     = reservations.filter(r => r.status !== 'active');
+  const handleModifySuccess = async () => {
+    setSuccessMsg('Reserva modificada correctamente.');
+    await loadReservations();
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
+
+  const active = reservations.filter(r => r.status === 'active');
+  const past   = reservations.filter(r => r.status !== 'active');
+
+  const playerType = (player as any)?.member_type || 'socio';
 
   if (authLoading || loading) {
     return (
@@ -78,6 +96,11 @@ export default function MisReservasPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 mb-4">{error}</div>
         )}
+        {successMsg && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 mb-4">
+            {successMsg}
+          </div>
+        )}
 
         {/* Activas */}
         <div className="mb-8">
@@ -94,7 +117,7 @@ export default function MisReservasPage() {
               {active.map(r => (
                 <div key={r.id} className="bg-white rounded-xl shadow-card p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="font-bold text-ctg-dark">{r.court?.name}</p>
                       <p className="text-sm text-gray-600 mt-0.5">{formatDate(r.date)}</p>
                       <p className="text-sm text-gray-600">{r.time_slot} hrs</p>
@@ -105,14 +128,36 @@ export default function MisReservasPage() {
                         {r.has_guest && (
                           <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">👤 Visita: {r.guest_name}</span>
                         )}
+                        {r.partner_name && !r.has_guest && (
+                          <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">🤝 Con: {r.partner_name}</span>
+                        )}
+                        {r.is_challenge && (
+                          <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">🎾 Desafío</span>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleCancel(r.id)}
-                      disabled={cancellingId === r.id}
-                      className="text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50 shrink-0">
-                      {cancellingId === r.id ? '...' : 'Cancelar'}
-                    </button>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      {/* Botón Modificar — solo para reservas normales (no desafíos) */}
+                      {!r.is_challenge && (
+                        <button
+                          onClick={() => { setError(''); setSuccessMsg(''); setModifyingReservation(r); }}
+                          disabled={cancellingId === r.id}
+                          className="text-xs px-3 py-1.5 border border-ctg-green text-ctg-green rounded-lg hover:bg-ctg-light transition disabled:opacity-50">
+                          ✏️ Modificar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleCancel(r.id)}
+                        disabled={cancellingId === r.id}
+                        className="text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50 flex items-center justify-center gap-1">
+                        {cancellingId === r.id ? (
+                          <>
+                            <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                            <span>Cancelando...</span>
+                          </>
+                        ) : 'Cancelar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -136,13 +181,27 @@ export default function MisReservasPage() {
                       {r.status === 'cancelled' ? '🚫 Cancelada' : '✅ Completada'}
                     </span>
                   </div>
-                  {r.cancel_reason && <p className="text-xs text-gray-400 mt-1">{r.cancel_reason}</p>}
+                  {r.cancel_reason && (
+                    <p className={`text-xs mt-1 ${r.cancel_reason === 'Cancelación tardía - turno descontado' ? 'text-orange-500 font-medium' : 'text-gray-400'}`}>
+                      {r.cancel_reason === 'Cancelación tardía - turno descontado' ? '⚠️ Turno descontado por cancelación tardía' : r.cancel_reason}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
+
+      <ModifyReservationModal
+        isOpen={!!modifyingReservation}
+        onClose={() => setModifyingReservation(null)}
+        reservation={modifyingReservation}
+        playerType={playerType}
+        allPlayers={allPlayers}
+        currentPlayerId={(player as any)?.id}
+        onSuccess={handleModifySuccess}
+      />
     </div>
   );
 }

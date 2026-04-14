@@ -337,8 +337,13 @@ export default function AdminReservasPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <button onClick={handleSaveBlocks} disabled={savingBlocks}
-                      className="px-4 py-2 bg-ctg-dark text-white rounded-lg text-sm font-medium hover:bg-ctg-green transition disabled:opacity-50">
-                      {savingBlocks ? 'Guardando...' : '💾 Guardar cambios'}
+                      className="px-4 py-2 bg-ctg-dark text-white rounded-lg text-sm font-medium hover:bg-ctg-green transition disabled:opacity-50 flex items-center gap-2">
+                      {savingBlocks ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Guardando...
+                        </>
+                      ) : '💾 Guardar cambios'}
                     </button>
                     {blockMessage && <span className="text-sm text-green-600">{blockMessage}</span>}
                     {blockedSlots.length > 0 && (
@@ -423,8 +428,13 @@ export default function AdminReservasPage() {
                             <td className="px-4 py-3 text-right">
                               {r.status === 'active' && (
                                 <button onClick={() => handleCancelReservation(r.id)} disabled={cancellingId === r.id}
-                                  className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50">
-                                  {cancellingId === r.id ? '...' : 'Cancelar'}
+                                  className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50 flex items-center gap-1 ml-auto">
+                                  {cancellingId === r.id ? (
+                                    <>
+                                      <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                                      <span>Cancelando...</span>
+                                    </>
+                                  ) : 'Cancelar'}
                                 </button>
                               )}
                             </td>
@@ -604,8 +614,8 @@ export default function AdminReservasPage() {
                   {[
                     { label: 'Reservas activas', value: stats.totals.active, icon: '✅', color: 'text-ctg-green' },
                     { label: 'Canceladas', value: stats.totals.cancelled, icon: '🚫', color: 'text-red-500' },
-                    { label: 'vs mes anterior', value: `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`, icon: stats.totals.growth >= 0 ? '📈' : '📉', color: stats.totals.growth >= 0 ? 'text-ctg-green' : 'text-red-500' },
                     { label: 'Con visita externa', value: stats.guest.count, icon: '👤', color: 'text-purple-600' },
+                    { label: 'Hijos de socios', value: stats.hijos_socio?.count ?? 0, icon: '👦', color: 'text-blue-600' },
                   ].map((kpi, i) => (
                     <div key={i} className="bg-white rounded-xl shadow-card p-4 text-center">
                       <p className="text-2xl mb-1">{kpi.icon}</p>
@@ -614,6 +624,24 @@ export default function AdminReservasPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Por tipo de socio */}
+                {stats.by_member_type && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { key: 'socio',      label: 'Socios',          icon: '🎾', color: 'bg-ctg-light text-ctg-dark' },
+                      { key: 'hijo_socio', label: 'Hijos de socios', icon: '👦', color: 'bg-blue-50 text-blue-700' },
+                      { key: 'profe',      label: 'Profes/Escuelas', icon: '🏫', color: 'bg-green-50 text-green-700' },
+                      { key: 'visita',     label: 'Visitas',         icon: '👤', color: 'bg-purple-50 text-purple-700' },
+                    ].map(({ key, label, icon, color }) => (
+                      <div key={key} className={`rounded-xl p-4 text-center ${color}`}>
+                        <p className="text-xl mb-1">{icon}</p>
+                        <p className="text-2xl font-bold">{stats.by_member_type[key] ?? 0}</p>
+                        <p className="text-xs mt-1">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Recaudación visitas + Alta vs Baja + Desafíos */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -720,11 +748,46 @@ export default function AdminReservasPage() {
                   </div>
                 </div>
 
+                {/* Visitas por socio + Hijos de socios */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Visitas por socio */}
+                  {stats.guest.by_player?.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-card p-5">
+                      <h3 className="font-bold text-ctg-dark mb-4">👤 Visitas externas por socio</h3>
+                      <div className="space-y-2">
+                        {stats.guest.by_player.map((p: any, i: number) => (
+                          <div key={p.player_id} className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                            <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">{p.count}x</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hijos de socios */}
+                  {stats.hijos_socio?.by_player?.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-card p-5">
+                      <h3 className="font-bold text-ctg-dark mb-4">👦 Reservas de hijos de socios</h3>
+                      <div className="space-y-2">
+                        {stats.hijos_socio.by_player.map((p: any, i: number) => (
+                          <div key={p.player_id} className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                            <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">{p.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Lista reservas con visita */}
                 {stats.guest.list.length > 0 && (
                   <div className="bg-white rounded-xl shadow-card overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-100">
-                      <h3 className="font-bold text-ctg-dark">👤 Reservas con visita externa ({stats.guest.count})</h3>
+                      <h3 className="font-bold text-ctg-dark">👤 Detalle reservas con visita ({stats.guest.count})</h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">

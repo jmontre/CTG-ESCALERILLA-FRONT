@@ -273,6 +273,16 @@ export const api = {
     return res.json();
   },
 
+  modifyReservation: async (id: string, data: {
+    court_id: string; date: string; time_slot: string; has_guest?: boolean; guest_name?: string; partner_name?: string;
+  }) => {
+    const res = await fetch(`${API_URL}/reservations/${id}/modify`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(data),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al modificar reserva'); }
+    return res.json();
+  },
+
   adminCancelReservation: async (id: string, reason?: string) => {
     const res = await fetch(`${API_URL}/reservations/${id}/admin`, {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
