@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
 import Header from '@/components/Header';
 import EditUserModal from '@/components/admin/EditUserModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -588,240 +589,462 @@ export default function AdminReservasPage() {
       </div>
 
         {/* ── TAB STATS ── */}
-        {activeTab === 'stats' && (
-          <>
-            {/* Selector de mes */}
-            <div className="flex items-center gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mes</label>
-                <input type="month" value={statsMonth} onChange={e => setStatsMonth(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
-              </div>
-              {stats && <p className="text-sm text-gray-500 mt-5 capitalize">{stats.month_label}</p>}
-            </div>
+        {activeTab === 'stats' && (() => {
+          // ── KPIs derivados ──
+          const cancelRate = stats
+            ? Math.round((stats.totals.cancelled_normal ?? 0) / Math.max((stats.totals.normal + (stats.totals.cancelled_normal ?? 0)), 1) * 100)
+            : 0;
+          const highDemandRate = stats
+            ? Math.round(stats.demand.high / Math.max(stats.demand.high + stats.demand.low, 1) * 100)
+            : 0;
+          const guestRate = stats
+            ? Math.round(stats.guest.count / Math.max(stats.totals.normal, 1) * 100)
+            : 0;
+          const activeDays = stats
+            ? stats.by_day.filter((d: any) => d.count > 0).length
+            : 0;
+          const avgPerDay = stats && activeDays > 0
+            ? (stats.totals.normal / activeDays).toFixed(1)
+            : '0';
+          const topCourt = stats?.by_court?.reduce((a: any, b: any) => a.count_normal > b.count_normal ? a : b, { court: '—', count_normal: 0 });
+          const topSlot  = stats?.by_slot?.[0];
 
-            {loadingStats ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-ctg-green"></div>
-              </div>
-            ) : !stats ? (
-              <div className="text-center py-16 text-gray-400">No hay datos para este mes.</div>
-            ) : (
-              <div className="space-y-6">
+          // ── Exportar XLSX (multi-hoja) ──
+          const handleExportXLSX = () => {
+            if (!stats) return;
+            const wb = XLSX.utils.book_new();
 
-                {/* KPIs principales */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Reservas activas', value: stats.totals.active, icon: '✅', color: 'text-ctg-green' },
-                    { label: 'Canceladas', value: stats.totals.cancelled, icon: '🚫', color: 'text-red-500' },
-                    { label: 'Con visita externa', value: stats.guest.count, icon: '👤', color: 'text-purple-600' },
-                    { label: 'Hijos de socios', value: stats.hijos_socio?.count ?? 0, icon: '👦', color: 'text-blue-600' },
-                  ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-xl shadow-card p-4 text-center">
-                      <p className="text-2xl mb-1">{kpi.icon}</p>
-                      <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
-                      <p className="text-xs text-gray-500 mt-1">{kpi.label}</p>
+            // Hoja 1: Resumen
+            const resumenData = [
+              ['Club de Tenis Graneros — Estadísticas de Reservas'],
+              ['Mes', stats.month_label],
+              [],
+              ['RESERVAS NORMALES'],
+              ['Activas', stats.totals.normal],
+              ['Canceladas', stats.totals.cancelled_normal ?? 0],
+              ['Tasa de cancelación', `${cancelRate}%`],
+              ['Promedio por día activo', avgPerDay],
+              ['vs mes anterior', `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`],
+              [],
+              ['DESAFÍOS PROGRAMADOS'],
+              ['Activos', stats.totals.challenges],
+              ['Cancelados', stats.totals.cancelled_challenge ?? 0],
+              [],
+              ['DEMANDA (reservas normales)'],
+              ['Alta demanda', stats.demand.high],
+              ['Baja demanda', stats.demand.low],
+              ['% Alta demanda', `${highDemandRate}%`],
+              [],
+              ['VISITAS EXTERNAS'],
+              ['Reservas con visita', stats.guest.count],
+              ['% sobre normales', `${guestRate}%`],
+              ['Recaudación total', `$${(stats.guest.revenue || 0).toLocaleString('es-CL')}`],
+              [],
+              ['POR TIPO DE SOCIO (normales)'],
+              ['Socios', stats.by_member_type?.socio ?? 0],
+              ['Hijos de socios', stats.by_member_type?.hijo_socio ?? 0],
+              ['Profes/Escuelas', stats.by_member_type?.profe ?? 0],
+              ['Visitas', stats.by_member_type?.visita ?? 0],
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenData), 'Resumen');
+
+            // Hoja 2: Por día
+            const byDayData = [
+              ['Día', 'Reservas normales', 'Desafíos', 'Total'],
+              ...stats.by_day.map((d: any) => [d.day, d.count, d.count_challenge ?? 0, d.count + (d.count_challenge ?? 0)]),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byDayData), 'Por día');
+
+            // Hoja 3: Por horario
+            const bySlotData = [
+              ['Horario', 'Reservas normales', 'Ranking'],
+              ...stats.by_slot.map((s: any, i: number) => [s.slot, s.count, i + 1]),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bySlotData), 'Por horario');
+
+            // Hoja 4: Por cancha
+            const byCourtData = [
+              ['Cancha', 'Normales', 'Desafíos', 'Total', 'Ocupación %'],
+              ...stats.by_court.map((c: any) => [c.court, c.count_normal ?? 0, c.count_challenges ?? 0, c.count, `${c.occupancy}%`]),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byCourtData), 'Por cancha');
+
+            // Hoja 5: Top socios
+            const topPlayersData = [
+              ['Ranking', 'Nombre', 'Reservas normales'],
+              ...stats.top_players.map((p: any, i: number) => [i + 1, p.name, p.count]),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(topPlayersData), 'Top socios');
+
+            // Hoja 6: Visitas por socio
+            if (stats.guest.by_player?.length > 0) {
+              const guestByPlayerData = [
+                ['Ranking', 'Socio', 'Tipo', 'Visitas externas'],
+                ...stats.guest.by_player.map((p: any, i: number) => [i + 1, p.name, p.member_type, p.count]),
+              ];
+              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestByPlayerData), 'Visitas por socio');
+            }
+
+            // Hoja 7: Hijos de socios
+            if (stats.hijos_socio?.by_player?.length > 0) {
+              const hijosData = [
+                ['Ranking', 'Nombre', 'Reservas'],
+                ...stats.hijos_socio.by_player.map((p: any, i: number) => [i + 1, p.name, p.count]),
+              ];
+              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hijosData), 'Hijos de socios');
+            }
+
+            // Hoja 8: Detalle visitas externas
+            if (stats.guest.list?.length > 0) {
+              const guestListData = [
+                ['Socio', 'Cancha', 'Fecha', 'Horario', 'Nombre invitado', 'Monto'],
+                ...stats.guest.list.map((r: any) => [
+                  r.player_name,
+                  r.court,
+                  new Date(r.date).toLocaleDateString('es-CL'),
+                  r.time_slot,
+                  r.guest_name || '',
+                  r.guest_fee || 3000,
+                ]),
+              ];
+              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestListData), 'Detalle visitas');
+            }
+
+            XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
+          };
+
+          // ── Exportar CSV (resumen) ──
+          const handleExportCSV = () => {
+            if (!stats) return;
+            const rows = [
+              ['Mes', stats.month_label],
+              ['Reservas normales activas', stats.totals.normal],
+              ['Reservas normales canceladas', stats.totals.cancelled_normal ?? 0],
+              ['Tasa de cancelación', `${cancelRate}%`],
+              ['Promedio por día activo', avgPerDay],
+              ['Crecimiento vs mes anterior', `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`],
+              ['Desafíos programados', stats.totals.challenges],
+              ['Alta demanda', stats.demand.high],
+              ['Baja demanda', stats.demand.low],
+              ['% Alta demanda', `${highDemandRate}%`],
+              ['Con visita externa', stats.guest.count],
+              ['% Con visita', `${guestRate}%`],
+              ['Recaudación visitas', stats.guest.revenue || 0],
+              ['Socios', stats.by_member_type?.socio ?? 0],
+              ['Hijos de socios', stats.by_member_type?.hijo_socio ?? 0],
+              ['Profes/Escuelas', stats.by_member_type?.profe ?? 0],
+            ];
+            const csv = '\uFEFF' + rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `CTG_Reservas_${stats?.month ?? 'export'}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          };
+
+          return (
+            <>
+              {/* Header con filtros y export */}
+              <div className="bg-white rounded-xl shadow-card p-5 mb-6">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="flex items-end gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Mes</label>
+                      <input type="month" value={statsMonth} onChange={e => setStatsMonth(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
                     </div>
-                  ))}
-                </div>
-
-                {/* Por tipo de socio */}
-                {stats.by_member_type && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { key: 'socio',      label: 'Socios',          icon: '🎾', color: 'bg-ctg-light text-ctg-dark' },
-                      { key: 'hijo_socio', label: 'Hijos de socios', icon: '👦', color: 'bg-blue-50 text-blue-700' },
-                      { key: 'profe',      label: 'Profes/Escuelas', icon: '🏫', color: 'bg-green-50 text-green-700' },
-                      { key: 'visita',     label: 'Visitas',         icon: '👤', color: 'bg-purple-50 text-purple-700' },
-                    ].map(({ key, label, icon, color }) => (
-                      <div key={key} className={`rounded-xl p-4 text-center ${color}`}>
-                        <p className="text-xl mb-1">{icon}</p>
-                        <p className="text-2xl font-bold">{stats.by_member_type[key] ?? 0}</p>
-                        <p className="text-xs mt-1">{label}</p>
-                      </div>
-                    ))}
+                    {stats && (
+                      <p className="text-lg font-bold text-ctg-dark capitalize pb-0.5">{stats.month_label}</p>
+                    )}
                   </div>
-                )}
-
-                {/* Recaudación visitas + Alta vs Baja + Desafíos */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-xl shadow-card p-4">
-                    <p className="text-sm font-semibold text-gray-500 mb-2">💰 Recaudación visitas</p>
-                    <p className="text-3xl font-bold text-ctg-dark">${stats.guest.revenue.toLocaleString('es-CL')}</p>
-                    <p className="text-xs text-gray-400 mt-1">{stats.guest.count} visitas × $3.000</p>
-                  </div>
-                  <div className="bg-white rounded-xl shadow-card p-4">
-                    <p className="text-sm font-semibold text-gray-500 mb-2">🔥 Demanda</p>
-                    <div className="flex gap-4">
-                      <div>
-                        <p className="text-2xl font-bold text-orange-500">{stats.demand.high}</p>
-                        <p className="text-xs text-gray-400">Alta demanda</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-ctg-green">{stats.demand.low}</p>
-                        <p className="text-xs text-gray-400">Baja demanda</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl shadow-card p-4">
-                    <p className="text-sm font-semibold text-gray-500 mb-2">⚔️ Tipo</p>
-                    <div className="flex gap-4">
-                      <div>
-                        <p className="text-2xl font-bold text-blue-600">{stats.type.challenges}</p>
-                        <p className="text-xs text-gray-400">Desafíos</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-ctg-dark">{stats.type.normal}</p>
-                        <p className="text-xs text-gray-400">Normales</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Reservas por día */}
-                <div className="bg-white rounded-xl shadow-card p-5">
-                  <h3 className="font-bold text-ctg-dark mb-4">📆 Reservas por día del mes</h3>
-                  <div className="flex items-end gap-1 h-24 overflow-x-auto pb-2">
-                    {stats.by_day.map((d: any) => {
-                      const max = Math.max(...stats.by_day.map((x: any) => x.count), 1);
-                      const h   = max > 0 ? Math.max(4, Math.round((d.count / max) * 80)) : 4;
-                      return (
-                        <div key={d.day} className="flex flex-col items-center gap-1 min-w-[20px]">
-                          <span className="text-xs text-gray-500">{d.count > 0 ? d.count : ''}</span>
-                          <div style={{ height: `${h}px` }}
-                            className={`w-4 rounded-t ${d.count > 0 ? 'bg-ctg-green' : 'bg-gray-100'}`} />
-                          <span className="text-[10px] text-gray-400">{d.day}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Por cancha */}
-                <div className="bg-white rounded-xl shadow-card p-5">
-                  <h3 className="font-bold text-ctg-dark mb-4">🎾 Ocupación por cancha</h3>
-                  <div className="space-y-3">
-                    {stats.by_court.map((c: any) => (
-                      <div key={c.court}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium text-ctg-dark">{c.court}</span>
-                          <span className="text-gray-500">{c.count} reservas · {c.occupancy}%</span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-2">
-                          <div className="bg-ctg-green h-2 rounded-full transition-all" style={{ width: `${c.occupancy}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top horarios + Top socios */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-xl shadow-card p-5">
-                    <h3 className="font-bold text-ctg-dark mb-4">🕐 Horarios más populares</h3>
-                    <div className="space-y-2">
-                      {stats.by_slot.slice(0, 6).map((s: any, i: number) => (
-                        <div key={s.slot} className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-gray-400 w-4">{i+1}</span>
-                          <span className="text-sm font-mono text-ctg-dark w-12">{s.slot}</span>
-                          <div className="flex-1 bg-gray-100 rounded-full h-2">
-                            <div className="bg-ctg-green h-2 rounded-full"
-                              style={{ width: `${stats.by_slot[0].count > 0 ? (s.count / stats.by_slot[0].count) * 100 : 0}%` }} />
-                          </div>
-                          <span className="text-xs text-gray-500 w-6 text-right">{s.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl shadow-card p-5">
-                    <h3 className="font-bold text-ctg-dark mb-4">🏆 Socios más activos</h3>
-                    <div className="space-y-2">
-                      {stats.top_players.slice(0, 8).map((p: any, i: number) => (
-                        <div key={p.player_id} className="flex items-center gap-3">
-                          <span className={`text-xs font-bold w-4 ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-300'}`}>{i+1}</span>
-                          <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
-                          <span className="text-xs font-bold text-ctg-green">{p.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Visitas por socio + Hijos de socios */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Visitas por socio */}
-                  {stats.guest.by_player?.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-card p-5">
-                      <h3 className="font-bold text-ctg-dark mb-4">👤 Visitas externas por socio</h3>
-                      <div className="space-y-2">
-                        {stats.guest.by_player.map((p: any, i: number) => (
-                          <div key={p.player_id} className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
-                            <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">{p.count}x</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Hijos de socios */}
-                  {stats.hijos_socio?.by_player?.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-card p-5">
-                      <h3 className="font-bold text-ctg-dark mb-4">👦 Reservas de hijos de socios</h3>
-                      <div className="space-y-2">
-                        {stats.hijos_socio.by_player.map((p: any, i: number) => (
-                          <div key={p.player_id} className="flex items-center gap-3">
-                            <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
-                            <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">{p.count}</span>
-                          </div>
-                        ))}
-                      </div>
+                  {stats && (
+                    <div className="flex gap-2">
+                      <button onClick={handleExportCSV}
+                        className="flex items-center gap-2 px-4 py-2 border-2 border-ctg-green text-ctg-green rounded-lg text-sm font-semibold hover:bg-ctg-light transition">
+                        <span>⬇</span> CSV
+                      </button>
+                      <button onClick={handleExportXLSX}
+                        className="flex items-center gap-2 px-4 py-2 bg-ctg-green text-white rounded-lg text-sm font-semibold hover:bg-ctg-lime transition">
+                        <span>📊</span> Excel (.xlsx)
+                      </button>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Lista reservas con visita */}
-                {stats.guest.list.length > 0 && (
-                  <div className="bg-white rounded-xl shadow-card overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100">
-                      <h3 className="font-bold text-ctg-dark">👤 Detalle reservas con visita ({stats.guest.count})</h3>
+              {loadingStats ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+                </div>
+              ) : !stats ? (
+                <div className="text-center py-20 text-gray-400 text-lg">No hay datos para este mes.</div>
+              ) : (
+                <div className="space-y-6">
+
+                  {/* ── BLOQUE 1: KPIs principales (2 filas × 4) ── */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {/* Fila 1 */}
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-ctg-green">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Reservas normales</p>
+                      <p className="text-4xl font-extrabold text-ctg-green">{stats.totals.normal}</p>
+                      <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                        <span className="text-red-400 font-semibold">{stats.totals.cancelled_normal ?? 0} canceladas</span>
+                        <span>·</span>
+                        <span>{cancelRate}% tasa</span>
+                      </p>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">Socio</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">Cancha</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">Fecha</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">Hora</th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">Invitado</th>
-                            <th className="px-4 py-3 text-right font-medium text-gray-600">Monto</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {stats.guest.list.map((r: any) => (
-                            <tr key={r.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
-                              <td className="px-4 py-3 text-gray-600">{r.court}</td>
-                              <td className="px-4 py-3 text-gray-600">{formatDate(new Date(r.date).toISOString().split('T')[0])}</td>
-                              <td className="px-4 py-3 font-mono text-gray-600">{r.time_slot}</td>
-                              <td className="px-4 py-3 text-gray-600">{r.guest_name || '—'}</td>
-                              <td className="px-4 py-3 text-right font-semibold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-blue-400">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Desafíos programados</p>
+                      <p className="text-4xl font-extrabold text-blue-500">{stats.totals.challenges}</p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        <span className="text-red-400 font-semibold">{stats.totals.cancelled_challenge ?? 0} cancelados</span>
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-orange-400">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Alta demanda</p>
+                      <p className="text-4xl font-extrabold text-orange-500">{stats.demand.high}</p>
+                      <p className="text-xs text-gray-400 mt-2">{highDemandRate}% de reservas normales</p>
+                    </div>
+                    <div className={`bg-white rounded-2xl shadow-card p-5 border-l-4 ${stats.totals.growth >= 0 ? 'border-ctg-green' : 'border-red-400'}`}>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">vs mes anterior</p>
+                      <p className={`text-4xl font-extrabold ${stats.totals.growth >= 0 ? 'text-ctg-green' : 'text-red-500'}`}>
+                        {stats.totals.growth > 0 ? '+' : ''}{stats.totals.growth}%
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">reservas normales</p>
+                    </div>
+
+                    {/* Fila 2 */}
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-purple-400">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Visitas externas</p>
+                      <p className="text-4xl font-extrabold text-purple-600">{stats.guest.count}</p>
+                      <p className="text-xs text-gray-400 mt-2">{guestRate}% · ${(stats.guest.revenue || 0).toLocaleString('es-CL')} recaudado</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-ctg-dark">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Promedio / día activo</p>
+                      <p className="text-4xl font-extrabold text-ctg-dark">{avgPerDay}</p>
+                      <p className="text-xs text-gray-400 mt-2">{activeDays} días con actividad</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-yellow-400">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Cancha más usada</p>
+                      <p className="text-xl font-extrabold text-ctg-dark leading-tight mt-1">{topCourt?.court ?? '—'}</p>
+                      <p className="text-xs text-gray-400 mt-2">{topCourt?.count_normal ?? 0} reservas normales</p>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-teal-400">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Horario peak</p>
+                      <p className="text-4xl font-extrabold text-teal-600">{topSlot?.slot ?? '—'}</p>
+                      <p className="text-xs text-gray-400 mt-2">{topSlot?.count ?? 0} reservas</p>
+                    </div>
+                  </div>
+
+                  {/* ── BLOQUE 2: Por tipo de socio ── */}
+                  <div className="bg-white rounded-2xl shadow-card p-5">
+                    <h3 className="font-bold text-gray-500 mb-4 text-sm uppercase tracking-wide">Reservas normales por tipo de socio</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { key: 'socio',      label: 'Socios',          bar: 'bg-ctg-green',   text: 'text-ctg-green'  },
+                        { key: 'hijo_socio', label: 'Hijos de socios', bar: 'bg-blue-400',    text: 'text-blue-600'   },
+                        { key: 'profe',      label: 'Profes/Escuelas', bar: 'bg-emerald-400', text: 'text-emerald-600'},
+                        { key: 'visita',     label: 'Visitas',         bar: 'bg-purple-400',  text: 'text-purple-600' },
+                      ].map(({ key, label, bar, text }) => {
+                        const val = stats.by_member_type?.[key] ?? 0;
+                        const pct = Math.round(val / Math.max(stats.totals.normal, 1) * 100);
+                        return (
+                          <div key={key} className="bg-gray-50 rounded-xl p-4">
+                            <p className={`text-2xl font-extrabold ${text}`}>{val}</p>
+                            <p className="text-xs text-gray-500 mt-0.5 font-medium">{label}</p>
+                            <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className={`h-full ${bar} rounded-full`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1">{pct}% del total</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── BLOQUE 3: Gráfico por día ── */}
+                  <div className="bg-white rounded-2xl shadow-card p-5">
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="font-bold text-ctg-dark">Reservas por día del mes</h3>
+                      <div className="flex gap-4 text-xs text-gray-500">
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-ctg-green inline-block"></span>Normales</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-400 inline-block"></span>Desafíos</span>
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-[3px] h-32 overflow-x-auto pb-4">
+                      {stats.by_day.map((d: any) => {
+                        const maxAll = Math.max(...stats.by_day.map((x: any) => x.count + (x.count_challenge ?? 0)), 1);
+                        const hN = d.count > 0 ? Math.max(4, Math.round((d.count / maxAll) * 96)) : 0;
+                        const hC = (d.count_challenge ?? 0) > 0 ? Math.max(3, Math.round(((d.count_challenge ?? 0) / maxAll) * 96)) : 0;
+                        const total = d.count + (d.count_challenge ?? 0);
+                        return (
+                          <div key={d.day} title={`Día ${d.day}: ${d.count} normales, ${d.count_challenge ?? 0} desafíos`}
+                            className="group flex flex-col items-center gap-0 min-w-[18px] cursor-default">
+                            <span className={`text-[9px] font-bold mb-0.5 transition-opacity ${total > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`}>{total}</span>
+                            <div className="flex flex-col justify-end rounded-t overflow-hidden" style={{ height: '96px' }}>
+                              {hC > 0 && <div style={{ height: `${hC}px` }} className="w-full bg-blue-400" />}
+                              {hN > 0 && <div style={{ height: `${hN}px` }} className={`w-full bg-ctg-green ${hC === 0 ? '' : ''}`} />}
+                              {total === 0 && <div className="w-full bg-gray-100 rounded-t" style={{ height: '4px' }} />}
+                            </div>
+                            <span className={`text-[9px] mt-1 ${total > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>{d.day}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── BLOQUE 4: Por cancha ── */}
+                  <div className="bg-white rounded-2xl shadow-card p-5">
+                    <h3 className="font-bold text-ctg-dark mb-4">Ocupación por cancha</h3>
+                    <div className="space-y-4">
+                      {stats.by_court.map((c: any) => {
+                        return (
+                          <div key={c.court}>
+                            <div className="flex justify-between items-baseline mb-1">
+                              <span className="font-semibold text-ctg-dark">{c.court}</span>
+                              <span className="text-sm text-gray-500">{c.count} reservas — <span className="font-bold text-ctg-dark">{c.occupancy}%</span> ocupación</span>
+                            </div>
+                            {/* Barra apilada: normales (verde) + desafíos (azul) */}
+                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
+                              <div className="bg-ctg-green h-full transition-all" style={{ width: `${Math.round((c.count_normal ?? 0) / Math.max(c.count, 1) * c.occupancy)}%` }} title={`Normales: ${c.count_normal ?? 0}`} />
+                              <div className="bg-blue-400 h-full transition-all" style={{ width: `${Math.round((c.count_challenges ?? 0) / Math.max(c.count, 1) * c.occupancy)}%` }} title={`Desafíos: ${c.count_challenges ?? 0}`} />
+                            </div>
+                            <div className="flex gap-4 mt-1 text-xs text-gray-400">
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-ctg-green inline-block"></span>{c.count_normal ?? 0} normales</span>
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-400 inline-block"></span>{c.count_challenges ?? 0} desafíos</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── BLOQUE 5: Horarios + Top socios ── */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="bg-white rounded-2xl shadow-card p-5">
+                      <h3 className="font-bold text-ctg-dark mb-4">Horarios más reservados <span className="text-xs text-gray-400 font-normal">(normales)</span></h3>
+                      <div className="space-y-3">
+                        {stats.by_slot.map((s: any, i: number) => {
+                          const pct = stats.by_slot[0]?.count > 0 ? Math.round(s.count / stats.by_slot[0].count * 100) : 0;
+                          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+                          return (
+                            <div key={s.slot} className="flex items-center gap-3">
+                              <span className="w-6 text-center text-sm">{medal ?? <span className="text-xs text-gray-300 font-bold">{i+1}</span>}</span>
+                              <span className="font-mono text-sm font-bold text-ctg-dark w-12">{s.slot}</span>
+                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-ctg-green rounded-full transition-all" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-sm font-bold text-gray-600 w-6 text-right">{s.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-card p-5">
+                      <h3 className="font-bold text-ctg-dark mb-4">Socios más activos <span className="text-xs text-gray-400 font-normal">(normales)</span></h3>
+                      <div className="space-y-2">
+                        {stats.top_players.map((p: any, i: number) => {
+                          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+                          const maxC = stats.top_players[0]?.count ?? 1;
+                          return (
+                            <div key={p.player_id} className="flex items-center gap-3">
+                              <span className="w-6 text-center text-sm">{medal ?? <span className="text-xs text-gray-300 font-bold">{i+1}</span>}</span>
+                              <span className="text-sm text-ctg-dark flex-1 truncate font-medium">{p.name}</span>
+                              <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-ctg-green rounded-full" style={{ width: `${Math.round(p.count / maxC * 100)}%` }} />
+                              </div>
+                              <span className="text-sm font-bold text-ctg-green w-5 text-right">{p.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── BLOQUE 6: Visitas por socio + Hijos ── */}
+                  {((stats.guest.by_player?.length > 0) || (stats.hijos_socio?.by_player?.length > 0)) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {stats.guest.by_player?.length > 0 && (
+                        <div className="bg-white rounded-2xl shadow-card p-5">
+                          <h3 className="font-bold text-ctg-dark mb-4">Visitas externas por socio</h3>
+                          <div className="space-y-2">
+                            {stats.guest.by_player.map((p: any, i: number) => (
+                              <div key={p.player_id} className="flex items-center gap-3 py-1 border-b border-gray-50 last:border-0">
+                                <span className="text-xs font-bold text-gray-300 w-4">{i+1}</span>
+                                <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">{p.count}x</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {stats.hijos_socio?.by_player?.length > 0 && (
+                        <div className="bg-white rounded-2xl shadow-card p-5">
+                          <h3 className="font-bold text-ctg-dark mb-4">Hijos de socios</h3>
+                          <div className="space-y-2">
+                            {stats.hijos_socio.by_player.map((p: any, i: number) => (
+                              <div key={p.player_id} className="flex items-center gap-3 py-1 border-b border-gray-50 last:border-0">
+                                <span className="text-xs font-bold text-gray-300 w-4">{i+1}</span>
+                                <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">{p.count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── BLOQUE 7: Detalle visitas externas ── */}
+                  {stats.guest.list?.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+                      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
+                        <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-semibold">Socio</th>
+                              <th className="px-4 py-3 text-left font-semibold">Cancha</th>
+                              <th className="px-4 py-3 text-left font-semibold">Fecha</th>
+                              <th className="px-4 py-3 text-left font-semibold">Hora</th>
+                              <th className="px-4 py-3 text-left font-semibold">Invitado</th>
+                              <th className="px-4 py-3 text-right font-semibold">Monto</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {stats.guest.list.map((r: any) => (
+                              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
+                                <td className="px-4 py-3 text-gray-600">{r.court}</td>
+                                <td className="px-4 py-3 text-gray-600 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                <td className="px-4 py-3 font-mono font-bold text-gray-700">{r.time_slot}</td>
+                                <td className="px-4 py-3 text-gray-600">{r.guest_name || <span className="text-gray-300">—</span>}</td>
+                                <td className="px-4 py-3 text-right font-bold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                            <tr>
+                              <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado</td>
+                              <td className="px-4 py-3 text-right text-base font-extrabold text-ctg-green">${(stats.guest.revenue || 0).toLocaleString('es-CL')}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-              </div>
-            )}
-          </>
-        )}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
       <EditUserModal
         isOpen={!!editingPlayer}
