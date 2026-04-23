@@ -47,6 +47,7 @@ export default function AdminReservasPage() {
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
   });
   const [loadingStats, setLoadingStats] = useState(false);
+  const [guestPage, setGuestPage] = useState(0);
   const [savingSeason, setSavingSeason] = useState(false);
   const [message, setMessage]           = useState('');
   const [error, setError]               = useState('');
@@ -150,7 +151,10 @@ export default function AdminReservasPage() {
   }, [blockCourt, blockDate, activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'stats') loadStats(statsMonth);
+    if (activeTab === 'stats') {
+      setGuestPage(0);
+      loadStats(statsMonth);
+    }
   }, [activeTab, statsMonth]);
 
   const handleCancelReservation = async (id: string) => {
@@ -610,7 +614,7 @@ export default function AdminReservasPage() {
           const topSlot  = stats?.by_slot?.[0];
 
           // ── Exportar XLSX (multi-hoja) ──
-          const handleExportXLSX = () => {
+          const handleExportXLSX = async () => {
             if (!stats) return;
             const wb = XLSX.utils.book_new();
 
@@ -710,38 +714,68 @@ export default function AdminReservasPage() {
               XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestListData), 'Detalle visitas');
             }
 
+            // Hoja 9: Todas las reservas del mes
+            try {
+              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
+              if (allRes.ok) {
+                const allReservations = await allRes.json();
+                const allResData = [
+                  ['Socio', 'Tipo de socio', 'Tipo reserva', 'Cancha', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'],
+                  ...allReservations.map((r: any) => [
+                    r.player?.name || '',
+                    r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
+                    r.is_challenge ? 'Desafío' : 'Normal',
+                    r.court?.name || '',
+                    new Date(r.date).toLocaleDateString('es-CL'),
+                    r.time_slot,
+                    r.is_high_demand ? 'Sí' : 'No',
+                    r.has_guest ? 'Sí' : 'No',
+                    r.guest_name || '',
+                    r.partner_name || '',
+                    r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+                  ]),
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allResData), 'Todas las reservas');
+              }
+            } catch { /* continuar sin esta hoja si falla */ }
+
             XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
           };
 
-          // ── Exportar CSV (resumen) ──
-          const handleExportCSV = () => {
+          // ── Exportar CSV (detalle completo de reservas del mes) ──
+          const handleExportCSV = async () => {
             if (!stats) return;
-            const rows = [
-              ['Mes', stats.month_label],
-              ['Reservas normales activas', stats.totals.normal],
-              ['Reservas normales canceladas', stats.totals.cancelled_normal ?? 0],
-              ['Tasa de cancelación', `${cancelRate}%`],
-              ['Promedio por día activo', avgPerDay],
-              ['Crecimiento vs mes anterior', `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`],
-              ['Desafíos programados', stats.totals.challenges],
-              ['Alta demanda', stats.demand.high],
-              ['Baja demanda', stats.demand.low],
-              ['% Alta demanda', `${highDemandRate}%`],
-              ['Con visita externa', stats.guest.count],
-              ['% Con visita', `${guestRate}%`],
-              ['Recaudación visitas', stats.guest.revenue || 0],
-              ['Socios', stats.by_member_type?.socio ?? 0],
-              ['Hijos de socios', stats.by_member_type?.hijo_socio ?? 0],
-              ['Profes/Escuelas', stats.by_member_type?.profe ?? 0],
-            ];
-            const csv = '\uFEFF' + rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `CTG_Reservas_${stats?.month ?? 'export'}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
+            try {
+              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
+              if (!allRes.ok) throw new Error();
+              const allReservations = await allRes.json();
+              const rows = [
+                ['Socio', 'Tipo de socio', 'Tipo reserva', 'Cancha', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'],
+                ...allReservations.map((r: any) => [
+                  r.player?.name || '',
+                  r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
+                  r.is_challenge ? 'Desafío' : 'Normal',
+                  r.court?.name || '',
+                  new Date(r.date).toLocaleDateString('es-CL'),
+                  r.time_slot,
+                  r.is_high_demand ? 'Sí' : 'No',
+                  r.has_guest ? 'Sí' : 'No',
+                  r.guest_name || '',
+                  r.partner_name || '',
+                  r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+                ]),
+              ];
+              const csv = '\uFEFF' + rows.map((r: (string | number | boolean)[]) => r.map((v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url  = URL.createObjectURL(blob);
+              const a    = document.createElement('a');
+              a.href     = url;
+              a.download = `CTG_Reservas_${stats.month}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch {
+              alert('Error al exportar CSV. Intenta de nuevo.');
+            }
           };
 
           return (
@@ -873,26 +907,44 @@ export default function AdminReservasPage() {
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-400 inline-block"></span>Desafíos</span>
                       </div>
                     </div>
-                    <div className="flex items-end gap-[3px] h-32 overflow-x-auto pb-4">
-                      {stats.by_day.map((d: any) => {
-                        const maxAll = Math.max(...stats.by_day.map((x: any) => x.count + (x.count_challenge ?? 0)), 1);
-                        const hN = d.count > 0 ? Math.max(4, Math.round((d.count / maxAll) * 96)) : 0;
-                        const hC = (d.count_challenge ?? 0) > 0 ? Math.max(3, Math.round(((d.count_challenge ?? 0) / maxAll) * 96)) : 0;
-                        const total = d.count + (d.count_challenge ?? 0);
-                        return (
-                          <div key={d.day} title={`Día ${d.day}: ${d.count} normales, ${d.count_challenge ?? 0} desafíos`}
-                            className="group flex flex-col items-center gap-0 min-w-[18px] cursor-default">
-                            <span className={`text-[9px] font-bold mb-0.5 transition-opacity ${total > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`}>{total}</span>
-                            <div className="flex flex-col justify-end rounded-t overflow-hidden" style={{ height: '96px' }}>
-                              {hC > 0 && <div style={{ height: `${hC}px` }} className="w-full bg-blue-400" />}
-                              {hN > 0 && <div style={{ height: `${hN}px` }} className={`w-full bg-ctg-green ${hC === 0 ? '' : ''}`} />}
-                              {total === 0 && <div className="w-full bg-gray-100 rounded-t" style={{ height: '4px' }} />}
-                            </div>
-                            <span className={`text-[9px] mt-1 ${total > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>{d.day}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const maxAll = Math.max(...stats.by_day.map((x: any) => x.count + (x.count_challenge ?? 0)), 1);
+                      return (
+                        <div className="flex gap-[3px] overflow-x-auto pt-1 pb-1">
+                          {stats.by_day.map((d: any) => {
+                            const hN = d.count > 0 ? Math.max(4, Math.round((d.count / maxAll) * 80)) : 0;
+                            const hC = (d.count_challenge ?? 0) > 0 ? Math.max(3, Math.round(((d.count_challenge ?? 0) / maxAll) * 80)) : 0;
+                            const total = d.count + (d.count_challenge ?? 0);
+                            return (
+                              <div key={d.day}
+                                title={`Día ${d.day}: ${d.count} normales, ${d.count_challenge ?? 0} desafíos`}
+                                className="group flex flex-col items-center cursor-default"
+                                style={{ minWidth: '18px' }}>
+                                <span className={`text-[9px] font-bold transition-opacity ${total > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`} style={{ height: '13px', lineHeight: '13px' }}>
+                                  {total || ''}
+                                </span>
+                                <div className="relative" style={{ height: '80px', width: '100%' }}>
+                                  {total === 0 && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gray-100" style={{ height: '3px', borderRadius: '2px 2px 0 0' }} />
+                                  )}
+                                  {hN > 0 && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-ctg-green"
+                                      style={{ height: `${hN}px`, borderRadius: hC > 0 ? '0' : '2px 2px 0 0' }} />
+                                  )}
+                                  {hC > 0 && (
+                                    <div className="absolute left-0 right-0 bg-blue-400"
+                                      style={{ bottom: `${hN}px`, height: `${hC}px`, borderRadius: '2px 2px 0 0' }} />
+                                  )}
+                                </div>
+                                <span className={`text-[9px] mt-0.5 ${total > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>
+                                  {d.day}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* ── BLOQUE 4: Por cancha ── */}
@@ -999,46 +1051,75 @@ export default function AdminReservasPage() {
                   )}
 
                   {/* ── BLOQUE 7: Detalle visitas externas ── */}
-                  {stats.guest.list?.length > 0 && (
-                    <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-                      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
-                        <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                            <tr>
-                              <th className="px-4 py-3 text-left font-semibold">Socio</th>
-                              <th className="px-4 py-3 text-left font-semibold">Cancha</th>
-                              <th className="px-4 py-3 text-left font-semibold">Fecha</th>
-                              <th className="px-4 py-3 text-left font-semibold">Hora</th>
-                              <th className="px-4 py-3 text-left font-semibold">Invitado</th>
-                              <th className="px-4 py-3 text-right font-semibold">Monto</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-50">
-                            {stats.guest.list.map((r: any) => (
-                              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
-                                <td className="px-4 py-3 text-gray-600">{r.court}</td>
-                                <td className="px-4 py-3 text-gray-600 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                                <td className="px-4 py-3 font-mono font-bold text-gray-700">{r.time_slot}</td>
-                                <td className="px-4 py-3 text-gray-600">{r.guest_name || <span className="text-gray-300">—</span>}</td>
-                                <td className="px-4 py-3 text-right font-bold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                  {stats.guest.list?.length > 0 && (() => {
+                    const GUESTS_PER_PAGE = 10;
+                    const totalGuestPages = Math.ceil(stats.guest.list.length / GUESTS_PER_PAGE);
+                    const pageData = stats.guest.list.slice(guestPage * GUESTS_PER_PAGE, (guestPage + 1) * GUESTS_PER_PAGE);
+                    return (
+                      <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                          <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
+                          <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                              <tr>
+                                <th className="px-4 py-3 text-left font-semibold">Socio</th>
+                                <th className="px-4 py-3 text-left font-semibold">Cancha</th>
+                                <th className="px-4 py-3 text-left font-semibold">Fecha</th>
+                                <th className="px-4 py-3 text-left font-semibold">Hora</th>
+                                <th className="px-4 py-3 text-left font-semibold">Invitado</th>
+                                <th className="px-4 py-3 text-right font-semibold">Monto</th>
                               </tr>
-                            ))}
-                          </tbody>
-                          <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                            <tr>
-                              <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado</td>
-                              <td className="px-4 py-3 text-right text-base font-extrabold text-ctg-green">${(stats.guest.revenue || 0).toLocaleString('es-CL')}</td>
-                            </tr>
-                          </tfoot>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {pageData.map((r: any) => (
+                                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
+                                  <td className="px-4 py-3 text-gray-600">{r.court}</td>
+                                  <td className="px-4 py-3 text-gray-600 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                  <td className="px-4 py-3 font-mono font-bold text-gray-700">{r.time_slot}</td>
+                                  <td className="px-4 py-3 text-gray-600">{r.guest_name || <span className="text-gray-300">—</span>}</td>
+                                  <td className="px-4 py-3 text-right font-bold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                              <tr>
+                                <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado</td>
+                                <td className="px-4 py-3 text-right text-base font-extrabold text-ctg-green">${(stats.guest.revenue || 0).toLocaleString('es-CL')}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                        {totalGuestPages > 1 && (
+                          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+                            <span className="text-xs text-gray-500">
+                              {guestPage * GUESTS_PER_PAGE + 1}–{Math.min((guestPage + 1) * GUESTS_PER_PAGE, stats.guest.list.length)} de {stats.guest.list.length} visitas
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setGuestPage(p => Math.max(0, p - 1))}
+                                disabled={guestPage === 0}
+                                className="px-3 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-white transition-colors"
+                              >
+                                ← Anterior
+                              </button>
+                              <span className="text-xs text-gray-400">{guestPage + 1} / {totalGuestPages}</span>
+                              <button
+                                onClick={() => setGuestPage(p => Math.min(totalGuestPages - 1, p + 1))}
+                                disabled={guestPage >= totalGuestPages - 1}
+                                className="px-3 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-white transition-colors"
+                              >
+                                Siguiente →
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                 </div>
               )}
