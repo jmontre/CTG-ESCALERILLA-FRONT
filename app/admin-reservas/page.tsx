@@ -613,147 +613,47 @@ export default function AdminReservasPage() {
           const topCourt = stats?.by_court?.reduce((a: any, b: any) => a.count_normal > b.count_normal ? a : b, { court: '—', count_normal: 0 });
           const topSlot  = stats?.by_slot?.[0];
 
-          // ── Exportar XLSX (multi-hoja) ──
+          // ── Exportar XLSX (2 hojas: Cancha 1 y Cancha 2, solo reservas normales) ──
           const handleExportXLSX = async () => {
             if (!stats) return;
-            const wb = XLSX.utils.book_new();
-
-            // Hoja 1: Resumen
-            const resumenData = [
-              ['Club de Tenis Graneros — Estadísticas de Reservas'],
-              ['Mes', stats.month_label],
-              [],
-              ['RESERVAS NORMALES'],
-              ['Activas', stats.totals.normal],
-              ['Canceladas', stats.totals.cancelled_normal ?? 0],
-              ['Tasa de cancelación', `${cancelRate}%`],
-              ['Promedio por día activo', avgPerDay],
-              ['vs mes anterior', `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`],
-              [],
-              ['DESAFÍOS PROGRAMADOS'],
-              ['Activos', stats.totals.challenges],
-              ['Cancelados', stats.totals.cancelled_challenge ?? 0],
-              [],
-              ['DEMANDA (reservas normales)'],
-              ['Alta demanda', stats.demand.high],
-              ['Baja demanda', stats.demand.low],
-              ['% Alta demanda', `${highDemandRate}%`],
-              [],
-              ['VISITAS EXTERNAS'],
-              ['Reservas con visita', stats.guest.count],
-              ['% sobre normales', `${guestRate}%`],
-              ['Recaudación total', `$${(stats.guest.revenue || 0).toLocaleString('es-CL')}`],
-              [],
-              ['POR TIPO DE SOCIO (normales)'],
-              ['Socios', stats.by_member_type?.socio ?? 0],
-              ['Hijos de socios', stats.by_member_type?.hijo_socio ?? 0],
-              ['Profes/Escuelas', stats.by_member_type?.profe ?? 0],
-              ['Visitas', stats.by_member_type?.visita ?? 0],
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenData), 'Resumen');
-
-            // Hoja 2: Por día
-            const byDayData = [
-              ['Día', 'Reservas normales', 'Desafíos', 'Total'],
-              ...stats.by_day.map((d: any) => [d.day, d.count, d.count_challenge ?? 0, d.count + (d.count_challenge ?? 0)]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byDayData), 'Por día');
-
-            // Hoja 3: Por horario
-            const bySlotData = [
-              ['Horario', 'Reservas normales', 'Ranking'],
-              ...stats.by_slot.map((s: any, i: number) => [s.slot, s.count, i + 1]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bySlotData), 'Por horario');
-
-            // Hoja 4: Por cancha
-            const byCourtData = [
-              ['Cancha', 'Normales', 'Desafíos', 'Total', 'Ocupación %'],
-              ...stats.by_court.map((c: any) => [c.court, c.count_normal ?? 0, c.count_challenges ?? 0, c.count, `${c.occupancy}%`]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byCourtData), 'Por cancha');
-
-            // Hoja 5: Top socios
-            const topPlayersData = [
-              ['Ranking', 'Nombre', 'Reservas normales'],
-              ...stats.top_players.map((p: any, i: number) => [i + 1, p.name, p.count]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(topPlayersData), 'Top socios');
-
-            // Hoja 6: Visitas por socio
-            if (stats.guest.by_player?.length > 0) {
-              const guestByPlayerData = [
-                ['Ranking', 'Socio', 'Tipo', 'Visitas externas'],
-                ...stats.guest.by_player.map((p: any, i: number) => [i + 1, p.name, p.member_type, p.count]),
-              ];
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestByPlayerData), 'Visitas por socio');
-            }
-
-            // Hoja 7: Hijos de socios
-            if (stats.hijos_socio?.by_player?.length > 0) {
-              const hijosData = [
-                ['Ranking', 'Nombre', 'Reservas'],
-                ...stats.hijos_socio.by_player.map((p: any, i: number) => [i + 1, p.name, p.count]),
-              ];
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hijosData), 'Hijos de socios');
-            }
-
-            // Hoja 8: Detalle visitas externas
-            if (stats.guest.list?.length > 0) {
-              const guestListData = [
-                ['Socio', 'Cancha', 'Fecha', 'Horario', 'Nombre invitado', 'Monto'],
-                ...stats.guest.list.map((r: any) => [
-                  r.player_name,
-                  r.court,
-                  new Date(r.date).toLocaleDateString('es-CL'),
-                  r.time_slot,
-                  r.guest_name || '',
-                  r.guest_fee || 3000,
-                ]),
-              ];
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestListData), 'Detalle visitas');
-            }
-
-            // Hojas 9 y 10: Cancha 1 y Cancha 2
             try {
               const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
-              if (allRes.ok) {
-                const allReservations = await allRes.json();
-                const resHeaders = ['Socio', 'Tipo de socio', 'Tipo reserva', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
-                const toRow = (r: any) => [
-                  r.player?.name || '',
-                  r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
-                  r.is_challenge ? 'Desafío' : 'Normal',
-                  new Date(r.date).toLocaleDateString('es-CL'),
-                  r.time_slot,
-                  r.is_high_demand ? 'Sí' : 'No',
-                  r.has_guest ? 'Sí' : 'No',
-                  r.guest_name || '',
-                  r.partner_name || '',
-                  r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
-                ];
-                ['Cancha 1', 'Cancha 2'].forEach(courtName => {
-                  const rows = allReservations.filter((r: any) => r.court?.name === courtName);
-                  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([resHeaders, ...rows.map(toRow)]), courtName);
-                });
-              }
-            } catch { /* continuar sin esta hoja si falla */ }
-
-            XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
+              if (!allRes.ok) throw new Error();
+              const allReservations = await allRes.json();
+              const wb = XLSX.utils.book_new();
+              const resHeaders = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
+              const toRow = (r: any) => [
+                r.player?.name || '',
+                r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
+                new Date(r.date).toLocaleDateString('es-CL'),
+                r.time_slot,
+                r.is_high_demand ? 'Sí' : 'No',
+                r.has_guest ? 'Sí' : 'No',
+                r.guest_name || '',
+                r.partner_name || '',
+                r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+              ];
+              ['Cancha 1', 'Cancha 2'].forEach(courtName => {
+                const rows = allReservations.filter((r: any) => r.court?.name === courtName && !r.is_challenge);
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([resHeaders, ...rows.map(toRow)]), courtName);
+              });
+              XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
+            } catch {
+              alert('Error al exportar Excel. Intenta de nuevo.');
+            }
           };
 
-          // ── Exportar CSV (2 secciones: Cancha 1 y Cancha 2) ──
+          // ── Exportar CSV (2 secciones: Cancha 1 y Cancha 2, solo reservas normales) ──
           const handleExportCSV = async () => {
             if (!stats) return;
             try {
               const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
               if (!allRes.ok) throw new Error();
               const allReservations = await allRes.json();
-              const headers = ['Socio', 'Tipo de socio', 'Tipo reserva', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
+              const headers = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
               const toRow = (r: any): (string | number | boolean)[] => [
                 r.player?.name || '',
                 r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
-                r.is_challenge ? 'Desafío' : 'Normal',
                 new Date(r.date).toLocaleDateString('es-CL'),
                 r.time_slot,
                 r.is_high_demand ? 'Sí' : 'No',
@@ -765,7 +665,7 @@ export default function AdminReservasPage() {
               const encodeRow = (r: (string | number | boolean)[]) =>
                 r.map((v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`).join(',');
               const sections = ['Cancha 1', 'Cancha 2'].map(courtName => {
-                const courtRows = allReservations.filter((r: any) => r.court?.name === courtName);
+                const courtRows = allReservations.filter((r: any) => r.court?.name === courtName && !r.is_challenge);
                 return [`"${courtName}"`, encodeRow(headers), ...courtRows.map(toRow).map(encodeRow)].join('\n');
               });
               const csv = '\uFEFF' + sections.join('\n\n');
@@ -830,13 +730,6 @@ export default function AdminReservasPage() {
                         <span className="text-red-400 font-semibold">{stats.totals.cancelled_normal ?? 0} canceladas</span>
                         <span>·</span>
                         <span>{cancelRate}% tasa</span>
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-blue-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Desafíos programados</p>
-                      <p className="text-4xl font-extrabold text-blue-500">{stats.totals.challenges}</p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        <span className="text-red-400 font-semibold">{stats.totals.cancelled_challenge ?? 0} cancelados</span>
                       </p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-orange-400">
@@ -952,17 +845,12 @@ export default function AdminReservasPage() {
                           <div key={c.court}>
                             <div className="flex justify-between items-baseline mb-1">
                               <span className="font-semibold text-ctg-dark">{c.court}</span>
-                              <span className="text-sm text-gray-500">{c.count} reservas — <span className="font-bold text-ctg-dark">{c.occupancy}%</span> ocupación</span>
+                              <span className="text-sm text-gray-500">{c.count_normal ?? 0} reservas normales</span>
                             </div>
-                            {/* Barra apilada: normales (verde) + desafíos (azul) */}
-                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
-                              <div className="bg-ctg-green h-full transition-all" style={{ width: `${Math.round((c.count_normal ?? 0) / Math.max(c.count, 1) * c.occupancy)}%` }} title={`Normales: ${c.count_normal ?? 0}`} />
-                              <div className="bg-blue-400 h-full transition-all" style={{ width: `${Math.round((c.count_challenges ?? 0) / Math.max(c.count, 1) * c.occupancy)}%` }} title={`Desafíos: ${c.count_challenges ?? 0}`} />
+                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                              <div className="bg-ctg-green h-full transition-all rounded-full" style={{ width: `${c.occupancy ?? 0}%` }} />
                             </div>
-                            <div className="flex gap-4 mt-1 text-xs text-gray-400">
-                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-ctg-green inline-block"></span>{c.count_normal ?? 0} normales</span>
-                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-400 inline-block"></span>{c.count_challenges ?? 0} desafíos</span>
-                            </div>
+                            <p className="mt-1 text-xs text-gray-400">{c.occupancy ?? 0}% ocupación total</p>
                           </div>
                         );
                       })}
