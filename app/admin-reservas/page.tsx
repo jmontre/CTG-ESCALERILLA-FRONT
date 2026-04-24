@@ -714,48 +714,16 @@ export default function AdminReservasPage() {
               XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestListData), 'Detalle visitas');
             }
 
-            // Hoja 9: Todas las reservas del mes
+            // Hojas 9 y 10: Cancha 1 y Cancha 2
             try {
               const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
               if (allRes.ok) {
                 const allReservations = await allRes.json();
-                const allResData = [
-                  ['Socio', 'Tipo de socio', 'Tipo reserva', 'Cancha', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'],
-                  ...allReservations.map((r: any) => [
-                    r.player?.name || '',
-                    r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
-                    r.is_challenge ? 'Desafío' : 'Normal',
-                    r.court?.name || '',
-                    new Date(r.date).toLocaleDateString('es-CL'),
-                    r.time_slot,
-                    r.is_high_demand ? 'Sí' : 'No',
-                    r.has_guest ? 'Sí' : 'No',
-                    r.guest_name || '',
-                    r.partner_name || '',
-                    r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
-                  ]),
-                ];
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allResData), 'Todas las reservas');
-              }
-            } catch { /* continuar sin esta hoja si falla */ }
-
-            XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
-          };
-
-          // ── Exportar CSV (detalle completo de reservas del mes) ──
-          const handleExportCSV = async () => {
-            if (!stats) return;
-            try {
-              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
-              if (!allRes.ok) throw new Error();
-              const allReservations = await allRes.json();
-              const rows = [
-                ['Socio', 'Tipo de socio', 'Tipo reserva', 'Cancha', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'],
-                ...allReservations.map((r: any) => [
+                const resHeaders = ['Socio', 'Tipo de socio', 'Tipo reserva', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
+                const toRow = (r: any) => [
                   r.player?.name || '',
                   r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
                   r.is_challenge ? 'Desafío' : 'Normal',
-                  r.court?.name || '',
                   new Date(r.date).toLocaleDateString('es-CL'),
                   r.time_slot,
                   r.is_high_demand ? 'Sí' : 'No',
@@ -763,9 +731,44 @@ export default function AdminReservasPage() {
                   r.guest_name || '',
                   r.partner_name || '',
                   r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
-                ]),
+                ];
+                ['Cancha 1', 'Cancha 2'].forEach(courtName => {
+                  const rows = allReservations.filter((r: any) => r.court?.name === courtName);
+                  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([resHeaders, ...rows.map(toRow)]), courtName);
+                });
+              }
+            } catch { /* continuar sin esta hoja si falla */ }
+
+            XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
+          };
+
+          // ── Exportar CSV (2 secciones: Cancha 1 y Cancha 2) ──
+          const handleExportCSV = async () => {
+            if (!stats) return;
+            try {
+              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
+              if (!allRes.ok) throw new Error();
+              const allReservations = await allRes.json();
+              const headers = ['Socio', 'Tipo de socio', 'Tipo reserva', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
+              const toRow = (r: any): (string | number | boolean)[] => [
+                r.player?.name || '',
+                r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
+                r.is_challenge ? 'Desafío' : 'Normal',
+                new Date(r.date).toLocaleDateString('es-CL'),
+                r.time_slot,
+                r.is_high_demand ? 'Sí' : 'No',
+                r.has_guest ? 'Sí' : 'No',
+                r.guest_name || '',
+                r.partner_name || '',
+                r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
               ];
-              const csv = '\uFEFF' + rows.map((r: (string | number | boolean)[]) => r.map((v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+              const encodeRow = (r: (string | number | boolean)[]) =>
+                r.map((v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`).join(',');
+              const sections = ['Cancha 1', 'Cancha 2'].map(courtName => {
+                const courtRows = allReservations.filter((r: any) => r.court?.name === courtName);
+                return [`"${courtName}"`, encodeRow(headers), ...courtRows.map(toRow).map(encodeRow)].join('\n');
+              });
+              const csv = '\uFEFF' + sections.join('\n\n');
               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
               const url  = URL.createObjectURL(blob);
               const a    = document.createElement('a');
@@ -901,42 +904,35 @@ export default function AdminReservasPage() {
                   {/* ── BLOQUE 3: Gráfico por día ── */}
                   <div className="bg-white rounded-2xl shadow-card p-5">
                     <div className="flex items-center justify-between mb-5">
-                      <h3 className="font-bold text-ctg-dark">Reservas por día del mes</h3>
+                      <h3 className="font-bold text-ctg-dark">Reservas normales por día del mes</h3>
                       <div className="flex gap-4 text-xs text-gray-500">
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-ctg-green inline-block"></span>Normales</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-400 inline-block"></span>Desafíos</span>
                       </div>
                     </div>
                     {(() => {
-                      const maxAll = Math.max(...stats.by_day.map((x: any) => x.count + (x.count_challenge ?? 0)), 1);
+                      const maxAll = Math.max(...stats.by_day.map((x: any) => x.count), 1);
                       return (
                         <div className="flex gap-[3px] overflow-x-auto pt-1 pb-1">
                           {stats.by_day.map((d: any) => {
                             const hN = d.count > 0 ? Math.max(4, Math.round((d.count / maxAll) * 80)) : 0;
-                            const hC = (d.count_challenge ?? 0) > 0 ? Math.max(3, Math.round(((d.count_challenge ?? 0) / maxAll) * 80)) : 0;
-                            const total = d.count + (d.count_challenge ?? 0);
                             return (
                               <div key={d.day}
-                                title={`Día ${d.day}: ${d.count} normales, ${d.count_challenge ?? 0} desafíos`}
+                                title={`Día ${d.day}: ${d.count} reservas normales`}
                                 className="group flex flex-col items-center cursor-default"
                                 style={{ minWidth: '18px' }}>
-                                <span className={`text-[9px] font-bold transition-opacity ${total > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`} style={{ height: '13px', lineHeight: '13px' }}>
-                                  {total || ''}
+                                <span className={`text-[9px] font-bold transition-opacity ${d.count > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`} style={{ height: '13px', lineHeight: '13px' }}>
+                                  {d.count || ''}
                                 </span>
                                 <div className="relative" style={{ height: '80px', width: '100%' }}>
-                                  {total === 0 && (
+                                  {d.count === 0 && (
                                     <div className="absolute bottom-0 left-0 right-0 bg-gray-100" style={{ height: '3px', borderRadius: '2px 2px 0 0' }} />
                                   )}
                                   {hN > 0 && (
                                     <div className="absolute bottom-0 left-0 right-0 bg-ctg-green"
-                                      style={{ height: `${hN}px`, borderRadius: hC > 0 ? '0' : '2px 2px 0 0' }} />
-                                  )}
-                                  {hC > 0 && (
-                                    <div className="absolute left-0 right-0 bg-blue-400"
-                                      style={{ bottom: `${hN}px`, height: `${hC}px`, borderRadius: '2px 2px 0 0' }} />
+                                      style={{ height: `${hN}px`, borderRadius: '2px 2px 0 0' }} />
                                   )}
                                 </div>
-                                <span className={`text-[9px] mt-0.5 ${total > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>
+                                <span className={`text-[9px] mt-0.5 ${d.count > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>
                                   {d.day}
                                 </span>
                               </div>
