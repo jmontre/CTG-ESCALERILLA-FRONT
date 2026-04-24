@@ -40,6 +40,14 @@ export default function AdminReservasPage() {
   const [blockMessage, setBlockMessage] = useState('');
   const [loadingBlocks, setLoadingBlocks] = useState(false);
 
+  // Cobro de luz
+  const [lightDate, setLightDate]       = useState(toDateStr(new Date()));
+  const [lightSlots, setLightSlots]     = useState<string[]>([]);
+  const [lightAmount, setLightAmount]   = useState(3000);
+  const [savingLight, setSavingLight]   = useState(false);
+  const [loadingLight, setLoadingLight] = useState(false);
+  const [lightMessage, setLightMessage] = useState('');
+
   // Stats
   const [stats, setStats]           = useState<any | null>(null);
   const [statsMonth, setStatsMonth] = useState(() => {
@@ -47,6 +55,7 @@ export default function AdminReservasPage() {
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
   });
   const [loadingStats, setLoadingStats] = useState(false);
+  const [lightSummary, setLightSummary] = useState<any | null>(null);
   const [guestPage, setGuestPage] = useState(0);
   const [savingSeason, setSavingSeason] = useState(false);
   const [message, setMessage]           = useState('');
@@ -107,10 +116,46 @@ export default function AdminReservasPage() {
   const loadStats = async (month: string) => {
     setLoadingStats(true);
     try {
-      const data = await api.getStats(month);
-      setStats(data);
-    } catch { setStats(null); }
+      const [statsData, lightRes] = await Promise.all([
+        api.getStats(month),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-summary?month=${month}`),
+      ]);
+      setStats(statsData);
+      setLightSummary(lightRes.ok ? await lightRes.json() : null);
+    } catch { setStats(null); setLightSummary(null); }
     finally { setLoadingStats(false); }
+  };
+
+  const loadLightConfig = async (date: string) => {
+    setLoadingLight(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-config?date=${date}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLightSlots(data.time_slots || []);
+        setLightAmount(data.amount_per_slot ?? 3000);
+      }
+    } finally { setLoadingLight(false); }
+  };
+
+  const handleSaveLightConfig = async () => {
+    setSavingLight(true);
+    setLightMessage('');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: lightDate, time_slots: lightSlots, amount_per_slot: lightAmount }),
+      });
+      if (res.ok) {
+        setLightMessage('Cobro de luz guardado.');
+        setTimeout(() => setLightMessage(''), 3000);
+      }
+    } finally { setSavingLight(false); }
+  };
+
+  const toggleLightSlot = (slot: string) => {
+    setLightSlots(prev => prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot]);
   };
 
   const loadBlocks = async (courtId: string, date: string) => {
@@ -149,6 +194,10 @@ export default function AdminReservasPage() {
   useEffect(() => {
     if (activeTab === 'reservas' && blockCourt) loadBlocks(blockCourt, blockDate);
   }, [blockCourt, blockDate, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'reservas') loadLightConfig(lightDate);
+  }, [lightDate, activeTab]);
 
   useEffect(() => {
     if (activeTab === 'stats') {
@@ -356,6 +405,62 @@ export default function AdminReservasPage() {
                     )}
                     {blockedSlots.length === 0 && (
                       <span className="text-xs text-green-600 font-medium">Sin bloqueos</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Cobro de luz */}
+            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+              <h2 className="text-lg font-bold text-ctg-dark mb-4">💡 Cobro de luz</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <input type="date" value={lightDate} onChange={e => setLightDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Monto por horario ($)</label>
+                  <input type="number" value={lightAmount} onChange={e => setLightAmount(Number(e.target.value))} min={0} step={500}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                </div>
+              </div>
+              {loadingLight ? (
+                <div className="text-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-yellow-400 mx-auto"></div></div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 mb-3">Selecciona los horarios donde se cobra luz:</p>
+                  <div className="flex gap-2 mb-3">
+                    <button type="button" onClick={() => setLightSlots(['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'])}
+                      className="text-xs px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition font-medium">
+                      💡 Todos los horarios
+                    </button>
+                    <button type="button" onClick={() => setLightSlots([])}
+                      className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition font-medium">
+                      Limpiar
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => (
+                      <label key={slot} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition text-sm font-medium
+                        ${lightSlots.includes(slot) ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                        <input type="checkbox" checked={lightSlots.includes(slot)} onChange={() => toggleLightSlot(slot)}
+                          className="accent-yellow-500" />
+                        {slot}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleSaveLightConfig} disabled={savingLight}
+                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition disabled:opacity-50 flex items-center gap-2">
+                      {savingLight ? (
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                      ) : '💾 Guardar cobro de luz'}
+                    </button>
+                    {lightMessage && <span className="text-sm text-green-600">{lightMessage}</span>}
+                    {lightSlots.length > 0 && (
+                      <span className="text-xs text-yellow-600 font-medium">💡 {lightSlots.length} horario(s) con cobro · ${(lightAmount * lightSlots.length).toLocaleString('es-CL')} posible</span>
                     )}
                   </div>
                 </>
@@ -613,7 +718,7 @@ export default function AdminReservasPage() {
           const topCourt = stats?.by_court?.reduce((a: any, b: any) => a.count_normal > b.count_normal ? a : b, { court: '—', count_normal: 0 });
           const topSlot  = stats?.by_slot?.[0];
 
-          // ── Exportar XLSX (2 hojas: Cancha 1 y Cancha 2, solo reservas normales) ──
+          // ── Exportar XLSX (Cancha 1, Cancha 2, Luz) solo reservas normales ──
           const handleExportXLSX = async () => {
             if (!stats) return;
             try {
@@ -621,7 +726,7 @@ export default function AdminReservasPage() {
               if (!allRes.ok) throw new Error();
               const allReservations = await allRes.json();
               const wb = XLSX.utils.book_new();
-              const resHeaders = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
+              const resHeaders = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado', 'Monto visita'];
               const toRow = (r: any) => [
                 r.player?.name || '',
                 r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
@@ -632,25 +737,51 @@ export default function AdminReservasPage() {
                 r.guest_name || '',
                 r.partner_name || '',
                 r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+                r.has_guest ? (r.guest_fee || 3000) : '',
               ];
               ['Cancha 1', 'Cancha 2'].forEach(courtName => {
                 const rows = allReservations.filter((r: any) => r.court?.name === courtName && !r.is_challenge);
-                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([resHeaders, ...rows.map(toRow)]), courtName);
+                const courtRevenue = rows.filter((r: any) => r.has_guest).reduce((s: number, r: any) => s + (r.guest_fee || 3000), 0);
+                const data = [
+                  resHeaders,
+                  ...rows.map(toRow),
+                  [],
+                  ['', '', '', '', '', '', '', '', 'TOTAL VISITAS', courtRevenue],
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), courtName);
               });
+              // Hoja Luz
+              if (lightSummary?.by_day?.length > 0) {
+                const lightHeaders = ['Fecha', 'Horarios con luz', 'Monto por horario', 'Reservas cobradas', 'Total día'];
+                const lightRows = lightSummary.by_day.map((d: any) => [
+                  d.date,
+                  d.time_slots.join(', '),
+                  d.amount_per_slot,
+                  d.count,
+                  d.revenue,
+                ]);
+                const lightData = [
+                  lightHeaders,
+                  ...lightRows,
+                  [],
+                  ['', '', '', 'TOTAL LUZ', lightSummary.total_revenue],
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lightData), 'Luz');
+              }
               XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
             } catch {
               alert('Error al exportar Excel. Intenta de nuevo.');
             }
           };
 
-          // ── Exportar CSV (2 secciones: Cancha 1 y Cancha 2, solo reservas normales) ──
+          // ── Exportar CSV (Cancha 1, Cancha 2, Luz — solo reservas normales) ──
           const handleExportCSV = async () => {
             if (!stats) return;
             try {
               const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
               if (!allRes.ok) throw new Error();
               const allReservations = await allRes.json();
-              const headers = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado'];
+              const headers = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado', 'Monto visita'];
               const toRow = (r: any): (string | number | boolean)[] => [
                 r.player?.name || '',
                 r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
@@ -661,14 +792,30 @@ export default function AdminReservasPage() {
                 r.guest_name || '',
                 r.partner_name || '',
                 r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+                r.has_guest ? (r.guest_fee || 3000) : '',
               ];
               const encodeRow = (r: (string | number | boolean)[]) =>
                 r.map((v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`).join(',');
-              const sections = ['Cancha 1', 'Cancha 2'].map(courtName => {
+              const courtSections = ['Cancha 1', 'Cancha 2'].map(courtName => {
                 const courtRows = allReservations.filter((r: any) => r.court?.name === courtName && !r.is_challenge);
-                return [`"${courtName}"`, encodeRow(headers), ...courtRows.map(toRow).map(encodeRow)].join('\n');
+                const courtRevenue = courtRows.filter((r: any) => r.has_guest).reduce((s: number, r: any) => s + (r.guest_fee || 3000), 0);
+                return [
+                  `"${courtName}"`,
+                  encodeRow(headers),
+                  ...courtRows.map(toRow).map(encodeRow),
+                  `"","","","","","","","","Total visitas","${courtRevenue}"`,
+                ].join('\n');
               });
-              const csv = '\uFEFF' + sections.join('\n\n');
+              const lightSection = lightSummary?.by_day?.length > 0 ? [
+                '"LUZ"',
+                '"Fecha","Horarios con luz","Monto por horario","Reservas cobradas","Total día"',
+                ...lightSummary.by_day.map((d: any) =>
+                  `"${d.date}","${d.time_slots.join(', ')}","${d.amount_per_slot}","${d.count}","${d.revenue}"`
+                ),
+                `"","","","Total luz","${lightSummary.total_revenue}"`,
+              ].join('\n') : null;
+              const allSections = [...courtSections, ...(lightSection ? [lightSection] : [])];
+              const csv = '\uFEFF' + allSections.join('\n\n');
               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
               const url  = URL.createObjectURL(blob);
               const a    = document.createElement('a');
@@ -757,9 +904,9 @@ export default function AdminReservasPage() {
                       <p className="text-xs text-gray-400 mt-2">{activeDays} días con actividad</p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-yellow-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Cancha más usada</p>
-                      <p className="text-xl font-extrabold text-ctg-dark leading-tight mt-1">{topCourt?.court ?? '—'}</p>
-                      <p className="text-xs text-gray-400 mt-2">{topCourt?.count_normal ?? 0} reservas normales</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">💡 Cobro de luz</p>
+                      <p className="text-4xl font-extrabold text-yellow-500">${((lightSummary?.total_revenue || 0) / 1000).toFixed(0)}k</p>
+                      <p className="text-xs text-gray-400 mt-2">${(lightSummary?.total_revenue || 0).toLocaleString('es-CL')} · {lightSummary?.by_day?.length ?? 0} días</p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-teal-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Horario peak</p>
@@ -1004,6 +1151,54 @@ export default function AdminReservasPage() {
                       </div>
                     );
                   })()}
+
+                  {/* ── BLOQUE 8: Cobro de luz ── */}
+                  {lightSummary && lightSummary.by_day?.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+                      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-bold text-ctg-dark">💡 Cobro de luz</h3>
+                        <span className="text-xs bg-yellow-100 text-yellow-700 font-bold px-2.5 py-1 rounded-full">
+                          Total: ${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-semibold">Fecha</th>
+                              <th className="px-4 py-3 text-left font-semibold">Horarios con luz</th>
+                              <th className="px-4 py-3 text-right font-semibold">$/horario</th>
+                              <th className="px-4 py-3 text-right font-semibold">Reservas</th>
+                              <th className="px-4 py-3 text-right font-semibold">Total día</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {lightSummary.by_day.map((d: any) => (
+                              <tr key={d.date} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-600 text-xs">{new Date(d.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    {d.time_slots.map((s: string) => (
+                                      <span key={s} className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-mono">{s}</span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-600">${d.amount_per_slot.toLocaleString('es-CL')}</td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-700">{d.count}</td>
+                                <td className="px-4 py-3 text-right font-bold text-yellow-600">${d.revenue.toLocaleString('es-CL')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                            <tr>
+                              <td colSpan={4} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado (luz)</td>
+                              <td className="px-4 py-3 text-right text-base font-extrabold text-yellow-600">${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                 </div>
               )}
