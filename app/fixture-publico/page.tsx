@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function FixturePublicoPage() {
-  const { player } = useAuth();
+  const { player, refreshPlayer } = useAuth();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [filteredChallenges, setFilteredChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,7 +302,7 @@ export default function FixturePublicoPage() {
       <LoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
-        onSuccess={() => window.location.reload()}
+        onSuccess={() => { setLoginModalOpen(false); refreshPlayer(); }}
       />
     </div>
   );

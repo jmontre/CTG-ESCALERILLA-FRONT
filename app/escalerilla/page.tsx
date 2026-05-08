@@ -163,7 +163,7 @@ export default function EscalerillaPage() {
           onClose={() => setChallengeModalOpen(false)} onConfirm={handleConfirmChallenge} loading={challengeLoading} />
       )}
 
-      <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={() => window.location.reload()} />
+      <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={() => { setLoginModalOpen(false); refreshPlayer(); }} />
 
       {toasts.map((toast) => (
         <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />

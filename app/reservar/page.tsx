@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import LoginModal from '@/components/LoginModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
+import { toDateStr } from '@/lib/utils';
 
 const DAYS   = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -16,9 +17,6 @@ function isSameDay(a: Date, b: Date) {
 function formatDate(d: Date) {
   return d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
 }
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
 function isSlotPast(dateStr: string, slot: string): boolean {
   const [h, m] = slot.split(':').map(Number);
   const slotTime = new Date(dateStr + 'T00:00:00');
@@ -27,7 +25,8 @@ function isSlotPast(dateStr: string, slot: string): boolean {
 }
 
 function Calendar({ selectedDate, onSelect }: { selectedDate: Date | null; onSelect: (d: Date) => void }) {
-  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+  const today = new Date(todayStr + 'T00:00:00');
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
@@ -74,7 +73,7 @@ function Calendar({ selectedDate, onSelect }: { selectedDate: Date | null; onSel
 }
 
 export default function ReservarPage() {
-  const { player, loading: authLoading } = useAuth();
+  const { player, loading: authLoading, refreshPlayer } = useAuth();
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
 
@@ -460,7 +459,7 @@ export default function ReservarPage() {
         )}
       </div>
 
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => setShowLogin(false)} />
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setShowLogin(false); refreshPlayer(); }} />
     </div>
   );
 }

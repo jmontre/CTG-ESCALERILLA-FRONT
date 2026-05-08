@@ -7,10 +7,7 @@ import Header from '@/components/Header';
 import EditUserModal from '@/components/admin/EditUserModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
-
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+import { toDateStr } from '@/lib/utils';
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + 'T12:00:00');
@@ -28,7 +25,8 @@ export default function AdminReservasPage() {
   const [season, setSeason]             = useState('verano');
   const [selectedDate, setSelectedDate] = useState(toDateStr(new Date()));
   const [loading, setLoading]           = useState(true);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId]     = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   // Bloqueos
   const [courts, setCourts]             = useState<any[]>([]);
@@ -50,10 +48,9 @@ export default function AdminReservasPage() {
 
   // Stats
   const [stats, setStats]           = useState<any | null>(null);
-  const [statsMonth, setStatsMonth] = useState(() => {
-    const n = new Date();
-    return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
-  });
+  const [statsMonth, setStatsMonth] = useState(() =>
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' }).substring(0, 7)
+  );
   const [loadingStats, setLoadingStats] = useState(false);
   const [lightSummary, setLightSummary] = useState<any | null>(null);
   const [guestPage, setGuestPage] = useState(0);
@@ -99,14 +96,11 @@ export default function AdminReservasPage() {
   const loadPlayers = async () => {
     setLoadingPlayers(true);
     try {
-      const data = await api.getPlayers();
-      // Incluir TODOS los jugadores incluyendo los sin posición
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/players/all`).catch(() => null);
-      if (res?.ok) {
-        const all = await res.json();
+      const all = await api.getAllPlayersAdmin();
+      if (all) {
         setAllPlayers(all);
       } else {
-        setAllPlayers(data);
+        setAllPlayers(await api.getPlayers());
       }
     } finally {
       setLoadingPlayers(false);
@@ -116,12 +110,12 @@ export default function AdminReservasPage() {
   const loadStats = async (month: string) => {
     setLoadingStats(true);
     try {
-      const [statsData, lightRes] = await Promise.all([
+      const [statsData, lightData] = await Promise.all([
         api.getStats(month),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-summary?month=${month}`),
+        api.getLightSummary(month),
       ]);
       setStats(statsData);
-      setLightSummary(lightRes.ok ? await lightRes.json() : null);
+      setLightSummary(lightData);
     } catch { setStats(null); setLightSummary(null); }
     finally { setLoadingStats(false); }
   };
@@ -129,9 +123,8 @@ export default function AdminReservasPage() {
   const loadLightConfig = async (date: string) => {
     setLoadingLight(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-config?date=${date}`);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await api.getLightConfig(date);
+      if (data) {
         setLightSlots(data.time_slots || []);
         setLightAmount(data.amount_per_slot ?? 3000);
       }
@@ -142,16 +135,14 @@ export default function AdminReservasPage() {
     setSavingLight(true);
     setLightMessage('');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: lightDate, time_slots: lightSlots, amount_per_slot: lightAmount }),
-      });
-      if (res.ok) {
-        setLightMessage('Cobro de luz guardado.');
-        setTimeout(() => setLightMessage(''), 3000);
-      }
-    } finally { setSavingLight(false); }
+      await api.saveLightConfig({ date: lightDate, time_slots: lightSlots, amount_per_slot: lightAmount });
+      setLightMessage('Cobro de luz guardado.');
+      setTimeout(() => setLightMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar cobro de luz');
+      setTimeout(() => setError(''), 4000);
+    }
+    finally { setSavingLight(false); }
   };
 
   const toggleLightSlot = (slot: string) => {
@@ -162,13 +153,10 @@ export default function AdminReservasPage() {
     if (!courtId) return;
     setLoadingBlocks(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/blocks?date=${date}`);
-      if (res.ok) {
-        const data = await res.json();
-        const courtBlocks = data.filter((b: any) => b.court_id === courtId);
-        setBlockedSlots(courtBlocks.map((b: any) => b.time_slot).filter(Boolean));
-        setBlockReason(courtBlocks[0]?.reason || '');
-      }
+      const data = await api.getBlocks(date);
+      const courtBlocks = data.filter((b: any) => b.court_id === courtId);
+      setBlockedSlots(courtBlocks.map((b: any) => b.time_slot).filter(Boolean));
+      setBlockReason(courtBlocks[0]?.reason || '');
     } finally { setLoadingBlocks(false); }
   };
 
@@ -176,16 +164,14 @@ export default function AdminReservasPage() {
     setSavingBlocks(true);
     setBlockMessage('');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/blocks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ court_id: blockCourt, date: blockDate, slots: blockedSlots, reason: blockReason || undefined }),
-      });
-      if (res.ok) {
-        setBlockMessage('Bloqueos guardados correctamente.');
-        setTimeout(() => setBlockMessage(''), 3000);
-      }
-    } finally { setSavingBlocks(false); }
+      await api.saveBlocks({ court_id: blockCourt, date: blockDate, slots: blockedSlots, reason: blockReason || undefined });
+      setBlockMessage('Bloqueos guardados correctamente.');
+      setTimeout(() => setBlockMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar bloqueos');
+      setTimeout(() => setError(''), 4000);
+    }
+    finally { setSavingBlocks(false); }
   };
 
   const toggleSlot = (slot: string) => {
@@ -208,7 +194,7 @@ export default function AdminReservasPage() {
   }, [activeTab, statsMonth]);
 
   const handleCancelReservation = async (id: string) => {
-    if (!confirm('¿Cancelar esta reserva?')) return;
+    setConfirmCancelId(null);
     setCancellingId(id);
     try {
       await api.adminCancelReservation(id, 'Cancelada por administrador');
@@ -538,15 +524,29 @@ export default function AdminReservasPage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               {r.status === 'active' && (
-                                <button onClick={() => handleCancelReservation(r.id)} disabled={cancellingId === r.id}
-                                  className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50 flex items-center gap-1 ml-auto">
-                                  {cancellingId === r.id ? (
-                                    <>
-                                      <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"></div>
-                                      <span>Cancelando...</span>
-                                    </>
-                                  ) : 'Cancelar'}
-                                </button>
+                                confirmCancelId === r.id ? (
+                                  <div className="flex items-center gap-1.5 ml-auto justify-end">
+                                    <span className="text-xs text-gray-500">¿Confirmar?</span>
+                                    <button onClick={() => handleCancelReservation(r.id)}
+                                      className="text-xs px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                      Sí
+                                    </button>
+                                    <button onClick={() => setConfirmCancelId(null)}
+                                      className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">
+                                      No
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setConfirmCancelId(r.id)} disabled={cancellingId === r.id}
+                                    className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50 flex items-center gap-1 ml-auto">
+                                    {cancellingId === r.id ? (
+                                      <>
+                                        <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                                        <span>Cancelando...</span>
+                                      </>
+                                    ) : 'Cancelar'}
+                                  </button>
+                                )
                               )}
                             </td>
                           </tr>
@@ -723,9 +723,7 @@ export default function AdminReservasPage() {
           const handleExportXLSX = async () => {
             if (!stats) return;
             try {
-              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
-              if (!allRes.ok) throw new Error();
-              const allReservations = await allRes.json();
+              const allReservations = await api.getReservationsByMonth(stats.month);
               const wb = XLSX.utils.book_new();
               const resHeaders = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado', 'Monto visita'];
               const toRow = (r: any) => [
@@ -779,9 +777,7 @@ export default function AdminReservasPage() {
           const handleExportCSV = async () => {
             if (!stats) return;
             try {
-              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
-              if (!allRes.ok) throw new Error();
-              const allReservations = await allRes.json();
+              const allReservations = await api.getReservationsByMonth(stats.month);
               const headers = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado', 'Monto visita'];
               const toRow = (r: any): (string | number | boolean)[] => [
                 r.player?.name || '',

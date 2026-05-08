@@ -7,7 +7,7 @@ import LoginModal from '@/components/LoginModal';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function HomePage() {
-  const { player } = useAuth();
+  const { player, refreshPlayer } = useAuth();
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   const hasEscalerilla = (player?.position ?? 0) > 0;
@@ -87,7 +87,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={() => window.location.reload()} />
+      <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={() => { setLoginModalOpen(false); refreshPlayer(); }} />
     </div>
   );
 }

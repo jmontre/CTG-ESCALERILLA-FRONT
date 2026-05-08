@@ -4,10 +4,8 @@ import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import LoginModal from '@/components/LoginModal';
 import { api } from '@/lib/api';
-
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+import { toDateStr } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 function formatDateHeader(dateStr: string) {
   const d = new Date(dateStr + 'T12:00:00');
@@ -26,6 +24,7 @@ function getDayTabs() {
 }
 
 export default function FixtureReservasPage() {
+  const { refreshPlayer } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [availability, setAvailability] = useState<any | null>(null);
   const [loading, setLoading]           = useState(true);
@@ -169,7 +168,7 @@ export default function FixtureReservasPage() {
         </div>
       </div>
 
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => setShowLogin(false)} />
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setShowLogin(false); refreshPlayer(); }} />
     </div>
   );
 }

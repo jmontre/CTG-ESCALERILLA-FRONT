@@ -305,4 +305,56 @@ export const api = {
     if (!res.ok) throw new Error('Error al obtener estadísticas');
     return res.json();
   },
+
+  // ── Bloqueos ──────────────────────────────────────────────────────────────
+
+  getBlocks: async (date: string) => {
+    const res = await fetch(`${API_URL}/reservations/blocks?date=${date}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  saveBlocks: async (data: { court_id: string; date: string; slots: string[]; reason?: string }) => {
+    const res = await fetch(`${API_URL}/reservations/blocks`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar bloqueos'); }
+    return res.json();
+  },
+
+  // ── Cobro de luz ──────────────────────────────────────────────────────────
+
+  getLightConfig: async (date: string) => {
+    const res = await fetch(`${API_URL}/reservations/light-config?date=${date}`);
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  saveLightConfig: async (data: { date: string; time_slots: string[]; amount_per_slot: number }) => {
+    const res = await fetch(`${API_URL}/reservations/light-config`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar cobro de luz'); }
+    return res.json();
+  },
+
+  getLightSummary: async (month: string) => {
+    const res = await fetch(`${API_URL}/reservations/light-summary?month=${month}`);
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  getReservationsByMonth: async (month: string) => {
+    const res = await fetch(`${API_URL}/reservations?month=${month}`);
+    if (!res.ok) throw new Error('Error al obtener reservas del mes');
+    return res.json();
+  },
+
+  // ── Admin Players (extended) ──────────────────────────────────────────────
+
+  getAllPlayersAdmin: async () => {
+    const res = await fetch(`${API_URL}/admin/players/all`, { headers: authHeader() });
+    if (!res.ok) return null;
+    return res.json();
+  },
 };
