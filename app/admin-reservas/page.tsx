@@ -167,6 +167,7 @@ export default function AdminReservasPage() {
         const data = await res.json();
         const courtBlocks = data.filter((b: any) => b.court_id === courtId);
         setBlockedSlots(courtBlocks.map((b: any) => b.time_slot).filter(Boolean));
+        setBlockReason(courtBlocks[0]?.reason || '');
       }
     } finally { setLoadingBlocks(false); }
   };
