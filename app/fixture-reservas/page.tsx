@@ -111,8 +111,9 @@ export default function FixtureReservasPage() {
                       {occupiedSlots.map((s: any) => {
                         const isHighDemand  = availability.high_demand_slots?.includes(s.slot);
                         const isChallenge   = s.reservation?.is_challenge;
+                        const isBlocked     = !s.reservation;
                         return (
-                          <div key={s.slot} className={`flex items-center justify-between px-5 py-3 ${isChallenge ? 'bg-blue-50/50' : ''} ${isToday && isPast(s.slot) ? 'opacity-50' : ''}`}>
+                          <div key={s.slot} className={`flex items-center justify-between px-5 py-3 ${isChallenge ? 'bg-blue-50/50' : ''} ${isBlocked ? 'bg-gray-50/50' : ''} ${isToday && isPast(s.slot) ? 'opacity-50' : ''}`}>
                             {/* Hora */}
                             <div className="flex items-center gap-2 min-w-[80px]">
                               <span className="text-sm font-mono font-bold text-ctg-dark">{s.slot}</span>
@@ -121,24 +122,33 @@ export default function FixtureReservasPage() {
 
                             {/* Info */}
                             <div className="flex-1 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {isChallenge && (
-                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">⚔️ Desafío</span>
-                                )}
-                                <p className="text-sm font-semibold text-ctg-dark">{s.reservation?.player_name}</p>
-                              </div>
-                              {s.reservation?.partner_name && (
-                                <p className="text-xs text-gray-500">
-                                  {isChallenge ? 'vs' : 'con'} {s.reservation.partner_name}
-                                </p>
-                              )}
-                              {s.reservation?.school_name && (
-                                <p className="text-xs text-ctg-green font-medium">🎾 Escuela {s.reservation.school_name}</p>
-                              )}
-                              {!isChallenge && s.reservation?.has_guest && (
-                                <p className="text-xs text-gray-400">
-                                  + visita{s.reservation?.guest_name ? `: ${s.reservation.guest_name}` : ''}
-                                </p>
+                              {isBlocked ? (
+                                <>
+                                  <p className="text-sm font-semibold text-gray-500">🔒 Bloqueado</p>
+                                  {s.block_reason && <p className="text-xs text-gray-400">{s.block_reason}</p>}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center justify-end gap-2">
+                                    {isChallenge && (
+                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">⚔️ Desafío</span>
+                                    )}
+                                    <p className="text-sm font-semibold text-ctg-dark">{s.reservation.player_name}</p>
+                                  </div>
+                                  {s.reservation.partner_name && (
+                                    <p className="text-xs text-gray-500">
+                                      {isChallenge ? 'vs' : 'con'} {s.reservation.partner_name}
+                                    </p>
+                                  )}
+                                  {s.reservation.school_name && (
+                                    <p className="text-xs text-ctg-green font-medium">🎾 Escuela {s.reservation.school_name}</p>
+                                  )}
+                                  {!isChallenge && s.reservation.has_guest && (
+                                    <p className="text-xs text-gray-400">
+                                      + visita{s.reservation.guest_name ? `: ${s.reservation.guest_name}` : ''}
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>

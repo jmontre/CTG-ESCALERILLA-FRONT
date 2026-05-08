@@ -40,6 +40,14 @@ export default function AdminReservasPage() {
   const [blockMessage, setBlockMessage] = useState('');
   const [loadingBlocks, setLoadingBlocks] = useState(false);
 
+  // Cobro de luz
+  const [lightDate, setLightDate]       = useState(toDateStr(new Date()));
+  const [lightSlots, setLightSlots]     = useState<string[]>([]);
+  const [lightAmount, setLightAmount]   = useState(3000);
+  const [savingLight, setSavingLight]   = useState(false);
+  const [loadingLight, setLoadingLight] = useState(false);
+  const [lightMessage, setLightMessage] = useState('');
+
   // Stats
   const [stats, setStats]           = useState<any | null>(null);
   const [statsMonth, setStatsMonth] = useState(() => {
@@ -47,6 +55,8 @@ export default function AdminReservasPage() {
     return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
   });
   const [loadingStats, setLoadingStats] = useState(false);
+  const [lightSummary, setLightSummary] = useState<any | null>(null);
+  const [guestPage, setGuestPage] = useState(0);
   const [savingSeason, setSavingSeason] = useState(false);
   const [message, setMessage]           = useState('');
   const [error, setError]               = useState('');
@@ -106,10 +116,46 @@ export default function AdminReservasPage() {
   const loadStats = async (month: string) => {
     setLoadingStats(true);
     try {
-      const data = await api.getStats(month);
-      setStats(data);
-    } catch { setStats(null); }
+      const [statsData, lightRes] = await Promise.all([
+        api.getStats(month),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-summary?month=${month}`),
+      ]);
+      setStats(statsData);
+      setLightSummary(lightRes.ok ? await lightRes.json() : null);
+    } catch { setStats(null); setLightSummary(null); }
     finally { setLoadingStats(false); }
+  };
+
+  const loadLightConfig = async (date: string) => {
+    setLoadingLight(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-config?date=${date}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLightSlots(data.time_slots || []);
+        setLightAmount(data.amount_per_slot ?? 3000);
+      }
+    } finally { setLoadingLight(false); }
+  };
+
+  const handleSaveLightConfig = async () => {
+    setSavingLight(true);
+    setLightMessage('');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations/light-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: lightDate, time_slots: lightSlots, amount_per_slot: lightAmount }),
+      });
+      if (res.ok) {
+        setLightMessage('Cobro de luz guardado.');
+        setTimeout(() => setLightMessage(''), 3000);
+      }
+    } finally { setSavingLight(false); }
+  };
+
+  const toggleLightSlot = (slot: string) => {
+    setLightSlots(prev => prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot]);
   };
 
   const loadBlocks = async (courtId: string, date: string) => {
@@ -121,6 +167,7 @@ export default function AdminReservasPage() {
         const data = await res.json();
         const courtBlocks = data.filter((b: any) => b.court_id === courtId);
         setBlockedSlots(courtBlocks.map((b: any) => b.time_slot).filter(Boolean));
+        setBlockReason(courtBlocks[0]?.reason || '');
       }
     } finally { setLoadingBlocks(false); }
   };
@@ -150,7 +197,14 @@ export default function AdminReservasPage() {
   }, [blockCourt, blockDate, activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'stats') loadStats(statsMonth);
+    if (activeTab === 'reservas') loadLightConfig(lightDate);
+  }, [lightDate, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'stats') {
+      setGuestPage(0);
+      loadStats(statsMonth);
+    }
   }, [activeTab, statsMonth]);
 
   const handleCancelReservation = async (id: string) => {
@@ -352,6 +406,62 @@ export default function AdminReservasPage() {
                     )}
                     {blockedSlots.length === 0 && (
                       <span className="text-xs text-green-600 font-medium">Sin bloqueos</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Cobro de luz */}
+            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+              <h2 className="text-lg font-bold text-ctg-dark mb-4">💡 Cobro de luz</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <input type="date" value={lightDate} onChange={e => setLightDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Monto por horario ($)</label>
+                  <input type="number" value={lightAmount} onChange={e => setLightAmount(Number(e.target.value))} min={0} step={500}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                </div>
+              </div>
+              {loadingLight ? (
+                <div className="text-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-yellow-400 mx-auto"></div></div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 mb-3">Selecciona los horarios donde se cobra luz:</p>
+                  <div className="flex gap-2 mb-3">
+                    <button type="button" onClick={() => setLightSlots(['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'])}
+                      className="text-xs px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition font-medium">
+                      💡 Todos los horarios
+                    </button>
+                    <button type="button" onClick={() => setLightSlots([])}
+                      className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition font-medium">
+                      Limpiar
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => (
+                      <label key={slot} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition text-sm font-medium
+                        ${lightSlots.includes(slot) ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                        <input type="checkbox" checked={lightSlots.includes(slot)} onChange={() => toggleLightSlot(slot)}
+                          className="accent-yellow-500" />
+                        {slot}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleSaveLightConfig} disabled={savingLight}
+                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition disabled:opacity-50 flex items-center gap-2">
+                      {savingLight ? (
+                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                      ) : '💾 Guardar cobro de luz'}
+                    </button>
+                    {lightMessage && <span className="text-sm text-green-600">{lightMessage}</span>}
+                    {lightSlots.length > 0 && (
+                      <span className="text-xs text-yellow-600 font-medium">💡 {lightSlots.length} horario(s) con cobro · ${(lightAmount * lightSlots.length).toLocaleString('es-CL')} posible</span>
                     )}
                   </div>
                 </>
@@ -609,139 +719,114 @@ export default function AdminReservasPage() {
           const topCourt = stats?.by_court?.reduce((a: any, b: any) => a.count_normal > b.count_normal ? a : b, { court: '—', count_normal: 0 });
           const topSlot  = stats?.by_slot?.[0];
 
-          // ── Exportar XLSX (multi-hoja) ──
-          const handleExportXLSX = () => {
+          // ── Exportar XLSX (Cancha 1, Cancha 2, Luz) solo reservas normales ──
+          const handleExportXLSX = async () => {
             if (!stats) return;
-            const wb = XLSX.utils.book_new();
-
-            // Hoja 1: Resumen
-            const resumenData = [
-              ['Club de Tenis Graneros — Estadísticas de Reservas'],
-              ['Mes', stats.month_label],
-              [],
-              ['RESERVAS NORMALES'],
-              ['Activas', stats.totals.normal],
-              ['Canceladas', stats.totals.cancelled_normal ?? 0],
-              ['Tasa de cancelación', `${cancelRate}%`],
-              ['Promedio por día activo', avgPerDay],
-              ['vs mes anterior', `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`],
-              [],
-              ['DESAFÍOS PROGRAMADOS'],
-              ['Activos', stats.totals.challenges],
-              ['Cancelados', stats.totals.cancelled_challenge ?? 0],
-              [],
-              ['DEMANDA (reservas normales)'],
-              ['Alta demanda', stats.demand.high],
-              ['Baja demanda', stats.demand.low],
-              ['% Alta demanda', `${highDemandRate}%`],
-              [],
-              ['VISITAS EXTERNAS'],
-              ['Reservas con visita', stats.guest.count],
-              ['% sobre normales', `${guestRate}%`],
-              ['Recaudación total', `$${(stats.guest.revenue || 0).toLocaleString('es-CL')}`],
-              [],
-              ['POR TIPO DE SOCIO (normales)'],
-              ['Socios', stats.by_member_type?.socio ?? 0],
-              ['Hijos de socios', stats.by_member_type?.hijo_socio ?? 0],
-              ['Profes/Escuelas', stats.by_member_type?.profe ?? 0],
-              ['Visitas', stats.by_member_type?.visita ?? 0],
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenData), 'Resumen');
-
-            // Hoja 2: Por día
-            const byDayData = [
-              ['Día', 'Reservas normales', 'Desafíos', 'Total'],
-              ...stats.by_day.map((d: any) => [d.day, d.count, d.count_challenge ?? 0, d.count + (d.count_challenge ?? 0)]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byDayData), 'Por día');
-
-            // Hoja 3: Por horario
-            const bySlotData = [
-              ['Horario', 'Reservas normales', 'Ranking'],
-              ...stats.by_slot.map((s: any, i: number) => [s.slot, s.count, i + 1]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bySlotData), 'Por horario');
-
-            // Hoja 4: Por cancha
-            const byCourtData = [
-              ['Cancha', 'Normales', 'Desafíos', 'Total', 'Ocupación %'],
-              ...stats.by_court.map((c: any) => [c.court, c.count_normal ?? 0, c.count_challenges ?? 0, c.count, `${c.occupancy}%`]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byCourtData), 'Por cancha');
-
-            // Hoja 5: Top socios
-            const topPlayersData = [
-              ['Ranking', 'Nombre', 'Reservas normales'],
-              ...stats.top_players.map((p: any, i: number) => [i + 1, p.name, p.count]),
-            ];
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(topPlayersData), 'Top socios');
-
-            // Hoja 6: Visitas por socio
-            if (stats.guest.by_player?.length > 0) {
-              const guestByPlayerData = [
-                ['Ranking', 'Socio', 'Tipo', 'Visitas externas'],
-                ...stats.guest.by_player.map((p: any, i: number) => [i + 1, p.name, p.member_type, p.count]),
+            try {
+              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
+              if (!allRes.ok) throw new Error();
+              const allReservations = await allRes.json();
+              const wb = XLSX.utils.book_new();
+              const resHeaders = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado', 'Monto visita'];
+              const toRow = (r: any) => [
+                r.player?.name || '',
+                r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
+                new Date(r.date).toLocaleDateString('es-CL'),
+                r.time_slot,
+                r.is_high_demand ? 'Sí' : 'No',
+                r.has_guest ? 'Sí' : 'No',
+                r.guest_name || '',
+                r.partner_name || '',
+                r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+                r.has_guest ? (r.guest_fee || 3000) : '',
               ];
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestByPlayerData), 'Visitas por socio');
+              ['Cancha 1', 'Cancha 2'].forEach(courtName => {
+                const rows = allReservations.filter((r: any) => r.court?.name === courtName && !r.is_challenge);
+                const courtRevenue = rows.filter((r: any) => r.has_guest).reduce((s: number, r: any) => s + (r.guest_fee || 3000), 0);
+                const data = [
+                  resHeaders,
+                  ...rows.map(toRow),
+                  [],
+                  ['', '', '', '', '', '', '', '', 'TOTAL VISITAS', courtRevenue],
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), courtName);
+              });
+              // Hoja Luz
+              if (lightSummary?.by_day?.length > 0) {
+                const lightHeaders = ['Fecha', 'Horarios con luz', 'Monto por horario', 'Reservas cobradas', 'Total día'];
+                const lightRows = lightSummary.by_day.map((d: any) => [
+                  d.date,
+                  d.time_slots.join(', '),
+                  d.amount_per_slot,
+                  d.count,
+                  d.revenue,
+                ]);
+                const lightData = [
+                  lightHeaders,
+                  ...lightRows,
+                  [],
+                  ['', '', '', 'TOTAL LUZ', lightSummary.total_revenue],
+                ];
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lightData), 'Luz');
+              }
+              XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
+            } catch {
+              alert('Error al exportar Excel. Intenta de nuevo.');
             }
-
-            // Hoja 7: Hijos de socios
-            if (stats.hijos_socio?.by_player?.length > 0) {
-              const hijosData = [
-                ['Ranking', 'Nombre', 'Reservas'],
-                ...stats.hijos_socio.by_player.map((p: any, i: number) => [i + 1, p.name, p.count]),
-              ];
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hijosData), 'Hijos de socios');
-            }
-
-            // Hoja 8: Detalle visitas externas
-            if (stats.guest.list?.length > 0) {
-              const guestListData = [
-                ['Socio', 'Cancha', 'Fecha', 'Horario', 'Nombre invitado', 'Monto'],
-                ...stats.guest.list.map((r: any) => [
-                  r.player_name,
-                  r.court,
-                  new Date(r.date).toLocaleDateString('es-CL'),
-                  r.time_slot,
-                  r.guest_name || '',
-                  r.guest_fee || 3000,
-                ]),
-              ];
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guestListData), 'Detalle visitas');
-            }
-
-            XLSX.writeFile(wb, `CTG_Reservas_${stats.month}.xlsx`);
           };
 
-          // ── Exportar CSV (resumen) ──
-          const handleExportCSV = () => {
+          // ── Exportar CSV (Cancha 1, Cancha 2, Luz — solo reservas normales) ──
+          const handleExportCSV = async () => {
             if (!stats) return;
-            const rows = [
-              ['Mes', stats.month_label],
-              ['Reservas normales activas', stats.totals.normal],
-              ['Reservas normales canceladas', stats.totals.cancelled_normal ?? 0],
-              ['Tasa de cancelación', `${cancelRate}%`],
-              ['Promedio por día activo', avgPerDay],
-              ['Crecimiento vs mes anterior', `${stats.totals.growth > 0 ? '+' : ''}${stats.totals.growth}%`],
-              ['Desafíos programados', stats.totals.challenges],
-              ['Alta demanda', stats.demand.high],
-              ['Baja demanda', stats.demand.low],
-              ['% Alta demanda', `${highDemandRate}%`],
-              ['Con visita externa', stats.guest.count],
-              ['% Con visita', `${guestRate}%`],
-              ['Recaudación visitas', stats.guest.revenue || 0],
-              ['Socios', stats.by_member_type?.socio ?? 0],
-              ['Hijos de socios', stats.by_member_type?.hijo_socio ?? 0],
-              ['Profes/Escuelas', stats.by_member_type?.profe ?? 0],
-            ];
-            const csv = '\uFEFF' + rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `CTG_Reservas_${stats?.month ?? 'export'}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
+            try {
+              const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reservations?month=${stats.month}`);
+              if (!allRes.ok) throw new Error();
+              const allReservations = await allRes.json();
+              const headers = ['Socio', 'Tipo de socio', 'Fecha', 'Horario', 'Alta demanda', 'Con visita', 'Invitado', 'Compañero', 'Estado', 'Monto visita'];
+              const toRow = (r: any): (string | number | boolean)[] => [
+                r.player?.name || '',
+                r.player?.member_type === 'socio' ? 'Socio' : r.player?.member_type === 'hijo_socio' ? 'Hijo de socio' : r.player?.member_type === 'profe' ? 'Profe/Escuela' : 'Visita',
+                new Date(r.date).toLocaleDateString('es-CL'),
+                r.time_slot,
+                r.is_high_demand ? 'Sí' : 'No',
+                r.has_guest ? 'Sí' : 'No',
+                r.guest_name || '',
+                r.partner_name || '',
+                r.status === 'active' ? 'Activa' : r.status === 'completed' ? 'Completada' : 'Cancelada',
+                r.has_guest ? (r.guest_fee || 3000) : '',
+              ];
+              const encodeRow = (r: (string | number | boolean)[]) =>
+                r.map((v: string | number | boolean) => `"${String(v).replace(/"/g, '""')}"`).join(',');
+              const courtSections = ['Cancha 1', 'Cancha 2'].map(courtName => {
+                const courtRows = allReservations.filter((r: any) => r.court?.name === courtName && !r.is_challenge);
+                const courtRevenue = courtRows.filter((r: any) => r.has_guest).reduce((s: number, r: any) => s + (r.guest_fee || 3000), 0);
+                return [
+                  `"${courtName}"`,
+                  encodeRow(headers),
+                  ...courtRows.map(toRow).map(encodeRow),
+                  `"","","","","","","","","Total visitas","${courtRevenue}"`,
+                ].join('\n');
+              });
+              const lightSection = lightSummary?.by_day?.length > 0 ? [
+                '"LUZ"',
+                '"Fecha","Horarios con luz","Monto por horario","Reservas cobradas","Total día"',
+                ...lightSummary.by_day.map((d: any) =>
+                  `"${d.date}","${d.time_slots.join(', ')}","${d.amount_per_slot}","${d.count}","${d.revenue}"`
+                ),
+                `"","","","Total luz","${lightSummary.total_revenue}"`,
+              ].join('\n') : null;
+              const allSections = [...courtSections, ...(lightSection ? [lightSection] : [])];
+              const csv = '\uFEFF' + allSections.join('\n\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url  = URL.createObjectURL(blob);
+              const a    = document.createElement('a');
+              a.href     = url;
+              a.download = `CTG_Reservas_${stats.month}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch {
+              alert('Error al exportar CSV. Intenta de nuevo.');
+            }
           };
 
           return (
@@ -795,13 +880,6 @@ export default function AdminReservasPage() {
                         <span>{cancelRate}% tasa</span>
                       </p>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-blue-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Desafíos programados</p>
-                      <p className="text-4xl font-extrabold text-blue-500">{stats.totals.challenges}</p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        <span className="text-red-400 font-semibold">{stats.totals.cancelled_challenge ?? 0} cancelados</span>
-                      </p>
-                    </div>
                     <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-orange-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Alta demanda</p>
                       <p className="text-4xl font-extrabold text-orange-500">{stats.demand.high}</p>
@@ -827,9 +905,9 @@ export default function AdminReservasPage() {
                       <p className="text-xs text-gray-400 mt-2">{activeDays} días con actividad</p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-yellow-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Cancha más usada</p>
-                      <p className="text-xl font-extrabold text-ctg-dark leading-tight mt-1">{topCourt?.court ?? '—'}</p>
-                      <p className="text-xs text-gray-400 mt-2">{topCourt?.count_normal ?? 0} reservas normales</p>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">💡 Cobro de luz</p>
+                      <p className="text-4xl font-extrabold text-yellow-500">${((lightSummary?.total_revenue || 0) / 1000).toFixed(0)}k</p>
+                      <p className="text-xs text-gray-400 mt-2">${(lightSummary?.total_revenue || 0).toLocaleString('es-CL')} · {lightSummary?.by_day?.length ?? 0} días</p>
                     </div>
                     <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-teal-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Horario peak</p>
@@ -867,32 +945,43 @@ export default function AdminReservasPage() {
                   {/* ── BLOQUE 3: Gráfico por día ── */}
                   <div className="bg-white rounded-2xl shadow-card p-5">
                     <div className="flex items-center justify-between mb-5">
-                      <h3 className="font-bold text-ctg-dark">Reservas por día del mes</h3>
+                      <h3 className="font-bold text-ctg-dark">Reservas normales por día del mes</h3>
                       <div className="flex gap-4 text-xs text-gray-500">
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-ctg-green inline-block"></span>Normales</span>
-                        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-400 inline-block"></span>Desafíos</span>
                       </div>
                     </div>
-                    <div className="flex items-end gap-[3px] h-32 overflow-x-auto pb-4">
-                      {stats.by_day.map((d: any) => {
-                        const maxAll = Math.max(...stats.by_day.map((x: any) => x.count + (x.count_challenge ?? 0)), 1);
-                        const hN = d.count > 0 ? Math.max(4, Math.round((d.count / maxAll) * 96)) : 0;
-                        const hC = (d.count_challenge ?? 0) > 0 ? Math.max(3, Math.round(((d.count_challenge ?? 0) / maxAll) * 96)) : 0;
-                        const total = d.count + (d.count_challenge ?? 0);
-                        return (
-                          <div key={d.day} title={`Día ${d.day}: ${d.count} normales, ${d.count_challenge ?? 0} desafíos`}
-                            className="group flex flex-col items-center gap-0 min-w-[18px] cursor-default">
-                            <span className={`text-[9px] font-bold mb-0.5 transition-opacity ${total > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`}>{total}</span>
-                            <div className="flex flex-col justify-end rounded-t overflow-hidden" style={{ height: '96px' }}>
-                              {hC > 0 && <div style={{ height: `${hC}px` }} className="w-full bg-blue-400" />}
-                              {hN > 0 && <div style={{ height: `${hN}px` }} className={`w-full bg-ctg-green ${hC === 0 ? '' : ''}`} />}
-                              {total === 0 && <div className="w-full bg-gray-100 rounded-t" style={{ height: '4px' }} />}
-                            </div>
-                            <span className={`text-[9px] mt-1 ${total > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>{d.day}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const maxAll = Math.max(...stats.by_day.map((x: any) => x.count), 1);
+                      return (
+                        <div className="flex gap-[3px] overflow-x-auto pt-1 pb-1">
+                          {stats.by_day.map((d: any) => {
+                            const hN = d.count > 0 ? Math.max(4, Math.round((d.count / maxAll) * 80)) : 0;
+                            return (
+                              <div key={d.day}
+                                title={`Día ${d.day}: ${d.count} reservas normales`}
+                                className="group flex flex-col items-center cursor-default"
+                                style={{ minWidth: '18px' }}>
+                                <span className={`text-[9px] font-bold transition-opacity ${d.count > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`} style={{ height: '13px', lineHeight: '13px' }}>
+                                  {d.count || ''}
+                                </span>
+                                <div className="relative" style={{ height: '80px', width: '100%' }}>
+                                  {d.count === 0 && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gray-100" style={{ height: '3px', borderRadius: '2px 2px 0 0' }} />
+                                  )}
+                                  {hN > 0 && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-ctg-green"
+                                      style={{ height: `${hN}px`, borderRadius: '2px 2px 0 0' }} />
+                                  )}
+                                </div>
+                                <span className={`text-[9px] mt-0.5 ${d.count > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>
+                                  {d.day}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* ── BLOQUE 4: Por cancha ── */}
@@ -904,17 +993,12 @@ export default function AdminReservasPage() {
                           <div key={c.court}>
                             <div className="flex justify-between items-baseline mb-1">
                               <span className="font-semibold text-ctg-dark">{c.court}</span>
-                              <span className="text-sm text-gray-500">{c.count} reservas — <span className="font-bold text-ctg-dark">{c.occupancy}%</span> ocupación</span>
+                              <span className="text-sm text-gray-500">{c.count_normal ?? 0} reservas normales</span>
                             </div>
-                            {/* Barra apilada: normales (verde) + desafíos (azul) */}
-                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex">
-                              <div className="bg-ctg-green h-full transition-all" style={{ width: `${Math.round((c.count_normal ?? 0) / Math.max(c.count, 1) * c.occupancy)}%` }} title={`Normales: ${c.count_normal ?? 0}`} />
-                              <div className="bg-blue-400 h-full transition-all" style={{ width: `${Math.round((c.count_challenges ?? 0) / Math.max(c.count, 1) * c.occupancy)}%` }} title={`Desafíos: ${c.count_challenges ?? 0}`} />
+                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                              <div className="bg-ctg-green h-full transition-all rounded-full" style={{ width: `${c.occupancy ?? 0}%` }} />
                             </div>
-                            <div className="flex gap-4 mt-1 text-xs text-gray-400">
-                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-ctg-green inline-block"></span>{c.count_normal ?? 0} normales</span>
-                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-blue-400 inline-block"></span>{c.count_challenges ?? 0} desafíos</span>
-                            </div>
+                            <p className="mt-1 text-xs text-gray-400">{c.occupancy ?? 0}% ocupación total</p>
                           </div>
                         );
                       })}
@@ -999,40 +1083,117 @@ export default function AdminReservasPage() {
                   )}
 
                   {/* ── BLOQUE 7: Detalle visitas externas ── */}
-                  {stats.guest.list?.length > 0 && (
+                  {stats.guest.list?.length > 0 && (() => {
+                    const GUESTS_PER_PAGE = 10;
+                    const totalGuestPages = Math.ceil(stats.guest.list.length / GUESTS_PER_PAGE);
+                    const pageData = stats.guest.list.slice(guestPage * GUESTS_PER_PAGE, (guestPage + 1) * GUESTS_PER_PAGE);
+                    return (
+                      <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                          <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
+                          <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                              <tr>
+                                <th className="px-4 py-3 text-left font-semibold">Socio</th>
+                                <th className="px-4 py-3 text-left font-semibold">Cancha</th>
+                                <th className="px-4 py-3 text-left font-semibold">Fecha</th>
+                                <th className="px-4 py-3 text-left font-semibold">Hora</th>
+                                <th className="px-4 py-3 text-left font-semibold">Invitado</th>
+                                <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {pageData.map((r: any) => (
+                                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
+                                  <td className="px-4 py-3 text-gray-600">{r.court}</td>
+                                  <td className="px-4 py-3 text-gray-600 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                  <td className="px-4 py-3 font-mono font-bold text-gray-700">{r.time_slot}</td>
+                                  <td className="px-4 py-3 text-gray-600">{r.guest_name || <span className="text-gray-300">—</span>}</td>
+                                  <td className="px-4 py-3 text-right font-bold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                              <tr>
+                                <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado</td>
+                                <td className="px-4 py-3 text-right text-base font-extrabold text-ctg-green">${(stats.guest.revenue || 0).toLocaleString('es-CL')}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                        {totalGuestPages > 1 && (
+                          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+                            <span className="text-xs text-gray-500">
+                              {guestPage * GUESTS_PER_PAGE + 1}–{Math.min((guestPage + 1) * GUESTS_PER_PAGE, stats.guest.list.length)} de {stats.guest.list.length} visitas
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setGuestPage(p => Math.max(0, p - 1))}
+                                disabled={guestPage === 0}
+                                className="px-3 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-white transition-colors"
+                              >
+                                ← Anterior
+                              </button>
+                              <span className="text-xs text-gray-400">{guestPage + 1} / {totalGuestPages}</span>
+                              <button
+                                onClick={() => setGuestPage(p => Math.min(totalGuestPages - 1, p + 1))}
+                                disabled={guestPage >= totalGuestPages - 1}
+                                className="px-3 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-white transition-colors"
+                              >
+                                Siguiente →
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── BLOQUE 8: Cobro de luz ── */}
+                  {lightSummary && lightSummary.by_day?.length > 0 && (
                     <div className="bg-white rounded-2xl shadow-card overflow-hidden">
                       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
-                        <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
+                        <h3 className="font-bold text-ctg-dark">💡 Cobro de luz</h3>
+                        <span className="text-xs bg-yellow-100 text-yellow-700 font-bold px-2.5 py-1 rounded-full">
+                          Total: ${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}
+                        </span>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                             <tr>
-                              <th className="px-4 py-3 text-left font-semibold">Socio</th>
-                              <th className="px-4 py-3 text-left font-semibold">Cancha</th>
                               <th className="px-4 py-3 text-left font-semibold">Fecha</th>
-                              <th className="px-4 py-3 text-left font-semibold">Hora</th>
-                              <th className="px-4 py-3 text-left font-semibold">Invitado</th>
-                              <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                              <th className="px-4 py-3 text-left font-semibold">Horarios con luz</th>
+                              <th className="px-4 py-3 text-right font-semibold">$/horario</th>
+                              <th className="px-4 py-3 text-right font-semibold">Reservas</th>
+                              <th className="px-4 py-3 text-right font-semibold">Total día</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
-                            {stats.guest.list.map((r: any) => (
-                              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
-                                <td className="px-4 py-3 text-gray-600">{r.court}</td>
-                                <td className="px-4 py-3 text-gray-600 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                                <td className="px-4 py-3 font-mono font-bold text-gray-700">{r.time_slot}</td>
-                                <td className="px-4 py-3 text-gray-600">{r.guest_name || <span className="text-gray-300">—</span>}</td>
-                                <td className="px-4 py-3 text-right font-bold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
+                            {lightSummary.by_day.map((d: any) => (
+                              <tr key={d.date} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-gray-600 text-xs">{new Date(d.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    {d.time_slots.map((s: string) => (
+                                      <span key={s} className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-mono">{s}</span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-600">${d.amount_per_slot.toLocaleString('es-CL')}</td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-700">{d.count}</td>
+                                <td className="px-4 py-3 text-right font-bold text-yellow-600">${d.revenue.toLocaleString('es-CL')}</td>
                               </tr>
                             ))}
                           </tbody>
                           <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                             <tr>
-                              <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado</td>
-                              <td className="px-4 py-3 text-right text-base font-extrabold text-ctg-green">${(stats.guest.revenue || 0).toLocaleString('es-CL')}</td>
+                              <td colSpan={4} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado (luz)</td>
+                              <td className="px-4 py-3 text-right text-base font-extrabold text-yellow-600">${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}</td>
                             </tr>
                           </tfoot>
                         </table>
