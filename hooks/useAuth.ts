@@ -109,6 +109,13 @@ export function useAuth() {
     checkAuth();
   }, [checkAuth]);
 
+  // Sincronizar estado cuando otra instancia de useAuth hace login
+  useEffect(() => {
+    const handleAuthLogin = () => { checkAuth(); };
+    window.addEventListener('auth:login', handleAuthLogin);
+    return () => window.removeEventListener('auth:login', handleAuthLogin);
+  }, [checkAuth]);
+
   // ─── Login ────────────────────────────────────────────────────────────────
   const login = async (username: string, password: string) => {
     const data = await api.login(username, password);
@@ -117,6 +124,8 @@ export function useAuth() {
     setPlayer(data.player);
     authCache = { user: data.user, player: data.player };
     resetInactivityTimer();
+    // Notificar a todas las instancias de useAuth (ej: Header) que la sesión cambió
+    window.dispatchEvent(new Event('auth:login'));
   };
 
   // ─── refreshPlayer ────────────────────────────────────────────────────────
