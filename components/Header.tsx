@@ -17,9 +17,6 @@ const I = {
   user:      'M16 14a4 4 0 10-8 0M20 21a8 8 0 10-16 0',
   flag:      'M5 21V4M5 4h12l-2 4 2 4H5',
   logout:    'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9',
-  sun:       'M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4L7 17M17 7l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z',
-  moon:      'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z',
-  cog:       'M12 8a4 4 0 100 8 4 4 0 000-8zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z',
 };
 
 type IconKey = keyof typeof I;
@@ -111,39 +108,6 @@ function AvatarEl({ name, avatarUrl, size = 36 }: { name: string; avatarUrl?: st
   );
 }
 
-function ThemeToggleRow() {
-  const [dark, setDark] = useState(false);
-  useEffect(() => { setDark(document.body.classList.contains('dark')); }, []);
-  function apply(d: boolean) {
-    setDark(d);
-    document.body.classList.toggle('dark', d);
-    try { localStorage.setItem('ctg_theme', d ? 'dark' : 'light'); } catch (_) {}
-  }
-  return (
-    <div className="px-3 py-2 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2.5 text-[#F0F7E8]/80 text-sm">
-        <Icon d={dark ? I.moon : I.sun} size={14} />
-        <span>Modo {dark ? 'oscuro' : 'claro'}</span>
-      </div>
-      <div className="flex bg-[#152b18] border border-[#1e4020] rounded-full p-0.5">
-        <button
-          onClick={() => apply(false)}
-          className={'px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1 ' +
-            (!dark ? 'bg-ctg-green text-[#0a1608]' : 'text-[#F0F7E8]/55 hover:text-[#F0F7E8]')}
-        >
-          <Icon d={I.sun} size={11} strokeWidth={2.2} /> Claro
-        </button>
-        <button
-          onClick={() => apply(true)}
-          className={'px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1 ' +
-            (dark ? 'bg-ctg-green text-[#0a1608]' : 'text-[#F0F7E8]/55 hover:text-[#F0F7E8]')}
-        >
-          <Icon d={I.moon} size={11} strokeWidth={2.2} /> Oscuro
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function AccountItem({ label, icon, onClick, danger, adminBadge }: {
   label: string; icon: string; onClick: () => void; danger?: boolean; adminBadge?: boolean;
@@ -317,8 +281,6 @@ export default function Header({ onLoginClick }: HeaderProps) {
                           <AccountItem label="Panel Reservas" icon={I.calendar} onClick={() => { setShowAccount(false); go('/admin-reservas'); }} adminBadge />
                         </>
                       )}
-                      <div className="h-px bg-[#1e4020] my-1" />
-                      <ThemeToggleRow />
                       <div className="h-px bg-[#1e4020] my-1" />
                       <AccountItem label="Cerrar sesión" icon={I.logout} onClick={() => { setShowAccount(false); logout(); }} danger />
                     </div>

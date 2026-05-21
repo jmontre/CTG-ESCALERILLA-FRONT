@@ -30,14 +30,7 @@ export const metadata: Metadata = {
   },
 };
 
-const themeScript = `
-  (function(){
-    try {
-      var t = localStorage.getItem('ctg_theme');
-      if (t === 'dark') document.body.classList.add('dark');
-    } catch(e){}
-  })();
-`;
+const themeScript = `document.body.classList.add('dark');`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -50,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body
-        className={`${bricolage.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased flex flex-col min-h-screen`}
+        className={`${bricolage.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased flex flex-col min-h-screen dark`}
         style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}
       >
         <div className="flex-1">
