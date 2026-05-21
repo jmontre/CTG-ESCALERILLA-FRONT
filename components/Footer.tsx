@@ -2,39 +2,32 @@
 
 import Link from 'next/link';
 
-export default function Footer() {
-  const year = new Date().getFullYear();
-
+function LogoMark({ size = 22 }: { size?: number }) {
   return (
-    <footer className="bg-ctg-dark text-white/70 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Logo + copyright */}
-          <div className="flex items-center gap-3">
-            <img src="/images/Logo_CTG.png" alt="CTG" className="h-8 opacity-80" />
-            <div>
-              <p className="text-sm font-medium text-white">Club de Tenis Graneros</p>
-              <p className="text-xs text-white/50">© {year} Todos los derechos reservados</p>
-            </div>
-          </div>
+    <svg viewBox="0 0 40 40" width={size} height={size}>
+      <circle cx="20" cy="20" r="18" fill="#8BC234" />
+      <path d="M3 20 Q20 6 37 20" stroke="#0a1608" strokeWidth="1.8" fill="none" />
+      <path d="M3 20 Q20 34 37 20" stroke="#0a1608" strokeWidth="1.8" fill="none" />
+    </svg>
+  );
+}
 
-          {/* Links */}
-          <div className="flex items-center gap-4 text-xs">
-            <Link href="/escalerilla" className="hover:text-white transition">Escalerilla</Link>
-            <span className="text-white/30">·</span>
-            <Link href="/reservar" className="hover:text-white transition">Reservas</Link>
-            <span className="text-white/30">·</span>
-            <Link href="/fixture-reservas" className="hover:text-white transition">Fixture</Link>
-            <span className="text-white/30">·</span>
-            <Link href="/master" className="hover:text-white transition">Master</Link>
-          </div>
-
-          {/* Powered by */}
-          <p className="text-xs text-white/30">
-            Desarrollado por{' '}
-            <span className="text-white/50 font-medium">MatchLab Chile</span>
-          </p>
+export default function Footer() {
+  return (
+    <footer className="hidden md:block bg-[#0a1608] border-t border-ctg-green/10 mt-20">
+      <div className="max-w-7xl mx-auto px-5 lg:px-8 py-8 flex flex-col md:flex-row items-center gap-4 md:gap-0 justify-between text-xs">
+        <div className="flex items-center gap-3 opacity-60 hover:opacity-100 transition">
+          <LogoMark size={22} />
+          <div className="text-[#F0F7E8]/50">© {new Date().getFullYear()} Club de Tenis Graneros</div>
         </div>
+        <div className="flex items-center gap-3 text-[#F0F7E8]/40">
+          <Link href="/escalerilla" className="hover:text-ctg-green transition">Escalerilla</Link>
+          <span className="text-ctg-green/20">/</span>
+          <Link href="/reservar" className="hover:text-ctg-green transition">Reservas</Link>
+          <span className="text-ctg-green/20">/</span>
+          <Link href="/master" className="hover:text-ctg-green transition">Master</Link>
+        </div>
+        <div className="text-[#F0F7E8]/25">MatchLab Chile · v1.0</div>
       </div>
     </footer>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Player } from '@/types';
 import { formatPlayerName } from '@/lib/formatName';
 
@@ -11,125 +12,150 @@ interface PlayerModalProps {
   canChallenge: boolean;
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(' ').filter(Boolean);
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
+type CatKey = 'A' | 'B' | 'C' | 'D';
+const CAT_META: Record<CatKey, { label: string; gradient: string }> = {
+  A: { label: 'Élite',      gradient: 'from-yellow-900/50 to-yellow-950/30' },
+  B: { label: 'Avanzado',   gradient: 'from-gray-700/50 to-gray-800/30'     },
+  C: { label: 'Intermedio', gradient: 'from-orange-900/50 to-orange-950/30' },
+  D: { label: 'Desarrollo', gradient: 'from-green-900/50 to-green-950/30'   },
+};
+
+const SwordsIcon = () => (
+  <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5L21 0M19 5l-5 5" />
+  </svg>
+);
+const CloseIcon = () => (
+  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
+
+function AvatarEl({ player, size = 72 }: { player: Player; size?: number }) {
+  const initials = player.name.trim().split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase();
+  const style: React.CSSProperties = {
+    width: size, height: size, fontSize: size * 0.36,
+    background: 'linear-gradient(135deg, #9ed944, #8BC234 60%, #6ea127)',
+  };
+  if (player.avatar_url) {
+    return <div className="rounded-full overflow-hidden shrink-0" style={style}><img src={player.avatar_url} alt="" className="w-full h-full object-cover" /></div>;
+  }
+  return <div className="inline-flex items-center justify-center rounded-full font-display font-bold text-[#0a1608] shrink-0" style={style}>{initials}</div>;
+}
+
+function StatBox({ label, value, colorClass }: { label: string; value: number; colorClass: string }) {
+  return (
+    <div className="text-center bg-[#152b18] border border-[#1e4020] rounded-xl py-3">
+      <div className={'font-display font-black text-3xl ' + colorClass + (colorClass === 'text-ctg-green' ? ' glow-soft' : '')}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mt-0.5">{label}</div>
+    </div>
+  );
 }
 
 export default function PlayerModal({ player, isOpen, onClose, onChallenge, canChallenge }: PlayerModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !player) return null;
 
-  const getCategory = (position: number) => {
-    if (position <= 12) return { name: 'A', bg: 'bg-yellow-100', color: 'text-yellow-700', gradient: 'from-yellow-400 to-yellow-500' };
-    if (position <= 24) return { name: 'B', bg: 'bg-gray-100',   color: 'text-gray-700',   gradient: 'from-gray-300 to-gray-400'   };
-    if (position <= 36) return { name: 'C', bg: 'bg-orange-100', color: 'text-orange-700', gradient: 'from-orange-400 to-orange-500' };
-    return               { name: 'D', bg: 'bg-green-100',  color: 'text-green-700',  gradient: 'from-green-400 to-green-500'   };
-  };
+  const pos = player.position ?? 0;
+  const cat: CatKey = pos <= 12 ? 'A' : pos <= 24 ? 'B' : pos <= 36 ? 'C' : 'D';
+  const meta = CAT_META[cat];
+  const now = new Date();
+  const isImmune = !!(player.immune_until && new Date(player.immune_until) > now);
+  const isVulnerable = !!(player.vulnerable_until && new Date(player.vulnerable_until) > now);
+  const hasPending = player.challenged_challenge?.status === 'pending';
+  const hasAccepted = player.challenger_challenge?.status === 'accepted' || player.challenged_challenge?.status === 'accepted';
+  const hasSent = player.challenger_challenge?.status === 'pending';
 
-  const category = getCategory(player.position ?? 0);
-  const isImmune    = player.immune_until    && new Date(player.immune_until)    > new Date();
-  const isVulnerable = player.vulnerable_until && new Date(player.vulnerable_until) > new Date();
-  const initials    = getInitials(player.name);
+  const effectiveness = player.total_matches > 0
+    ? Math.round((player.wins / player.total_matches) * 100)
+    : 0;
+
+  const chips: { label: string; cls: string }[] = [];
+  if (isImmune)    chips.push({ label: 'Inmune',             cls: 'chip-info' });
+  if (isVulnerable)chips.push({ label: 'Vulnerable',         cls: 'chip-warning' });
+  if (hasPending)  chips.push({ label: 'Esperando respuesta',cls: 'chip-warning' });
+  if (hasAccepted) chips.push({ label: 'Por jugar',          cls: 'chip-success' });
+  if (hasSent)     chips.push({ label: 'Desafío enviado',    cls: 'chip-info' });
+
+  const challengeReason = isImmune
+    ? 'Este jugador está inmune'
+    : isVulnerable
+    ? 'No puedes desafiar (estás vulnerable)'
+    : 'No puedes desafiar a este jugador';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-in">
-
-        {/* Header */}
-        <div className={`px-6 pt-6 pb-8 text-white bg-gradient-to-r ${category.gradient} relative`}>
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors"
-          >
-            ✕
-          </button>
-
-          <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-white/25 border-2 border-white/50 flex items-center justify-center shrink-0 shadow-md">
-              {player.avatar_url ? (
-                <img src={player.avatar_url} alt={player.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl font-bold text-white">{initials}</span>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h2 className="text-white font-bold text-xl leading-tight">
-                {formatPlayerName(player.name)}
-              </h2>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-white font-bold text-lg">#{player.position}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${category.bg} ${category.color}`}>
-                  Categoría {category.name}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {(isImmune || isVulnerable) && (
-            <div className="flex gap-2 mt-3">
-              {isImmune && (
-                <div className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1">
-                  🛡️ Inmune
-                </div>
-              )}
-              {isVulnerable && (
-                <div className="bg-orange-500 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1">
-                  ⚠️ Vulnerable
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div className="p-6">
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{player.wins}</div>
-              <div className="text-xs text-gray-500 mt-1">Victorias</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{player.losses}</div>
-              <div className="text-xs text-gray-500 mt-1">Derrotas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{player.total_matches}</div>
-              <div className="text-xs text-gray-500 mt-1">Partidos</div>
-            </div>
-          </div>
-
-          {player.total_matches > 0 && (
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>Efectividad</span>
-                <span className="font-bold">{Math.round((player.wins / player.total_matches) * 100)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-ctg-green to-ctg-lime h-2 rounded-full transition-all"
-                  style={{ width: `${(player.wins / player.total_matches) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {canChallenge ? (
-            <button
-              onClick={() => onChallenge(player)}
-              className="w-full bg-gradient-to-r from-ctg-green to-ctg-lime text-ctg-dark font-bold py-3 rounded-lg hover:shadow-lg transition-all"
-            >
-              ⚔️ Desafiar
+    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8 animate-fade-in">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md animate-scale-in">
+        <div className="bg-[#0f2211] border border-ctg-green/15 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+          {/* Header — category gradient */}
+          <div className={'relative p-6 bg-gradient-to-br ' + meta.gradient + ' overflow-hidden'}>
+            <div className={'absolute -right-6 -top-10 font-display font-black select-none pointer-events-none cat-watermark-' + cat}
+                 style={{ fontSize: 180, lineHeight: 1 }}>{cat}</div>
+            <button onClick={onClose} className="absolute top-3 right-3 text-white/60 hover:text-white transition">
+              <CloseIcon />
             </button>
-          ) : (
-            <div className="bg-gray-100 text-gray-500 text-center py-3 rounded-lg text-sm">
-              {isImmune      && '🛡️ Este jugador está inmune'}
-              {isVulnerable  && '⚠️ No puedes desafiar (estás vulnerable)'}
-              {!isImmune && !isVulnerable && 'No puedes desafiar a este jugador'}
+            <div className="relative flex items-center gap-4">
+              <AvatarEl player={player} size={72} />
+              <div className="min-w-0">
+                <div className={'text-[10px] uppercase tracking-[0.25em] font-bold cat-letter-' + cat}>{meta.label}</div>
+                <div className="font-display font-bold text-white text-2xl truncate">{formatPlayerName(player.name)}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-display font-black text-white" style={{ fontSize: 28, lineHeight: 1 }}>#{pos}</span>
+                  <span className="text-white/60 text-xs">de 48</span>
+                </div>
+              </div>
             </div>
-          )}
+            {chips.length > 0 && (
+              <div className="relative mt-4 flex flex-wrap gap-1.5">
+                {chips.map(c => (
+                  <span key={c.label} className={'chip ' + c.cls}>{c.label}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-6">
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <StatBox label="Victorias" value={player.wins}         colorClass="text-ctg-green" />
+              <StatBox label="Derrotas"  value={player.losses}       colorClass="text-red-400" />
+              <StatBox label="Partidos"  value={player.total_matches} colorClass="text-[#F0F7E8]" />
+            </div>
+
+            {player.total_matches > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="label">Efectividad</span>
+                  <span className="font-mono text-ctg-green font-bold text-sm">{effectiveness}%</span>
+                </div>
+                <div className="h-1.5 bg-[#0a1608] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-ctg-green rounded-full transition-all"
+                    style={{ width: effectiveness + '%', boxShadow: '0 0 8px rgba(139,194,52,.5)' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {canChallenge ? (
+              <button onClick={() => onChallenge(player)} className="btn-primary w-full py-3">
+                <SwordsIcon />
+                Desafiar a {player.name.split(' ')[0]}
+              </button>
+            ) : (
+              <div className="bg-[#0a1608]/40 text-[#F0F7E8]/45 rounded-xl py-3 text-sm text-center border border-[#1e4020]">
+                {challengeReason}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

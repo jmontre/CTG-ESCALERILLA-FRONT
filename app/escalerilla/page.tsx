@@ -10,11 +10,30 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { Player } from '@/types';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+function Avatar({ player, size = 42 }: { player: Player; size?: number }) {
+  const initials = player.name.trim().split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase();
+  const style: React.CSSProperties = {
+    width: size, height: size, fontSize: size * 0.36,
+    background: 'linear-gradient(135deg, #9ed944, #8BC234 60%, #6ea127)',
+  };
+  if (player.avatar_url) {
+    return <div className="rounded-full overflow-hidden ring-2 ring-ctg-green/50 ring-offset-1 ring-offset-[#0a1608] shrink-0" style={style}><img src={player.avatar_url} alt="" className="w-full h-full object-cover" /></div>;
+  }
+  return <div className="inline-flex items-center justify-center rounded-full font-display font-bold text-[#0a1608] ring-2 ring-ctg-green/50 ring-offset-1 ring-offset-[#0a1608] shrink-0" style={style}>{initials}</div>;
+}
+
+function StatCard({ label, value, colorClass, glow }: { label: string; value: string | number; colorClass: string; glow?: boolean }) {
+  return (
+    <div className="bg-[#152b18] border border-[#1e4020] rounded-xl p-4 relative overflow-hidden">
+      <div className={'font-display font-black text-4xl leading-none ' + colorClass + (glow ? ' glow-soft' : '')}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/45 font-semibold mt-2">{label}</div>
+    </div>
+  );
+}
+
 export default function EscalerillaPage() {
-  const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -32,7 +51,7 @@ export default function EscalerillaPage() {
     try {
       const data = await api.getPlayers();
       setPlayers(data);
-    } catch (err) {
+    } catch {
       error('Error al cargar jugadores');
     } finally {
       setLoading(false);
@@ -78,95 +97,96 @@ export default function EscalerillaPage() {
     return true;
   };
 
+  const hasPosition = (currentPlayer?.position ?? 0) > 0;
+  const totalMatches = currentPlayer?.total_matches ?? 0;
+  const effectiveness = totalMatches > 0 ? Math.round(((currentPlayer?.wins ?? 0) / totalMatches) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="escalerilla" onLoginClick={() => setLoginModalOpen(true)} />
+    <div className="min-h-screen flex flex-col">
+      <Header onLoginClick={() => setLoginModalOpen(true)} />
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="text-center mb-10 animate-fade-in">
-          <h1 className="text-5xl md:text-6xl font-bold text-ctg-dark mb-3 tracking-tight">Escalerilla</h1>
-          <p className="text-xl text-gray-600 font-medium">Temporada 2026</p>
-
-          {currentPlayer && (currentPlayer.position ?? 0) > 0 && (
-            <div className="mt-6 inline-flex items-center gap-3 bg-white px-6 py-3 rounded-full shadow-card">
-              <div className="w-10 h-10 bg-gradient-to-br from-ctg-green to-ctg-lime rounded-full flex items-center justify-center font-bold text-white">
-                #{currentPlayer.position}
+      <main className="relative z-10 max-w-7xl mx-auto px-5 lg:px-8 py-10 pb-24 md:pb-10 flex-1 w-full">
+        {/* Page title */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="text-ctg-green text-xs uppercase tracking-[0.28em] font-bold mb-2">Temporada 2026 · Pirámide</div>
+            <h1 className="font-display font-extrabold text-[#F0F7E8] text-4xl md:text-5xl tracking-tight leading-[1.02]">Escalerilla</h1>
+            <p className="text-[#F0F7E8]/45 text-sm mt-2">48 jugadores · 4 categorías · ranking en vivo</p>
+          </div>
+          {currentPlayer && hasPosition && (
+            <div className="flex items-center gap-3 bg-[#152b18] border border-[#1e4020] rounded-2xl pl-4 pr-2 py-2">
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-widest text-[#F0F7E8]/40 font-semibold">Tu posición</div>
+                <div className="font-display font-black text-ctg-green text-2xl glow-soft leading-none mt-0.5">#{currentPlayer.position}</div>
               </div>
-              <div className="text-left">
-                <p className="font-semibold text-ctg-dark">{currentPlayer.name}</p>
-                <p className="text-sm text-gray-500">Tu posición actual</p>
-              </div>
+              <Avatar player={currentPlayer} size={42} />
             </div>
           )}
         </div>
 
-        {!currentPlayer && (
-          <div className="mb-8 bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500 rounded-xl p-6 shadow-card animate-slide-up">
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">🎾</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-amber-900 mb-1">¡Únete a la competencia!</h3>
-                <p className="text-amber-800 mb-3">Inicia sesión para participar en la escalerilla y desafiar a otros jugadores</p>
-                <button onClick={() => setLoginModalOpen(true)} className="px-5 py-2 bg-ctg-green text-white rounded-lg font-bold hover:bg-ctg-lime transition-colors shadow-soft">
-                  Iniciar sesión
-                </button>
-              </div>
-            </div>
+        {/* Stats — logged in with position */}
+        {currentPlayer && hasPosition && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+            <StatCard label="Victorias"    value={currentPlayer.wins}    colorClass="text-ctg-green" glow />
+            <StatCard label="Derrotas"     value={currentPlayer.losses}  colorClass="text-red-400" />
+            <StatCard label="Partidos"     value={currentPlayer.total_matches} colorClass="text-[#F0F7E8]" />
+            <StatCard label="Efectividad"  value={effectiveness + '%'}   colorClass="text-ctg-green" />
           </div>
         )}
 
-        {loading ? (
-          <div className="bg-white rounded-2xl shadow-card p-16 animate-fade-in">
-            <div className="flex flex-col items-center justify-center gap-4">
-              <div className="relative">
-                <div className="animate-spin rounded-full h-16 w-16 border-4 border-ctg-light"></div>
-                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-ctg-green absolute top-0"></div>
-              </div>
-              <p className="text-gray-500 text-lg font-medium">Cargando escalerilla...</p>
+        {/* Join CTA — not logged in */}
+        {!currentPlayer && (
+          <div className="bg-ctg-green/8 border border-ctg-green/25 rounded-2xl p-5 mb-10 flex items-center gap-4">
+            <span className="w-2.5 h-2.5 rounded-full bg-ctg-green animate-pulse shrink-0" style={{ boxShadow: '0 0 12px #8BC234' }} />
+            <div className="flex-1">
+              <div className="text-[#F0F7E8] font-semibold">Únete a la escalerilla</div>
+              <div className="text-[#F0F7E8]/55 text-sm">Inicia sesión para desafiar jugadores y subir posiciones</div>
             </div>
+            <button onClick={() => setLoginModalOpen(true)} className="btn-primary text-sm px-4 py-2 shrink-0">
+              Iniciar sesión
+            </button>
+          </div>
+        )}
+
+        {/* Ladder */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full border-2 border-ctg-green/20" />
+              <div className="w-12 h-12 rounded-full border-t-2 border-ctg-green animate-spin absolute inset-0" />
+            </div>
+            <p className="text-[#F0F7E8]/50 text-sm">Cargando escalerilla…</p>
           </div>
         ) : (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-card p-6 md:p-10 animate-slide-up">
-            <Ladder players={players} currentPlayerId={currentPlayer?.id} onPlayerClick={handlePlayerClick} />
-          </div>
-        )}
-
-        {currentPlayer && (currentPlayer.position ?? 0) > 0 && (
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
-            <div className="bg-white rounded-xl shadow-card p-4 text-center">
-              <div className="text-3xl font-bold text-ctg-green">{currentPlayer.wins}</div>
-              <div className="text-sm text-gray-600 mt-1">Victorias</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-card p-4 text-center">
-              <div className="text-3xl font-bold text-red-500">{currentPlayer.losses}</div>
-              <div className="text-sm text-gray-600 mt-1">Derrotas</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-card p-4 text-center">
-              <div className="text-3xl font-bold text-blue-500">{currentPlayer.total_matches}</div>
-              <div className="text-sm text-gray-600 mt-1">Partidos</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-card p-4 text-center">
-              <div className="text-3xl font-bold text-ctg-dark">
-                {currentPlayer.total_matches > 0 ? Math.round((currentPlayer.wins / currentPlayer.total_matches) * 100) : 0}%
-              </div>
-              <div className="text-sm text-gray-600 mt-1">Efectividad</div>
-            </div>
-          </div>
+          <Ladder players={players} currentPlayerId={currentPlayer?.id} onPlayerClick={handlePlayerClick} />
         )}
       </main>
 
-      <PlayerModal player={selectedPlayer} isOpen={playerModalOpen} onClose={() => setPlayerModalOpen(false)}
-        onChallenge={handleChallenge} canChallenge={selectedPlayer ? canChallenge(selectedPlayer) : false} />
+      <PlayerModal
+        player={selectedPlayer} isOpen={playerModalOpen}
+        onClose={() => setPlayerModalOpen(false)}
+        onChallenge={handleChallenge}
+        canChallenge={selectedPlayer ? canChallenge(selectedPlayer) : false}
+      />
 
       {currentPlayer && selectedPlayer && (
-        <ChallengeModal challenger={currentPlayer} challenged={selectedPlayer} isOpen={challengeModalOpen}
-          onClose={() => setChallengeModalOpen(false)} onConfirm={handleConfirmChallenge} loading={challengeLoading} />
+        <ChallengeModal
+          challenger={currentPlayer} challenged={selectedPlayer}
+          isOpen={challengeModalOpen}
+          onClose={() => setChallengeModalOpen(false)}
+          onConfirm={handleConfirmChallenge}
+          loading={challengeLoading}
+        />
       )}
 
-      <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={() => { setLoginModalOpen(false); refreshPlayer(); }} />
+      <LoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        onSuccess={() => { setLoginModalOpen(false); refreshPlayer(); }}
+      />
 
-      {toasts.map((toast) => (
-        <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
+      {toasts.map(t => (
+        <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
       ))}
     </div>
   );
