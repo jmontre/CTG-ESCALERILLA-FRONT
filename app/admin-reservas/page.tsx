@@ -260,8 +260,8 @@ export default function AdminReservasPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     );
   }
@@ -280,23 +280,24 @@ export default function AdminReservasPage() {
   const socios = allPlayers.filter(p => (p as any).member_type !== 'hijo_socio' && !p.admin_role);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="admin-reservas" onLoginClick={() => {}} />
+    <div className="min-h-screen bg-[#0a1608]">
+      <Header onLoginClick={() => {}} />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 pt-28 pb-24 md:pb-10">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-ctg-dark mb-1">Admin Reservas</h1>
-          <p className="text-gray-500">Gestión del sistema de reservas de canchas</p>
+          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Administración</p>
+          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Admin Reservas</h1>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
+        <div className="flex gap-1 mb-6 border-b border-[#1e4020]">
           {(['reservas', 'usuarios', 'stats'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-medium transition-colors capitalize ${
-                activeTab === tab ? 'text-ctg-dark border-b-2 border-ctg-green' : 'text-gray-500 hover:text-ctg-dark'
-              }`}>
-              {tab === 'reservas' ? '📅 Reservas' : tab === 'usuarios' ? '👥 Usuarios' : '📊 Stats'}
+              className={'px-5 py-3 font-medium transition-colors text-sm ' +
+                (activeTab === tab
+                  ? 'text-ctg-green border-b-2 border-ctg-green'
+                  : 'text-[#F0F7E8]/40 hover:text-[#F0F7E8]/70')}>
+              {tab === 'reservas' ? 'Reservas' : tab === 'usuarios' ? 'Usuarios' : 'Stats'}
             </button>
           ))}
         </div>
@@ -304,11 +305,11 @@ export default function AdminReservasPage() {
         {/* ── TAB RESERVAS ── */}
         {activeTab === 'reservas' && (
           <>
-            {message && <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm mb-4">{message}</div>}
-            {error   && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm mb-4">{error}</div>}
+            {message && <div className="bg-ctg-green/10 border border-ctg-green/20 rounded-xl p-3 text-ctg-green text-sm mb-4">{message}</div>}
+            {error   && <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm mb-4">{error}</div>}
 
             {/* Config temporada */}
-            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
               <h2 className="text-lg font-bold text-ctg-dark mb-4">⚙️ Configuración</h2>
               <div>
                 <p className="text-sm text-gray-500 mb-2">Temporada activa</p>
@@ -328,7 +329,7 @@ export default function AdminReservasPage() {
             </div>
 
             {/* Bloqueos de canchas */}
-            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
               <h2 className="text-lg font-bold text-ctg-dark mb-4">🔒 Bloquear horarios</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
@@ -399,7 +400,7 @@ export default function AdminReservasPage() {
             </div>
 
             {/* Cobro de luz */}
-            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
               <h2 className="text-lg font-bold text-ctg-dark mb-4">💡 Cobro de luz</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
@@ -455,7 +456,7 @@ export default function AdminReservasPage() {
             </div>
 
             {/* Filtro fecha */}
-            <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
               <div className="flex items-center gap-4 flex-wrap">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
@@ -471,7 +472,7 @@ export default function AdminReservasPage() {
             </div>
 
             {/* Tabla reservas */}
-            <div className="bg-white rounded-xl shadow-card overflow-hidden">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-bold text-ctg-dark">Reservas — {formatDate(selectedDate)}</h2>
               </div>
@@ -577,7 +578,7 @@ export default function AdminReservasPage() {
 
             {/* Formulario nuevo usuario */}
             {showAddUser && (
-              <div className="bg-white rounded-xl shadow-card p-6 mb-6 border-2 border-ctg-green/30">
+              <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6 border-2 border-ctg-green/30">
                 <h3 className="font-bold text-ctg-dark mb-4">Nuevo usuario de reservas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {[
@@ -626,7 +627,7 @@ export default function AdminReservasPage() {
             )}
 
             {/* Lista usuarios */}
-            <div className="bg-white rounded-xl shadow-card overflow-hidden">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-ctg-dark">Usuarios ({filteredPlayers.length})</h2>
                 <span className="text-xs text-gray-400">
@@ -828,7 +829,7 @@ export default function AdminReservasPage() {
           return (
             <>
               {/* Header con filtros y export */}
-              <div className="bg-white rounded-xl shadow-card p-5 mb-6">
+              <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-5 mb-6">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div className="flex items-end gap-4">
                     <div>
@@ -867,7 +868,7 @@ export default function AdminReservasPage() {
                   {/* ── BLOQUE 1: KPIs principales (2 filas × 4) ── */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {/* Fila 1 */}
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-ctg-green">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-ctg-green">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Reservas normales</p>
                       <p className="text-4xl font-extrabold text-ctg-green">{stats.totals.normal}</p>
                       <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
@@ -876,12 +877,12 @@ export default function AdminReservasPage() {
                         <span>{cancelRate}% tasa</span>
                       </p>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-orange-400">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-orange-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Alta demanda</p>
                       <p className="text-4xl font-extrabold text-orange-500">{stats.demand.high}</p>
                       <p className="text-xs text-gray-400 mt-2">{highDemandRate}% de reservas normales</p>
                     </div>
-                    <div className={`bg-white rounded-2xl shadow-card p-5 border-l-4 ${stats.totals.growth >= 0 ? 'border-ctg-green' : 'border-red-400'}`}>
+                    <div className={`bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 ${stats.totals.growth >= 0 ? 'border-ctg-green' : 'border-red-400'}`}>
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">vs mes anterior</p>
                       <p className={`text-4xl font-extrabold ${stats.totals.growth >= 0 ? 'text-ctg-green' : 'text-red-500'}`}>
                         {stats.totals.growth > 0 ? '+' : ''}{stats.totals.growth}%
@@ -890,22 +891,22 @@ export default function AdminReservasPage() {
                     </div>
 
                     {/* Fila 2 */}
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-purple-400">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-purple-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Visitas externas</p>
                       <p className="text-4xl font-extrabold text-purple-600">{stats.guest.count}</p>
                       <p className="text-xs text-gray-400 mt-2">{guestRate}% · ${(stats.guest.revenue || 0).toLocaleString('es-CL')} recaudado</p>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-ctg-dark">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-ctg-dark">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Promedio / día activo</p>
                       <p className="text-4xl font-extrabold text-ctg-dark">{avgPerDay}</p>
                       <p className="text-xs text-gray-400 mt-2">{activeDays} días con actividad</p>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-yellow-400">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-yellow-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">💡 Cobro de luz</p>
                       <p className="text-4xl font-extrabold text-yellow-500">${((lightSummary?.total_revenue || 0) / 1000).toFixed(0)}k</p>
                       <p className="text-xs text-gray-400 mt-2">${(lightSummary?.total_revenue || 0).toLocaleString('es-CL')} · {lightSummary?.by_day?.length ?? 0} días</p>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-card p-5 border-l-4 border-teal-400">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-teal-400">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Horario peak</p>
                       <p className="text-4xl font-extrabold text-teal-600">{topSlot?.slot ?? '—'}</p>
                       <p className="text-xs text-gray-400 mt-2">{topSlot?.count ?? 0} reservas</p>
@@ -913,7 +914,7 @@ export default function AdminReservasPage() {
                   </div>
 
                   {/* ── BLOQUE 2: Por tipo de socio ── */}
-                  <div className="bg-white rounded-2xl shadow-card p-5">
+                  <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                     <h3 className="font-bold text-gray-500 mb-4 text-sm uppercase tracking-wide">Reservas normales por tipo de socio</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {[
@@ -939,7 +940,7 @@ export default function AdminReservasPage() {
                   </div>
 
                   {/* ── BLOQUE 3: Gráfico por día ── */}
-                  <div className="bg-white rounded-2xl shadow-card p-5">
+                  <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-5">
                       <h3 className="font-bold text-ctg-dark">Reservas normales por día del mes</h3>
                       <div className="flex gap-4 text-xs text-gray-500">
@@ -981,7 +982,7 @@ export default function AdminReservasPage() {
                   </div>
 
                   {/* ── BLOQUE 4: Por cancha ── */}
-                  <div className="bg-white rounded-2xl shadow-card p-5">
+                  <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                     <h3 className="font-bold text-ctg-dark mb-4">Ocupación por cancha</h3>
                     <div className="space-y-4">
                       {stats.by_court.map((c: any) => {
@@ -1003,7 +1004,7 @@ export default function AdminReservasPage() {
 
                   {/* ── BLOQUE 5: Horarios + Top socios ── */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="bg-white rounded-2xl shadow-card p-5">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                       <h3 className="font-bold text-ctg-dark mb-4">Horarios más reservados <span className="text-xs text-gray-400 font-normal">(normales)</span></h3>
                       <div className="space-y-3">
                         {stats.by_slot.map((s: any, i: number) => {
@@ -1023,7 +1024,7 @@ export default function AdminReservasPage() {
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl shadow-card p-5">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                       <h3 className="font-bold text-ctg-dark mb-4">Socios más activos <span className="text-xs text-gray-400 font-normal">(normales)</span></h3>
                       <div className="space-y-2">
                         {stats.top_players.map((p: any, i: number) => {
@@ -1048,7 +1049,7 @@ export default function AdminReservasPage() {
                   {((stats.guest.by_player?.length > 0) || (stats.hijos_socio?.by_player?.length > 0)) && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {stats.guest.by_player?.length > 0 && (
-                        <div className="bg-white rounded-2xl shadow-card p-5">
+                        <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                           <h3 className="font-bold text-ctg-dark mb-4">Visitas externas por socio</h3>
                           <div className="space-y-2">
                             {stats.guest.by_player.map((p: any, i: number) => (
@@ -1062,7 +1063,7 @@ export default function AdminReservasPage() {
                         </div>
                       )}
                       {stats.hijos_socio?.by_player?.length > 0 && (
-                        <div className="bg-white rounded-2xl shadow-card p-5">
+                        <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                           <h3 className="font-bold text-ctg-dark mb-4">Hijos de socios</h3>
                           <div className="space-y-2">
                             {stats.hijos_socio.by_player.map((p: any, i: number) => (
@@ -1084,7 +1085,7 @@ export default function AdminReservasPage() {
                     const totalGuestPages = Math.ceil(stats.guest.list.length / GUESTS_PER_PAGE);
                     const pageData = stats.guest.list.slice(guestPage * GUESTS_PER_PAGE, (guestPage + 1) * GUESTS_PER_PAGE);
                     return (
-                      <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+                      <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden">
                         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                           <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
                           <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
@@ -1151,7 +1152,7 @@ export default function AdminReservasPage() {
 
                   {/* ── BLOQUE 8: Cobro de luz ── */}
                   {lightSummary && lightSummary.by_day?.length > 0 && (
-                    <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden">
                       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                         <h3 className="font-bold text-ctg-dark">💡 Cobro de luz</h3>
                         <span className="text-xs bg-yellow-100 text-yellow-700 font-bold px-2.5 py-1 rounded-full">

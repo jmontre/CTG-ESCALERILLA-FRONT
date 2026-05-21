@@ -2,219 +2,138 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { Challenge, Player } from '@/types';
+import { Challenge } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function HistorialPage() {
   const router = useRouter();
   const { player: currentPlayer, loading: authLoading } = useAuth();
-  
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [filteredChallenges, setFilteredChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  const [challenges, setChallenges]   = useState<Challenge[]>([]);
+  const [filtered, setFiltered]       = useState<Challenge[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [searchTerm, setSearchTerm]   = useState('');
   const [filterStatus, setFilterStatus] = useState<'todos' | 'ganados' | 'perdidos'>('todos');
-  const [filterDate, setFilterDate] = useState<'all' | 'week' | 'month' | 'year'>('all');
+  const [filterDate, setFilterDate]   = useState<string>('all');
 
   useEffect(() => {
-    // Redirigir si no está logueado o si es admin
     if (!authLoading) {
-      if (!currentPlayer) {
-        router.push('/');
-        return;
-      }
-      if (currentPlayer.is_admin) {
-        router.push('/admin');
-        return;
-      }
+      if (!currentPlayer) { router.push('/'); return; }
+      if (currentPlayer.is_admin) { router.push('/admin'); return; }
     }
-
-    if (currentPlayer && !currentPlayer.is_admin) {
-      loadHistory(currentPlayer.id);
-    }
+    if (currentPlayer && !currentPlayer.is_admin) loadHistory(currentPlayer.id);
   }, [currentPlayer, authLoading, router]);
 
-  useEffect(() => {
-    applyFilters();
-  }, [challenges, searchTerm, filterStatus, filterDate]);
+  useEffect(() => { applyFilters(); }, [challenges, searchTerm, filterStatus, filterDate]);
 
   const loadHistory = async (playerId: string) => {
     try {
-      const allChallenges = await api.getChallenges();
-      
-      // Filtrar solo partidos completados del jugador actual
-      const myCompletedChallenges = allChallenges.filter(
-        (c) =>
-          (c.challenger_id === playerId || c.challenged_id === playerId) &&
-          c.status === 'completed'
-      );
-
-      // Ordenar por fecha más reciente
-      myCompletedChallenges.sort((a, b) => {
-        const dateA = new Date(a.played_at || a.resolved_at || a.created_at).getTime();
-        const dateB = new Date(b.played_at || b.resolved_at || b.created_at).getTime();
-        return dateB - dateA;
-      });
-
-      setChallenges(myCompletedChallenges);
-    } catch (error) {
-      console.error('Error al cargar historial:', error);
-    } finally {
-      setLoading(false);
-    }
+      const all = await api.getChallenges();
+      const mine = all
+        .filter(c => (c.challenger_id === playerId || c.challenged_id === playerId) && c.status === 'completed')
+        .sort((a, b) => {
+          const da = new Date(a.played_at || a.resolved_at || a.created_at).getTime();
+          const db = new Date(b.played_at || b.resolved_at || b.created_at).getTime();
+          return db - da;
+        });
+      setChallenges(mine);
+    } finally { setLoading(false); }
   };
 
   const applyFilters = () => {
     if (!currentPlayer) return;
-
-    let filtered = [...challenges];
-
-    // Filtro por búsqueda
+    let list = [...challenges];
     if (searchTerm) {
-      filtered = filtered.filter((c) => {
-        const rival =
-          c.challenger_id === currentPlayer.id
-            ? c.challenged?.name || ''
-            : c.challenger?.name || '';
-        return rival.toLowerCase().includes(searchTerm.toLowerCase());
+      const q = searchTerm.toLowerCase();
+      list = list.filter(c => {
+        const rival = c.challenger_id === currentPlayer.id ? c.challenged?.name : c.challenger?.name;
+        return rival?.toLowerCase().includes(q);
       });
     }
-
-    // Filtro por resultado
     if (filterStatus !== 'todos') {
-      filtered = filtered.filter((c) => {
+      list = list.filter(c => {
         const won = c.winner_id === currentPlayer.id;
         return filterStatus === 'ganados' ? won : !won;
       });
     }
-
-    // Filtro por fecha
     if (filterDate !== 'all') {
-      const now = new Date();
-      const filterTime = {
-        week: 7 * 24 * 60 * 60 * 1000,
-        month: 30 * 24 * 60 * 60 * 1000,
-        year: 365 * 24 * 60 * 60 * 1000,
-      }[filterDate];
-
-      filtered = filtered.filter((c) => {
-        const date = new Date(c.played_at || c.resolved_at || c.created_at);
-        return now.getTime() - date.getTime() <= filterTime;
-      });
+      const ms = { week: 7, month: 30, year: 365 }[filterDate as 'week'|'month'|'year'] * 86400000;
+      list = list.filter(c => Date.now() - new Date(c.played_at || c.resolved_at || c.created_at).getTime() <= ms);
     }
-
-    setFilteredChallenges(filtered);
+    setFiltered(list);
   };
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     );
   }
 
-  // No renderizar si es admin o no está logueado
-  if (!currentPlayer || currentPlayer.is_admin) {
-    return null;
-  }
+  if (!currentPlayer || currentPlayer.is_admin) return null;
 
-  const stats = {
-    total: challenges.length,
-    wins: challenges.filter((c) => c.winner_id === currentPlayer.id).length,
-    losses: challenges.filter((c) => c.winner_id !== currentPlayer.id).length,
-  };
+  const wins   = challenges.filter(c => c.winner_id === currentPlayer.id).length;
+  const losses = challenges.length - wins;
+  const eff    = challenges.length > 0 ? Math.round((wins / challenges.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="historial" onLoginClick={() => {}} />
+    <div className="min-h-screen bg-[#0a1608]">
+      <Header onLoginClick={() => {}} />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-ctg-dark mb-2">Mi Historial</h1>
-          <p className="text-gray-600">Revisa todos tus partidos jugados</p>
+          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Escalerilla</p>
+          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mi Historial</h1>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-card p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">
-                🎾
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm">Partidos Totales</p>
-                <p className="text-3xl font-bold text-ctg-dark">{stats.total}</p>
-              </div>
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          {[
+            { label: 'Partidos', value: challenges.length, color: 'text-[#F0F7E8]' },
+            { label: 'Ganados',  value: wins,              color: 'text-ctg-green'  },
+            { label: 'Perdidos', value: losses,            color: 'text-red-400'    },
+          ].map(s => (
+            <div key={s.label} className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-4 text-center">
+              <div className={`font-display font-black text-3xl ${s.color}`}>{s.value}</div>
+              <div className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mt-0.5">{s.label}</div>
             </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-card p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-2xl">
-                ✅
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm">Ganados</p>
-                <p className="text-3xl font-bold text-ctg-green">{stats.wins}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-card p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center text-2xl">
-                ❌
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm">Perdidos</p>
-                <p className="text-3xl font-bold text-red-600">{stats.losses}</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Filtros */}
-        <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+        {/* Effectiveness bar */}
+        {challenges.length > 0 && (
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="label">Efectividad</span>
+              <span className="font-mono text-ctg-green font-bold text-sm">{eff}%</span>
+            </div>
+            <div className="h-1.5 bg-[#0a1608] rounded-full overflow-hidden">
+              <div className="h-full bg-ctg-green rounded-full" style={{ width: `${eff}%`, boxShadow: '0 0 8px rgba(139,194,52,.5)' }} />
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-5 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Buscar rival
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Nombre del rival..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              />
+              <label className="label block mb-1.5">Buscar rival</label>
+              <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Nombre del rival..." className="field w-full" />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Resultado
-              </label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              >
+              <label className="label block mb-1.5">Resultado</label>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} className="select w-full">
                 <option value="todos">Todos</option>
                 <option value="ganados">Ganados</option>
                 <option value="perdidos">Perdidos</option>
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Período
-              </label>
-              <select
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value as any)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              >
+              <label className="label block mb-1.5">Período</label>
+              <select value={filterDate} onChange={e => setFilterDate(e.target.value)} className="select w-full">
                 <option value="all">Todo el tiempo</option>
                 <option value="week">Última semana</option>
                 <option value="month">Último mes</option>
@@ -224,68 +143,37 @@ export default function HistorialPage() {
           </div>
         </div>
 
-        {/* Lista de partidos */}
-        <div className="bg-white rounded-xl shadow-card overflow-hidden">
-          {filteredChallenges.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              No se encontraron partidos
-            </div>
+        {/* Match list */}
+        <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl overflow-hidden">
+          {filtered.length === 0 ? (
+            <div className="p-12 text-center text-[#F0F7E8]/35 text-sm">No se encontraron partidos</div>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredChallenges.map((challenge) => {
-                const isWinner = challenge.winner_id === currentPlayer.id;
-                const rival =
-                  challenge.challenger_id === currentPlayer.id
-                    ? challenge.challenged
-                    : challenge.challenger;
-
+            <div className="divide-y divide-[#1e4020]">
+              {filtered.map(c => {
+                const isWinner = c.winner_id === currentPlayer.id;
+                const rival    = c.challenger_id === currentPlayer.id ? c.challenged : c.challenger;
+                const date     = new Date(c.played_at || c.resolved_at || c.created_at);
                 return (
-                  <div
-                    key={challenge.id}
-                    className={`p-6 ${
-                      isWinner ? 'bg-green-50' : 'bg-red-50'
-                    } hover:bg-opacity-75 transition-colors`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`text-2xl ${
-                              isWinner ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {isWinner ? '✅' : '❌'}
-                          </span>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              vs {rival?.name}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {new Date(
-                                challenge.played_at ||
-                                  challenge.resolved_at ||
-                                  challenge.created_at
-                              ).toLocaleDateString('es-CL', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                              })}
-                            </p>
-                          </div>
-                        </div>
+                  <div key={c.id}
+                    className={'flex items-center justify-between px-5 py-4 transition-colors ' +
+                      (isWinner ? 'hover:bg-ctg-green/5' : 'hover:bg-red-900/5')}>
+                    <div className="flex items-center gap-3">
+                      <div className={'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ' +
+                        (isWinner ? 'bg-ctg-green/15 text-ctg-green' : 'bg-red-900/20 text-red-400')}>
+                        {isWinner ? 'W' : 'L'}
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
-                          {challenge.final_score || 'Sin resultado'}
-                        </p>
-                        <p
-                          className={`text-sm font-medium ${
-                            isWinner ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {isWinner ? 'Victoria' : 'Derrota'}
+                      <div>
+                        <p className="font-semibold text-[#F0F7E8] text-sm">vs {rival?.name}</p>
+                        <p className="text-xs text-[#F0F7E8]/40">
+                          {date.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                       </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono font-bold text-[#F0F7E8] text-sm">{c.final_score || '—'}</p>
+                      <p className={'text-xs font-medium ' + (isWinner ? 'text-ctg-green' : 'text-red-400')}>
+                        {isWinner ? 'Victoria' : 'Derrota'}
+                      </p>
                     </div>
                   </div>
                 );

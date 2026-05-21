@@ -15,12 +15,6 @@ import ChallengeManagementModal from '@/components/admin/ChallengeManagementModa
 const CATEGORIES = ['A', 'B', 'C', 'D'];
 const CATEGORY_NAMES: Record<string, string> = { A: 'Oro', B: 'Plata', C: 'Bronce', D: 'Verde' };
 const CATEGORY_RANGES: Record<string, string> = { A: '1-12', B: '13-24', C: '25-36', D: '37-48' };
-const CATEGORY_COLORS: Record<string, string> = {
-  A: 'border-yellow-300 bg-yellow-50',
-  B: 'border-gray-300 bg-gray-50',
-  C: 'border-orange-300 bg-orange-50',
-  D: 'border-green-300 bg-green-50',
-};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -200,8 +194,8 @@ export default function AdminPage() {
 
   if (loading || loadingData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     );
   }
@@ -216,49 +210,46 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="admin" onLoginClick={() => { }} />
+    <div className="min-h-screen bg-[#0a1608]">
+      <Header onLoginClick={() => { }} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-ctg-dark mb-2">Panel de Administrador</h1>
-          <p className="text-gray-600">Gestión completa de la escalerilla</p>
+          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Administración</p>
+          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Panel de Administrador</h1>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-1 mb-6 border-b border-[#1e4020] overflow-x-auto">
           {(['dashboard', 'players', 'challenges', 'master'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-medium transition-colors whitespace-nowrap ${activeTab === tab ? 'text-ctg-dark border-b-2 border-ctg-green' : 'text-gray-500 hover:text-ctg-dark'
-                }`}
+              className={'px-5 py-3 font-medium transition-colors whitespace-nowrap text-sm ' +
+                (activeTab === tab
+                  ? 'text-ctg-green border-b-2 border-ctg-green'
+                  : 'text-[#F0F7E8]/40 hover:text-[#F0F7E8]/70')}
             >
-              {tab === 'dashboard' ? '📊 Dashboard'
-                : tab === 'players' ? '👥 Jugadores'
-                  : tab === 'challenges' ? '🎾 Desafíos'
-                    : '🏆 Master'}
+              {tab === 'dashboard' ? 'Dashboard'
+                : tab === 'players' ? 'Jugadores'
+                  : tab === 'challenges' ? 'Desafíos'
+                    : 'Master'}
             </button>
           ))}
         </div>
 
         {/* Dashboard */}
         {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: '👥', label: 'Jugadores', value: stats.totalPlayers, bg: 'bg-blue-100' },
-              { icon: '⏳', label: 'Desafíos Activos', value: stats.activeChallenges, bg: 'bg-amber-100' },
-              { icon: '✅', label: 'Partidos Jugados', value: stats.completedMatches, bg: 'bg-green-100' },
-              { icon: '⚠️', label: 'Disputas', value: stats.disputes, bg: 'bg-red-100' },
+              { label: 'Jugadores',        value: stats.totalPlayers,     color: 'text-[#F0F7E8]' },
+              { label: 'Desafíos Activos', value: stats.activeChallenges, color: 'text-amber-400'  },
+              { label: 'Partidos Jugados', value: stats.completedMatches, color: 'text-ctg-green'  },
+              { label: 'Disputas',         value: stats.disputes,         color: 'text-red-400'    },
             ].map((s) => (
-              <div key={s.label} className="bg-white rounded-xl shadow-card p-6">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 ${s.bg} rounded-lg flex items-center justify-center text-2xl`}>{s.icon}</div>
-                  <div>
-                    <p className="text-gray-500 text-sm">{s.label}</p>
-                    <p className="text-3xl font-bold text-ctg-dark">{s.value}</p>
-                  </div>
-                </div>
+              <div key={s.label} className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
+                <p className="text-[#F0F7E8]/40 text-xs mb-1">{s.label}</p>
+                <p className={`font-display font-black text-3xl ${s.color}`}>{s.value}</p>
               </div>
             ))}
           </div>
@@ -266,36 +257,36 @@ export default function AdminPage() {
 
         {/* Players */}
         {activeTab === 'players' && (
-          <div className="bg-white rounded-xl shadow-card p-6">
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-ctg-dark">Gestión de Jugadores</h2>
-              <button onClick={() => setShowAddModal(true)} className="px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-lime transition-colors">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl">Gestión de Jugadores</h2>
+              <button onClick={() => setShowAddModal(true)} className="btn-primary">
                 + Agregar Jugador
               </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-[#152b18]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Pos</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Nombre</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Email</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Teléfono</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">W-L</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Estado</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">Acciones</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Pos</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Nombre</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Teléfono</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">W-L</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Estado</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-[#1e4020]">
                   {players.filter(p => (p.position ?? 0) > 0).map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-ctg-dark">#{p.position ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.email}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.phone || '-'}</td>
+                    <tr key={p.id} className="hover:bg-[#152b18]/60 transition-colors">
+                      <td className="px-4 py-3 text-sm font-mono font-bold text-ctg-green">#{p.position ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-[#F0F7E8]">{p.name}</td>
+                      <td className="px-4 py-3 text-sm text-[#F0F7E8]/50">{p.email}</td>
+                      <td className="px-4 py-3 text-sm text-[#F0F7E8]/50">{p.phone || '-'}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className="text-green-600 font-medium">{p.wins}</span>-
-                        <span className="text-red-600 font-medium">{p.losses}</span>
+                        <span className="text-ctg-green font-medium">{p.wins}</span>-
+                        <span className="text-red-400 font-medium">{p.losses}</span>
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex flex-col gap-1">
@@ -313,13 +304,13 @@ export default function AdminPage() {
                           )}
                           {(!p.immune_until || new Date(p.immune_until) <= new Date()) &&
                             (!p.vulnerable_until || new Date(p.vulnerable_until) <= new Date()) && (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Normal</span>
+                              <span className="px-2 py-0.5 bg-[#1e4020] text-[#F0F7E8]/40 rounded text-xs">Normal</span>
                             )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
-                        <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="text-ctg-green hover:text-ctg-dark mr-3">Editar</button>
-                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="text-red-600 hover:text-red-800">Eliminar</button>
+                        <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="text-ctg-green hover:text-ctg-lime transition mr-3 text-xs">Editar</button>
+                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="text-red-400 hover:text-red-300 transition text-xs">Eliminar</button>
                       </td>
                     </tr>
                   ))}
@@ -331,27 +322,27 @@ export default function AdminPage() {
 
         {/* Challenges */}
         {activeTab === 'challenges' && (
-          <div className="bg-white rounded-xl shadow-card p-6">
-            <h2 className="text-xl font-bold text-ctg-dark mb-6">Gestión de Desafíos</h2>
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
+            <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-6">Gestión de Desafíos</h2>
             <div className="space-y-3">
               {challenges.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No hay desafíos registrados</p>
+                <p className="text-[#F0F7E8]/35 text-center py-8">No hay desafíos registrados</p>
               ) : (
                 challenges.map((challenge) => (
-                  <div key={challenge.id} className="border border-gray-200 rounded-lg p-4 hover:border-ctg-green/50 transition-colors">
+                  <div key={challenge.id} className="border border-[#1e4020] rounded-xl p-4 hover:border-ctg-green/30 transition-colors bg-[#152b18]/50">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <p className="font-medium text-ctg-dark">
+                          <p className="font-semibold text-[#F0F7E8] text-sm">
                             {challenge.challenger?.name} vs {challenge.challenged?.name}
                           </p>
                           {getStatusBadge(challenge.status)}
                         </div>
-                        <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                          <span>📅 {new Date(challenge.created_at).toLocaleDateString('es-CL')}</span>
-                          {challenge.final_score && <span>🎾 {challenge.final_score}</span>}
+                        <div className="flex flex-wrap gap-3 text-xs text-[#F0F7E8]/40">
+                          <span>{new Date(challenge.created_at).toLocaleDateString('es-CL')}</span>
+                          {challenge.final_score && <span className="font-mono">{challenge.final_score}</span>}
                           {challenge.winner_id && (
-                            <span>👑 {challenge.winner_id === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}</span>
+                            <span>{challenge.winner_id === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}</span>
                           )}
                         </div>
                       </div>
@@ -360,27 +351,26 @@ export default function AdminPage() {
                           <button
                             onClick={() => handleCancelChallenge(challenge.id)}
                             disabled={cancellingId === challenge.id}
-                            className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
+                            className="px-3 py-1.5 text-xs font-medium bg-red-900/30 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-900/50 transition disabled:opacity-50"
                           >
-                            {cancellingId === challenge.id ? '...' : '🚫 Cancelar'}
+                            {cancellingId === challenge.id ? '...' : 'Cancelar'}
                           </button>
                         )}
                         <button
                           onClick={() => handleForceDelete(challenge.id)}
                           disabled={deletingId === challenge.id}
-                          className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                          className="px-3 py-1.5 text-xs font-medium bg-red-600/80 text-white rounded-lg hover:bg-red-600 transition disabled:opacity-50"
                           title="Eliminar permanentemente de la DB"
                         >
                           {deletingId === challenge.id ? '...' : '🗑️'}
                         </button>
                         <button
                           onClick={() => { setSelectedChallenge(challenge); setShowChallengeModal(true); }}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${challenge.status === 'disputed'
-                            ? 'bg-red-500 text-white hover:bg-red-600'
-                            : 'bg-ctg-green text-white hover:bg-ctg-lime'
-                            }`}
+                          className={'px-3 py-1.5 text-xs font-medium rounded-lg transition ' + (challenge.status === 'disputed'
+                            ? 'bg-red-900/50 text-red-300 border border-red-500/30 hover:bg-red-900/70'
+                            : 'bg-ctg-green text-[#0a1608] hover:bg-ctg-lime')}
                         >
-                          {challenge.status === 'disputed' ? '⚠️ Resolver' : '⚙️ Gestionar'}
+                          {challenge.status === 'disputed' ? 'Resolver' : 'Gestionar'}
                         </button>
                       </div>
                     </div>
@@ -395,44 +385,44 @@ export default function AdminPage() {
         {activeTab === 'master' && (
           <div className="space-y-6">
             {/* Config fechas */}
-            <div className="bg-white rounded-xl shadow-card p-6">
-              <h2 className="text-xl font-bold text-ctg-dark mb-1">⚙️ Configuración del Master</h2>
-              <p className="text-sm text-gray-500 mb-4">Estas fechas se aplicarán al generar cada categoría.</p>
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-1">Configuración del Master</h2>
+              <p className="text-sm text-[#F0F7E8]/40 mb-4">Estas fechas se aplicarán al generar cada categoría.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de temporada</label>
+                  <label className="label block mb-1">Nombre de temporada</label>
                   <input
                     type="text"
                     value={masterDates.name}
                     onChange={(e) => setMasterDates(d => ({ ...d, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                    className="field w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Inicio Round Robin</label>
+                  <label className="label block mb-1">Inicio Round Robin</label>
                   <input
                     type="date"
                     value={masterDates.round_robin_start}
                     onChange={(e) => setMasterDates(d => ({ ...d, round_robin_start: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                    className="field w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fin Round Robin</label>
+                  <label className="label block mb-1">Fin Round Robin</label>
                   <input
                     type="date"
                     value={masterDates.round_robin_end}
                     onChange={(e) => setMasterDates(d => ({ ...d, round_robin_end: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                    className="field w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Final</label>
+                  <label className="label block mb-1">Fecha Final</label>
                   <input
                     type="date"
                     value={masterDates.final_date}
                     onChange={(e) => setMasterDates(d => ({ ...d, final_date: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green text-sm"
+                    className="field w-full"
                   />
                 </div>
               </div>
@@ -446,30 +436,30 @@ export default function AdminPage() {
                 const isDeleting = deletingSeasonId === season?.id;
 
                 return (
-                  <div key={cat} className={`rounded-xl shadow-card p-5 border-2 ${CATEGORY_COLORS[cat]}`}>
+                  <div key={cat} className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-bold text-lg text-ctg-dark">Categoría {cat} — {CATEGORY_NAMES[cat]}</h3>
-                        <p className="text-sm text-gray-500">Posiciones {CATEGORY_RANGES[cat]}</p>
+                        <h3 className={`font-bold text-lg cat-letter-${cat}`}>Categoría {cat} — {CATEGORY_NAMES[cat]}</h3>
+                        <p className="text-sm text-[#F0F7E8]/40">Posiciones {CATEGORY_RANGES[cat]}</p>
                       </div>
                       {season ? (
-                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">✅ Activo</span>
+                        <span className="chip chip-success text-xs">Activo</span>
                       ) : (
-                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-full">Sin generar</span>
+                        <span className="chip bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/40 text-xs">Sin generar</span>
                       )}
                     </div>
 
                     {season ? (
                       <div className="space-y-3">
-                        <div className="bg-white/70 rounded-lg p-3 text-sm text-gray-600 space-y-1">
-                          <p>📊 Estado: <strong className="text-ctg-dark">{season.status}</strong></p>
-                          <p>👥 Grupos generados: <strong>{season.groups.length}</strong></p>
-                          <p>🎾 Partidos: <strong>{season.groups.flatMap(g => g.matches).length}</strong></p>
+                        <div className="bg-[#152b18] border border-[#1e4020] rounded-lg p-3 text-sm text-[#F0F7E8]/60 space-y-1">
+                          <p>Estado: <strong className="text-[#F0F7E8]">{season.status}</strong></p>
+                          <p>Grupos: <strong className="text-[#F0F7E8]">{season.groups.length}</strong></p>
+                          <p>Partidos: <strong className="text-[#F0F7E8]">{season.groups.flatMap(g => g.matches).length}</strong></p>
                         </div>
                         <button
                           onClick={() => handleDeleteSeason(season.id, cat)}
                           disabled={isDeleting}
-                          className="w-full px-3 py-2 text-sm font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50"
+                          className="btn-danger w-full text-sm py-2 disabled:opacity-50"
                         >
                           {isDeleting ? 'Eliminando...' : '🗑️ Eliminar torneo'}
                         </button>
@@ -478,9 +468,9 @@ export default function AdminPage() {
                       <button
                         onClick={() => handleGenerateMaster(cat)}
                         disabled={isGenerating}
-                        className="w-full px-4 py-3 bg-ctg-green text-white font-bold rounded-lg hover:bg-ctg-lime transition disabled:opacity-50"
+                        className="btn-primary w-full py-3 disabled:opacity-50"
                       >
-                        {isGenerating ? 'Generando...' : '🏆 Generar Master'}
+                        {isGenerating ? 'Generando...' : 'Generar Master'}
                       </button>
                     )}
                   </div>

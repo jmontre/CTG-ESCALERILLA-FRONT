@@ -105,8 +105,8 @@ export default function FixturePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     );
   }
@@ -114,18 +114,18 @@ export default function FixturePage() {
   if (!currentPlayer || currentPlayer.is_admin) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="fixture" onLoginClick={() => { }} />
+    <div className="min-h-screen bg-[#0a1608]">
+      <Header onLoginClick={() => { }} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-ctg-dark mb-2">Mis Desafíos</h1>
-          <p className="text-gray-600">Historial completo de tus desafíos</p>
+          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Tu actividad</p>
+          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mis Desafíos</h1>
         </div>
 
         <ChallengesList
           challenges={challenges}
-          currentPlayerId={currentPlayer.id}
+          currentPlayer={currentPlayer}
           onAccept={handleAccept}
           onReject={handleReject}
           onSubmitResult={handleReportResult}
