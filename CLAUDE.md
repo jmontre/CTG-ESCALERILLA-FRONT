@@ -1,6 +1,12 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # CTG Escalerilla — Frontend
 
 Sistema de escalerilla, reserva de canchas y torneo Master para el **Club de Tenis Graneros (CTG)**.
+
+> **Rediseño UI/UX (mayo 2026):** la app fue rediseñada completa al sistema "dark-green premium" (tema oscuro por defecto, fuentes nuevas, clases CSS compartidas). El plan detallado del rediseño está en `docs/superpowers/plans/2026-05-20-ui-redesign.md`. La rama de trabajo es `feature/redesign-ui-ux`.
 
 ---
 
@@ -13,7 +19,9 @@ Sistema de escalerilla, reserva de canchas y torneo Master para el **Club de Ten
 | TypeScript | ^5 |
 | Tailwind CSS | ^3.4.17 |
 | xlsx (export Excel) | ^0.18.5 |
-| Build | SWC (incluido en Next.js) |
+| Fuentes (next/font/google) | Bricolage Grotesque (display) + Manrope (sans) + JetBrains Mono |
+
+Backend: NestJS + Prisma + PostgreSQL (repo separado `CTG-Backend`). Guía de onboarding general en `ONBOARDING.md`.
 
 ---
 
@@ -25,6 +33,8 @@ npm run build   # Build de producción
 npm run start   # Servidor de producción
 npm run lint    # ESLint
 ```
+
+No hay tests configurados.
 
 ---
 
@@ -45,16 +55,14 @@ Archivos ignorados por git: `.env.local`, `.env.development`, `.env.production`.
 - **`dev`** → rama de integración. Todo cambio va aquí primero.
 - **Feature/fix branches** → `feature/nombre` o `fix/nombre`, se mergean a `dev`.
 - **Flujo obligatorio:** `feature/fix` → `dev` → PR → `main`.
+- Remote: `https://github.com/jmontre/CTG-ESCALERILLA-FRONT.git`
 
 ```bash
-# Workflow estándar
-git checkout dev
-git pull
+git checkout dev && git pull
 git checkout -b feature/mi-feature
 # ... trabajo ...
 git push -u origin feature/mi-feature
-# Crear PR de feature/mi-feature → dev en GitHub
-# Cuando dev está listo → PR de dev → main
+# PR de feature/mi-feature → dev. Cuando dev está listo → PR de dev → main.
 ```
 
 ---
@@ -64,8 +72,8 @@ git push -u origin feature/mi-feature
 ```
 frontend/
 ├── app/                              # Páginas (Next.js App Router)
-│   ├── layout.tsx                   # Layout raíz: fonts Geist, metadata, Footer
-│   ├── page.tsx                     # / → Landing page
+│   ├── layout.tsx                   # Layout raíz: fuentes, themeScript (dark mode), metadata, Footer
+│   ├── page.tsx                     # / → Landing (hero, QuickChips, court SVG)
 │   ├── home/page.tsx                # /home → Alias de landing
 │   ├── escalerilla/page.tsx         # /escalerilla → Escalerilla pública
 │   ├── fixture/page.tsx             # /fixture → Mis desafíos (auth)
@@ -79,13 +87,14 @@ frontend/
 │   ├── reset-password/page.tsx      # /reset-password?token= → Reset contraseña
 │   ├── admin/page.tsx               # /admin → Panel admin escalerilla
 │   ├── admin-reservas/page.tsx      # /admin-reservas → Panel admin reservas
-│   └── globals.css                  # Solo @tailwind base/components/utilities
+│   └── globals.css                  # Sistema CSS completo: tema, clases .card/.btn-*/.chip/etc.
 ├── components/
-│   ├── Header.tsx                   # Navbar con dropdowns y auth
-│   ├── Footer.tsx                   # Footer con links
-│   ├── Ladder.tsx                   # Escalerilla categorías A/B/C/D
+│   ├── Header.tsx                   # Nav por usePathname: pills + sub-nav + bottom tabs móvil + campana + dropdown cuenta
+│   ├── NotificationsPanel.tsx       # Panel dropdown de la campana de notificaciones
+│   ├── Footer.tsx                   # Footer minimal oscuro
+│   ├── Ladder.tsx                   # Escalerilla categorías A/B/C/D (pirámide + chips de estado)
 │   ├── LoginModal.tsx               # Login + olvidé contraseña
-│   ├── ChallengeModal.tsx           # Confirmación de desafío
+│   ├── ChallengeModal.tsx           # Confirmación de desafío (layout VS)
 │   ├── ChallengesList.tsx           # Lista desafíos activos
 │   ├── PlayerModal.tsx              # Detalle de jugador
 │   ├── PlayerCard.tsx               # Tarjeta compacta de jugador
@@ -100,12 +109,15 @@ frontend/
 │       └── ChallengeManagementModal.tsx
 ├── hooks/
 │   ├── useAuth.ts                   # Auth: JWT en localStorage + cache en memoria + timer 5 min
+│   ├── useNotifications.ts          # Notificaciones reales (store compartido + polling 60s)
 │   └── useToast.ts                  # Gestión de toasts
 ├── lib/
-│   ├── api.ts                       # Cliente API único (objeto `api` con todos los endpoints)
+│   ├── api.ts                       # Cliente API único (objeto `api` con TODOS los endpoints)
+│   ├── utils.ts                     # `toDateStr(d)` — fecha YYYY-MM-DD en zona America/Santiago
 │   └── formatName.ts                # `formatPlayerName()` — toma 2 palabras + sufijos
 ├── types/
 │   └── index.ts                     # Todos los tipos TypeScript del proyecto
+├── docs/superpowers/plans/          # Planes de implementación (ej: rediseño UI 2026-05-20)
 └── public/images/                   # Logos y favicons
 ```
 
@@ -134,20 +146,6 @@ frontend/
 - `reservas` → solo `/admin-reservas`
 - `all` → ambos paneles + label "Super Admin"
 
----
-
-## Autenticación — `useAuth`
-
-```ts
-const { user, player, loading, login, logout, refreshPlayer } = useAuth();
-```
-
-- Token JWT en `localStorage` key `auth_token`.
-- Cache en memoria (`authCache`) para evitar flickering — no tocar directamente.
-- Validación vía `GET /auth/me`.
-- Timer de inactividad: logout automático a los **5 minutos** sin actividad del usuario (mousemove, keydown, click, scroll, touchstart).
-- `refreshPlayer()` — llamar después de cualquier mutación que cambie datos del jugador en el backend.
-
 **Patrón de protección de página:**
 ```ts
 useEffect(() => {
@@ -157,25 +155,28 @@ useEffect(() => {
 
 ---
 
+## Autenticación — `useAuth`
+
+```ts
+const { user, player, loading, login, logout, refreshPlayer } = useAuth();
+```
+
+- Token JWT en `localStorage` key `auth_token`.
+- Cache en memoria (`authCache`, module-level) para evitar flickering — no tocar directamente.
+- Validación vía `GET /auth/me`.
+- Timer de inactividad: logout automático a los **5 minutos** sin actividad (mousemove, keydown, click, scroll, touchstart). `logout()` hace `window.location.href = '/'` (recarga completa).
+- `refreshPlayer()` — llamar después de cualquier mutación que cambie datos del jugador en el backend.
+- **Sincronización entre instancias:** `login()` dispara el evento `window 'auth:login'`; toda instancia de `useAuth` lo escucha y re-valida. Así el Header se actualiza al hacer login desde cualquier modal. También existe el alias `refreshAuth` (retrocompatibilidad).
+
+---
+
 ## API Backend
 
 **Base URL:** `NEXT_PUBLIC_API_URL` (default `http://localhost:3000`).
 
 ### Usar siempre `api.*` de `lib/api.ts`
 
-Todas las llamadas al backend deben ir por el objeto `api` exportado en `lib/api.ts`. Solo en `admin-reservas/page.tsx` se usan `fetch` directo para endpoints no incluidos en `api`:
-
-| Endpoint directo | Descripción |
-|-----------------|-------------|
-| `GET /reservations/blocks?date=` | Bloqueos por fecha |
-| `POST /reservations/blocks` | Guardar bloqueos (court_id, date, slots[], reason?) |
-| `GET /reservations/light-config?date=` | Cobro de luz por fecha |
-| `POST /reservations/light-config` | Guardar cobro de luz |
-| `GET /reservations/light-summary?month=` | Resumen cobro luz del mes |
-| `GET /admin/players/all` | Todos los jugadores (incluye sin posición) |
-| `GET /reservations?month=` | Reservas del mes completo (para export) |
-
-### Endpoints en `api.*`
+**Todas** las llamadas al backend van por el objeto `api` exportado en `lib/api.ts`. Ya no hay excepciones de `fetch` directo en páginas — los endpoints de bloqueos, cobro de luz y admin players que antes eran fetch directo ya están en `api`.
 
 **Auth**
 ```
@@ -204,6 +205,7 @@ DEL  /admin/players/:id          api.deletePlayer(id)
 POST /admin/players/:id/move     api.movePlayer(id, newPosition)
 POST /admin/players/:id/reset-immunity       api.resetImmunity(id)
 POST /admin/players/:id/reset-vulnerability  api.resetVulnerability(id)
+GET  /admin/players/all          api.getAllPlayersAdmin()   # incluye jugadores sin posición
 ```
 
 **Challenges**
@@ -232,12 +234,29 @@ GET  /reservations/availability?date=  api.getAvailability(date)
 GET  /reservations/my             api.getMyReservations()
 GET  /reservations/player/:id     api.getPlayerReservations(playerId)
 GET  /reservations?date=          api.getAllReservations(date?)
+GET  /reservations?month=         api.getReservationsByMonth(month)   # para export
 GET  /reservations/stats?month=   api.getStats(month?)
 POST /reservations                api.createReservation(data)
 DEL  /reservations/:id            api.cancelReservation(id)
 PATCH /reservations/:id/modify    api.modifyReservation(id, data)
 DEL  /reservations/:id/admin      api.adminCancelReservation(id, reason?)
 POST /reservations/season         api.adminSetSeason(season)
+```
+
+**Bloqueos y Cobro de Luz (admin)**
+```
+GET  /reservations/blocks?date=          api.getBlocks(date)
+POST /reservations/blocks                api.saveBlocks({ court_id, date, slots[], reason? })
+GET  /reservations/light-config?date=    api.getLightConfig(date)
+POST /reservations/light-config          api.saveLightConfig({ date, time_slots[], amount_per_slot })
+GET  /reservations/light-summary?month=  api.getLightSummary(month)
+```
+
+**Notificaciones** (backend pendiente — ver `docs/backend-notifications.md`)
+```
+GET  /notifications              api.getNotifications()        # [] si falla
+POST /notifications/:id/read     api.markNotificationRead(id)
+POST /notifications/read-all     api.markAllNotificationsRead()
 ```
 
 **Master**
@@ -249,6 +268,8 @@ GET  /master/:category           api.getMasterCategory(category)
 ---
 
 ## Modelo de Datos
+
+Tipos completos en `types/index.ts` (`User`, `Player`, `Challenge`, `AuthResponse`, `MasterSeason`, `MasterGroup`, `MasterMatch`, `MasterGroupPlayer`).
 
 ### Availability Slot (response de `/reservations/availability`)
 ```ts
@@ -268,18 +289,10 @@ GET  /master/:category           api.getMasterCategory(category)
 ```
 > Un slot sin `reservation` y con `available: false` es un bloqueo de admin. Usar `!s.reservation` para detectarlo.
 
-### Player
+### Player (campos clave)
 ```ts
 {
-  id: string
-  name: string
-  email: string
-  phone?: string
-  avatar_url?: string | null
   position?: number | null   // null o 0 = sin escalerilla; >0 = posición activa
-  wins: number
-  losses: number
-  total_matches: number
   immune_until: string | null
   vulnerable_until: string | null
   member_type: 'socio' | 'hijo_socio' | 'profe'
@@ -287,7 +300,6 @@ GET  /master/:category           api.getMasterCategory(category)
   has_debt: boolean           // true = bloquea reservas
   extra_high_demand_slots?: number
   school_names?: string[]     // Solo profe
-  is_admin?: boolean
   admin_role?: 'escalerilla' | 'reservas' | 'all' | null
   challenger_challenge?: Challenge | null
   challenged_challenge?: Challenge | null
@@ -330,44 +342,89 @@ Alta demanda por temporada:
 
 ## Categorías de Escalerilla
 
-| Cat | Posiciones | Color Tailwind |
-|-----|-----------|----------------|
-| A | 1–12 | Oro (yellow) |
-| B | 13–24 | Plata (gray) |
-| C | 25–36 | Bronce (orange) |
-| D | 37–48 | Verde (green) |
+| Cat | Posiciones | Color |
+|-----|-----------|-------|
+| A | 1–12 | Oro `#FCD34D` |
+| B | 13–24 | Plata `#D1D5DB` |
+| C | 25–36 | Bronce `#FBA76F` |
+| D | 37–48 | Verde `#8BC234` |
 
-### Emojis de estado en escalerilla
-- ⏰ Desafío pendiente recibido
-- 🎾 Partido aceptado, por jugar
-- 📤 Desafío enviado, esperando respuesta
-- 🛡️ Jugador inmune
-- ⚠️ Jugador vulnerable
+Clases CSS por categoría en `globals.css`: `.cat-letter-{A-D}`, `.cat-num-{A-D}`, `.cat-watermark-{A-D}`, `.cat-divider-{A-D}` (con variantes light/dark).
+
+### Estados en escalerilla (chips, no emojis)
+El rediseño reemplazó los emojis por chips (`Ladder.tsx`):
+- `chip-info` "Inmune" — inmune 3 días post-victoria
+- `chip-warning` "Vulnerable" — vulnerable a desafíos
+- `chip-warning` "Esperando" — desafío pendiente
+- `chip-success` "Por jugar" — partido aceptado
+- `chip-info` "Enviado" — desafío enviado
+- `chip-muted` "Sin actividad"
 
 ---
 
-## Estilos y Colores
+## Sistema de Diseño (rediseño 2026)
 
-Tailwind custom en `tailwind.config.ts`:
+### Tema claro/oscuro
+- Theming por clase: `body.dark`. **Oscuro es el default**; solo es claro si `localStorage.ctg_theme === 'light'`.
+- `app/layout.tsx` inyecta un `themeScript` en `<head>` que aplica la clase antes del primer paint (evita FOUC). No mover esa lógica a un componente cliente.
+- El toggle de tema vive en el dropdown de cuenta del Header (`ThemeToggleRow`) y persiste en `localStorage.ctg_theme`.
 
-```ts
-ctg-green:  '#8BC234'   // Principal — pelota
-ctg-dark:   '#2D5016'   // Verde oscuro
-ctg-forest: '#1e4620'   // Muy oscuro, headers
-ctg-light:  '#d4e9b8'   // Verde claro, backgrounds
-ctg-lime:   '#9ed944'   // Hover
-club-primary:   '#1e5128'
-club-secondary: '#4e9f3d'
-club-accent:    '#95d5b2'
-club-dark:      '#081c15'
-club-bg:        '#d8f3dc'   // Fondo general del body
+### Convención de colores — IMPORTANTE
+Los componentes escriben las clases Tailwind **en hex oscuro hardcodeado** (`bg-[#0a1608]`, `bg-[#0f2211]`, `text-[#F0F7E8]`, `border-[#1e4020]`). El modo claro NO se escribe en los componentes: `globals.css` tiene selectores `body:not(.dark) [class*="bg-[#0a1608]"]` que mapean automáticamente esos hex a equivalentes claros. Al crear UI nueva, usar los mismos hex del sistema y el modo claro sale gratis.
+
+Tokens (también en `tailwind.config.ts` como `dark.*` y `ctg.*`):
+
+| Token | Hex | Uso |
+|-------|-----|-----|
+| `dark-bg` | `#0a1608` | Fondo de página |
+| `dark-surface` | `#0f2211` | Superficie de card |
+| `dark-card` | `#152b18` | Card elevada |
+| `dark-border` | `#1e4020` | Bordes |
+| `ctg-green` | `#8BC234` | Acento único |
+| `ctg-lime` | `#9ed944` | Hover |
+| `ctg-text` | `#F0F7E8` | Texto en oscuro |
+| (light bg) | `#f4f7ee` | Fondo modo claro |
+
+### Clases CSS compartidas (globals.css) — usarlas, no reinventar
+- `.card` / `.card-glow` — paneles
+- `.btn-primary` / `.btn-ghost` / `.btn-danger` — botones
+- `.field` / `.select` / `.label` — formularios
+- `.chip` + `.chip-success|warning|danger|info|muted|purple` — badges
+- `.glow-green` / `.glow-soft` — text-shadow verde
+- `.landing-bg`, `.landing-vignette-1/2` — fondos de landing
+- `.scrollbar-hide`, `.no-grain` (desactiva la textura de grano de `body::before`)
+- `.font-display` — Bricolage Grotesque (títulos); `font-mono` — JetBrains Mono (scores, números)
+
+### Animaciones Tailwind custom
+`animate-fade-in`, `animate-slide-up`, `animate-scale-in`, `animate-glow-pulse`.
+
+### Iconos
+SVG inline path-based: cada archivo define un objeto `I = { nombre: 'path...' }` y un componente `Icon`. No hay librería de iconos — seguir ese patrón.
+
+---
+
+## Header
+
+```tsx
+<Header onLoginClick={() => setShowLogin(true)} />
 ```
 
-Sombras custom: `shadow-soft`, `shadow-card`, `shadow-hover`.
+- La sección activa se deriva de `usePathname()` — el prop `currentPage` quedó **legacy** y se ignora (no pasarlo en código nuevo).
+- Estructura: nav primaria de 5 pills (Inicio, Escalerilla, Desafíos, Reservas, Master) → sub-nav contextual para secciones Desafíos y Reservas → bottom tab bar fija en móvil.
+- Campana de notificaciones con badge → abre `NotificationsPanel`.
+- Dropdown de cuenta: perfil, reservas, historial, links admin según `admin_role`, toggle de tema, logout.
 
-Animaciones custom: `animate-fade-in`, `animate-slide-up`, `animate-scale-in`.
+---
 
-Fuente: `Geist` (sans) + `Geist_Mono` — cargadas en `layout.tsx`.
+## Notificaciones
+
+- `hooks/useNotifications.ts` consume `api.getNotifications()` con **store compartido a nivel de módulo** (mismo patrón que `authCache`): todas las instancias (badge del Header, panel) ven el mismo estado. Polling cada 60s + refetch en evento `auth:login`.
+- Interfaz del hook: `{ items, unreadCount, markRead, markAllRead }`. `markRead`/`markAllRead` son optimistas (UI primero, API fire-and-forget).
+- Si el backend aún no expone los endpoints, `getNotifications` devuelve `[]` y la UI muestra "Sin notificaciones" — no rompe nada.
+- **Contrato backend pendiente de implementar:** ver `docs/backend-notifications.md` (modelo Prisma + 3 endpoints + tabla de eventos que generan cada `NotifType`).
+- `NOTIF_META` mapea cada `NotifType` a icono/color/urgencia/confetti. Tipos desconocidos del backend se ignoran silenciosamente.
+- El tipo wire es `ApiNotification` (`types/index.ts`); el shape de UI `Notification` (con `time` relativo) vive en el hook.
+- `NotificationsPanel.tsx` renderiza el dropdown desde la campana del Header.
 
 ---
 
@@ -377,10 +434,9 @@ Fuente: `Geist` (sans) + `Geist_Mono` — cargadas en `layout.tsx`.
 - Siempre `'use client'` en páginas con estado o hooks.
 - Estado local con `useState`/`useEffect` — sin estado global (no Redux, no Zustand, no Context).
 - Cada página gestiona su propio loading, error y refetch.
-- Siempre pasarle a `<Header>` el `currentPage` correcto y `onLoginClick` que abra `<LoginModal>`.
 
 ### API calls
-- Usar siempre `api.*` de `lib/api.ts`. No hacer `fetch` directo en páginas excepto para los endpoints que no están en `api` (ver tabla arriba).
+- Usar siempre `api.*` de `lib/api.ts`. No hacer `fetch` directo en páginas; si falta un endpoint, agregarlo a `api`.
 - Errores: try/catch con toasts (`useToast`). Modales permanecen abiertos en error.
 - Refetch manual después de mutaciones — no hay cache automático.
 
@@ -388,34 +444,23 @@ Fuente: `Geist` (sans) + `Geist_Mono` — cargadas en `layout.tsx`.
 - Definir tipos en `types/index.ts`. No crear tipos inline si ya existen.
 - Usar `any` solo cuando el backend no está tipado aún (ej: slots de disponibilidad).
 
-### Nombres
-- Archivos de página: `page.tsx` (Next.js App Router).
-- Componentes: PascalCase (`LoginModal.tsx`).
-- Hooks: camelCase con prefijo `use` (`useAuth.ts`).
-- Helpers: camelCase (`formatName.ts`).
-
 ### Fechas
-- Usar el patrón local `toDateStr(date: Date): string` que genera `YYYY-MM-DD` (presente en múltiples páginas). No usar `date.toISOString().split('T')[0]` porque tiene bugs de zona horaria. Usar `new Date(dateStr + 'T12:00:00')` para parsear fechas del backend.
+- Importar `toDateStr` desde `@/lib/utils` (genera `YYYY-MM-DD` en zona `America/Santiago`). **No** usar `date.toISOString().split('T')[0]` ni copias locales — tienen bugs de zona horaria.
+- Para parsear fechas del backend: `new Date(dateStr + 'T12:00:00')`.
 
 ### Nombres de jugadores
 - Usar `formatPlayerName(name)` de `lib/formatName.ts` para mostrar nombres (toma primeras 2 palabras + sufijo si aplica).
 
 ### Toasts
 ```ts
-const { success, error, warning, info } = useToast();
-// En JSX, renderizar: {toasts.map(t => <Toast key={t.id} ...t onClose={() => removeToast(t.id)} />)}
-```
-
-### Header
-```tsx
-<Header currentPage="reservar" onLoginClick={() => setShowLogin(true)} />
-// currentPage type: 'home' | 'escalerilla' | 'fixture' | 'historial' | 'partidos' | 
-//   'admin' | 'perfil' | 'master' | 'reservar' | 'mis-reservas' | 'fixture-reservas' | 'admin-reservas'
+const { toasts, removeToast, success, error, warning, info } = useToast();
+// En JSX: {toasts.map(t => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />)}
 ```
 
 ### Modales
 - Patrón: `isOpen: boolean`, `onClose: () => void`, `onSuccess: () => void`.
 - Permanecen abiertos en error — no cerrar automáticamente ante errores.
+- Visual: fondo `bg-[#0f2211]` / `bg-[#152b18]`, overlay `bg-black/75 backdrop-blur-sm`, `animate-scale-in`.
 
 ---
 
@@ -436,11 +481,10 @@ const { success, error, warning, info } = useToast();
 
 ## Bloqueos de Canchas (admin)
 
-- Admin crea bloqueos en `/admin-reservas` tab "Reservas": selecciona cancha, fecha, horarios y motivo opcional.
-- Se guardan con `POST /reservations/blocks` → body: `{ court_id, date, slots[], reason? }`.
-- Se cargan con `GET /reservations/blocks?date=` → array de `{ court_id, time_slot, reason, created_at }`.
-- En la UI, `loadBlocks` carga el reason del primer bloque (`courtBlocks[0]?.reason`) — todos los bloques de una cancha/fecha comparten el mismo motivo.
-- En `/fixture-reservas`, un slot bloqueado se detecta con `!s.reservation` (sin reserva asignada). Se muestra `s.block_reason` si existe.
+- Admin crea bloqueos en `/admin-reservas` tab "Reservas": cancha, fecha, horarios y motivo opcional.
+- Guardar: `api.saveBlocks({ court_id, date, slots[], reason? })`. Cargar: `api.getBlocks(date)` → array de `{ court_id, time_slot, reason, created_at }`.
+- Todos los bloques de una cancha/fecha comparten el mismo motivo (la UI carga `courtBlocks[0]?.reason`).
+- En `/fixture-reservas`, un slot bloqueado se detecta con `!s.reservation`. Se muestra `s.block_reason` si existe.
 
 ---
 
@@ -449,16 +493,15 @@ const { success, error, warning, info } = useToast();
 - Solo reservas normales (`!r.is_challenge`).
 - Separado por canchas: hoja/sección "Cancha 1", hoja/sección "Cancha 2".
 - Hoja/sección "Luz" si hay cobro de luz configurado ese mes.
-- Librería: `xlsx` (`XLSX.utils.book_append_sheet`, `XLSX.writeFile`).
-- El CSV usa `'﻿'` (BOM) para compatibilidad con Excel.
-- Endpoint: `GET /reservations?month=YYYY-MM` para obtener todas las reservas del mes.
+- Librería: `xlsx` (`XLSX.utils.book_append_sheet`, `XLSX.writeFile`). El CSV lleva BOM (`'﻿'`) para compatibilidad con Excel.
+- Datos del mes completo: `api.getReservationsByMonth('YYYY-MM')`.
 
 ---
 
 ## Cobro de Luz (admin)
 
 - Admin configura en `/admin-reservas` qué horarios tienen cobro de luz y el monto por horario.
-- `GET /reservations/light-config?date=` → `{ time_slots: string[], amount_per_slot: number }`.
-- `POST /reservations/light-config` → body: `{ date, time_slots[], amount_per_slot }`.
-- `GET /reservations/light-summary?month=` → `{ by_day: [...], total_revenue: number }`.
+- `api.getLightConfig(date)` → `{ time_slots: string[], amount_per_slot: number }`.
+- `api.saveLightConfig({ date, time_slots[], amount_per_slot })`.
+- `api.getLightSummary(month)` → `{ by_day: [...], total_revenue: number }`.
 - Se muestra en stats como KPI y en la hoja de export.
