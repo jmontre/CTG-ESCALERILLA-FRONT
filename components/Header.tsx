@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
+import NotificationsPanel from '@/components/NotificationsPanel';
 
 const I = {
   chevDown:  'M6 9l6 6 6-6',
@@ -17,6 +19,8 @@ const I = {
   user:      'M16 14a4 4 0 10-8 0M20 21a8 8 0 10-16 0',
   flag:      'M5 21V4M5 4h12l-2 4 2 4H5',
   logout:    'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9',
+  sun:       'M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4L7 17M17 7l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z',
+  moon:      'M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z',
 };
 
 type IconKey = keyof typeof I;
@@ -108,6 +112,43 @@ function AvatarEl({ name, avatarUrl, size = 36 }: { name: string; avatarUrl?: st
   );
 }
 
+function ThemeToggleRow() {
+  const [dark, setDark] = useState(() => {
+    if (typeof document === 'undefined') return true;
+    return document.body.classList.contains('dark');
+  });
+
+  function apply(d: boolean) {
+    setDark(d);
+    document.body.classList.toggle('dark', d);
+    try { localStorage.setItem('ctg_theme', d ? 'dark' : 'light'); } catch (_) {}
+  }
+
+  return (
+    <div className="px-3 py-2 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2.5 text-[#F0F7E8]/80 text-sm">
+        <Icon d={dark ? I.moon : I.sun} size={14} />
+        <span>Modo {dark ? 'oscuro' : 'claro'}</span>
+      </div>
+      <div className="flex bg-[#152b18] border border-[#1e4020] rounded-full p-0.5">
+        <button
+          onClick={() => apply(false)}
+          className={'px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1 ' +
+            (!dark ? 'bg-ctg-green text-[#0a1608]' : 'text-[#F0F7E8]/55 hover:text-[#F0F7E8]')}
+        >
+          <Icon d={I.sun} size={11} strokeWidth={2.2} /> Claro
+        </button>
+        <button
+          onClick={() => apply(true)}
+          className={'px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1 ' +
+            (dark ? 'bg-ctg-green text-[#0a1608]' : 'text-[#F0F7E8]/55 hover:text-[#F0F7E8]')}
+        >
+          <Icon d={I.moon} size={11} strokeWidth={2.2} /> Oscuro
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function AccountItem({ label, icon, onClick, danger, adminBadge }: {
   label: string; icon: string; onClick: () => void; danger?: boolean; adminBadge?: boolean;
@@ -138,15 +179,19 @@ export default function Header({ onLoginClick }: HeaderProps) {
   const { player, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { unreadCount } = useNotifications();
+
   const [showAccount, setShowAccount] = useState(false);
-  const acctRef = useRef<HTMLDivElement>(null);
+  const [showNotifs, setShowNotifs]   = useState(false);
+  const acctRef  = useRef<HTMLDivElement>(null);
+  const bellRef  = useRef<HTMLButtonElement>(null);
 
   const activeSection = getActiveSection(pathname);
   const subnav = activeSection && activeSection in SUBNAVS
     ? SUBNAVS[activeSection as keyof typeof SUBNAVS]
     : null;
 
-  const adminRole = player?.admin_role;
+  const adminRole  = player?.admin_role;
   const isSuperAdmin = adminRole === 'all';
 
   useEffect(() => {
@@ -185,7 +230,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
             </div>
           </Link>
 
-          {/* Desktop primary nav — no dropdowns */}
+          {/* Desktop primary nav */}
           <nav className="hidden md:flex items-center gap-1 ml-6">
             {PRIMARY_NAV.map(item => {
               const active = activeSection === item.id;
@@ -217,13 +262,33 @@ export default function Header({ onLoginClick }: HeaderProps) {
                 <Icon d={I.plus} size={14} strokeWidth={2.5} /> Reservar
               </button>
 
-              {/* Bell (placeholder — NotificationsPanel added in Task 9) */}
-              <button
-                className="relative w-10 h-10 rounded-xl flex items-center justify-center transition hover:bg-ctg-green/10 text-[#F0F7E8]/70 hover:text-ctg-green"
-                title="Notificaciones"
-              >
-                <Icon d={I.bell} size={19} />
-              </button>
+              {/* Bell with badge */}
+              <div className="relative">
+                <button
+                  ref={bellRef}
+                  onClick={() => setShowNotifs(o => !o)}
+                  className={'relative w-10 h-10 rounded-xl flex items-center justify-center transition ' +
+                    (showNotifs
+                      ? 'bg-ctg-green/15 text-ctg-green'
+                      : 'hover:bg-ctg-green/10 text-[#F0F7E8]/70 hover:text-ctg-green')}
+                  title={unreadCount > 0 ? `${unreadCount} sin leer` : 'Notificaciones'}
+                >
+                  <Icon d={I.bell} size={19} />
+                  {unreadCount > 0 && (
+                    <span
+                      className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-[#0a1608]"
+                      style={{ boxShadow: '0 0 8px rgba(239,68,68,.6)' }}
+                    >
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationsPanel
+                  isOpen={showNotifs}
+                  onClose={() => setShowNotifs(false)}
+                  anchorRef={bellRef}
+                />
+              </div>
 
               {/* Avatar dropdown */}
               <div className="relative" ref={acctRef}>
@@ -259,14 +324,14 @@ export default function Header({ onLoginClick }: HeaderProps) {
                       )}
                     </div>
                     <div className="p-1">
-                      <AccountItem label="Mi perfil" icon={I.user} onClick={() => { setShowAccount(false); go('/perfil'); }} />
+                      <AccountItem label="Mi perfil"    icon={I.user}     onClick={() => { setShowAccount(false); go('/perfil'); }} />
                       <AccountItem label="Mis reservas" icon={I.calendar} onClick={() => { setShowAccount(false); go('/mis-reservas'); }} />
-                      <AccountItem label="Historial" icon={I.flag} onClick={() => { setShowAccount(false); go('/historial'); }} />
+                      <AccountItem label="Historial"    icon={I.flag}     onClick={() => { setShowAccount(false); go('/historial'); }} />
                       {isSuperAdmin && (
                         <>
                           <div className="h-px bg-[#1e4020] my-1" />
-                          <AccountItem label="Panel Escalerilla" icon={I.trophy} onClick={() => { setShowAccount(false); go('/admin'); }} adminBadge />
-                          <AccountItem label="Panel Reservas" icon={I.calendar} onClick={() => { setShowAccount(false); go('/admin-reservas'); }} adminBadge />
+                          <AccountItem label="Panel Escalerilla" icon={I.trophy}   onClick={() => { setShowAccount(false); go('/admin'); }}          adminBadge />
+                          <AccountItem label="Panel Reservas"    icon={I.calendar} onClick={() => { setShowAccount(false); go('/admin-reservas'); }} adminBadge />
                         </>
                       )}
                       {adminRole === 'escalerilla' && (
@@ -281,6 +346,8 @@ export default function Header({ onLoginClick }: HeaderProps) {
                           <AccountItem label="Panel Reservas" icon={I.calendar} onClick={() => { setShowAccount(false); go('/admin-reservas'); }} adminBadge />
                         </>
                       )}
+                      <div className="h-px bg-[#1e4020] my-1" />
+                      <ThemeToggleRow />
                       <div className="h-px bg-[#1e4020] my-1" />
                       <AccountItem label="Cerrar sesión" icon={I.logout} onClick={() => { setShowAccount(false); logout(); }} danger />
                     </div>
@@ -331,6 +398,7 @@ export default function Header({ onLoginClick }: HeaderProps) {
         <div className="flex items-stretch justify-around max-w-md mx-auto px-1 pt-1.5">
           {PRIMARY_NAV.map(item => {
             const active = activeSection === item.id;
+            const isDesafios = item.id === 'desafios';
             return (
               <button
                 key={item.id}
@@ -342,6 +410,11 @@ export default function Header({ onLoginClick }: HeaderProps) {
                     ? 'bg-ctg-green text-[#0a1608] shadow-[0_0_18px_rgba(139,194,52,.5)]'
                     : 'text-[#F0F7E8]/55 group-active:bg-ctg-green/15')}>
                   <Icon d={I[item.icon]} size={17} strokeWidth={active ? 2.4 : 1.9} />
+                  {isDesafios && unreadCount > 0 && !active && (
+                    <span className="absolute -top-1 -right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-[#0a1608]">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </div>
                 <span className={'text-[10px] font-semibold transition leading-tight tracking-tight ' +
                   (active ? 'text-ctg-green' : 'text-[#F0F7E8]/60')}>
