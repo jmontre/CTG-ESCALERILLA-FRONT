@@ -59,6 +59,19 @@ export interface AuthResponse {
   player: Player;
 }
 
+// Notificación cruda del backend (GET /notifications).
+// El shape de UI (con `time` relativo y `action` anidada) vive en hooks/useNotifications.ts
+export interface ApiNotification {
+  id: string;
+  type: string;          // NotifType — el frontend ignora tipos que no estén en NOTIF_META
+  read: boolean;
+  title: string;
+  body: string;
+  created_at: string;    // ISO 8601
+  action_label?: string | null;
+  action_path?: string | null;
+}
+
 export interface MasterGroupPlayer {
   id: string;
   group_id: string;
