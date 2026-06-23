@@ -110,9 +110,11 @@ export default function FixtureReservasPage() {
                       {occupiedSlots.map((s: any) => {
                         const isHighDemand  = availability.high_demand_slots?.includes(s.slot);
                         const isChallenge   = s.reservation?.is_challenge;
+                        const isMaster      = s.reservation?.is_master;
+                        const masterCat     = s.reservation?.master_category;
                         const isBlocked     = !s.reservation;
                         return (
-                          <div key={s.slot} className={`flex items-center justify-between px-5 py-3 ${isChallenge ? 'bg-blue-50/50' : ''} ${isBlocked ? 'bg-gray-50/50' : ''} ${isToday && isPast(s.slot) ? 'opacity-50' : ''}`}>
+                          <div key={s.slot} className={`flex items-center justify-between px-5 py-3 ${isChallenge ? 'bg-blue-50/50' : ''} ${isMaster ? 'bg-amber-50/50' : ''} ${isBlocked ? 'bg-gray-50/50' : ''} ${isToday && isPast(s.slot) ? 'opacity-50' : ''}`}>
                             {/* Hora */}
                             <div className="flex items-center gap-2 min-w-[80px]">
                               <span className="text-sm font-mono font-bold text-ctg-dark">{s.slot}</span>
@@ -132,11 +134,14 @@ export default function FixtureReservasPage() {
                                     {isChallenge && (
                                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">⚔️ Desafío</span>
                                     )}
+                                    {isMaster && (
+                                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">🏆 Master Categoría {masterCat}</span>
+                                    )}
                                     <p className="text-sm font-semibold text-ctg-dark">{s.reservation.player_name}</p>
                                   </div>
                                   {s.reservation.partner_name && (
                                     <p className="text-xs text-gray-500">
-                                      {isChallenge ? 'vs' : 'con'} {s.reservation.partner_name}
+                                      {(isChallenge || isMaster) ? 'vs' : 'con'} {s.reservation.partner_name}
                                     </p>
                                   )}
                                   {s.reservation.school_name && (
