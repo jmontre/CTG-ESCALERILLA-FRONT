@@ -30,29 +30,14 @@ export const metadata: Metadata = {
   },
 };
 
-// El script corre en <head>, antes de que <body> exista en el DOM.
-// Usamos documentElement como ancla temporal y luego migramos la clase
-// al body cuando el parser lo crea (DOMContentLoaded).
-const themeScript = `
-  (function(){
-    try {
-      var t = localStorage.getItem('ctg_theme');
-      var dark = t !== 'light';
-      var apply = function(el){ if(el) el.classList.toggle('dark', dark); };
-      apply(document.documentElement);
-      document.addEventListener('DOMContentLoaded', function(){
-        apply(document.body);
-        document.documentElement.classList.remove('dark');
-      }, { once: true });
-    } catch(e){}
-  })();
-`;
+// Script como primer hijo de <body>: en ese punto document.body ya existe,
+// por lo que classList.add nunca lanza TypeError.
+const themeScript = `(function(){try{var t=localStorage.getItem('ctg_theme');if(t!=='light')document.body.classList.add('dark');}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
@@ -62,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${bricolage.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased flex flex-col min-h-screen`}
         style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}
       >
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <div className="flex-1">
           {children}
         </div>

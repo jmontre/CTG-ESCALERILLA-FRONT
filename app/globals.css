@@ -12,9 +12,7 @@ body {
   margin: 0;
   padding: 0;
 }
-/* html.dark cubre el instante entre que el themeScript inyecta la clase
-   y DOMContentLoaded la migra a body — evita flash blanco en Vercel/SSR */
-body.dark, html.dark body { background-color: #0a1608; color: #F0F7E8; }
+body.dark { background-color: #0a1608; color: #F0F7E8; }
 
 /* ── Scrollbar hide ── */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
