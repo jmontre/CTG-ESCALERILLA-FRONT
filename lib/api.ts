@@ -50,22 +50,26 @@ export const api = {
   // Players
   getPlayers: async (): Promise<Player[]> => {
     const res = await fetch(`${API_URL}/players`);
+    if (!res.ok) return [];
     return res.json();
   },
 
   getPlayerByUserId: async (userId: string): Promise<Player> => {
     const res = await fetch(`${API_URL}/players/user/${userId}`);
+    if (!res.ok) throw new Error('Jugador no encontrado');
     return res.json();
   },
 
   getPlayer: async (id: string): Promise<Player> => {
     const res = await fetch(`${API_URL}/players/${id}`);
+    if (!res.ok) throw new Error('Jugador no encontrado');
     return res.json();
   },
 
   // Challenges
   getChallenges: async (): Promise<Challenge[]> => {
     const res = await fetch(`${API_URL}/challenges`);
+    if (!res.ok) return [];
     return res.json();
   },
 
