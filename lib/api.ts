@@ -54,12 +54,12 @@ export const api = {
   },
 
   getPlayerByUserId: async (userId: string): Promise<Player> => {
-    const res = await fetch(`${API_URL}/players/user/${userId}`);
+    const res = await fetch(`${API_URL}/players/user/${userId}`, { headers: authHeader() });
     return res.json();
   },
 
   getPlayer: async (id: string): Promise<Player> => {
-    const res = await fetch(`${API_URL}/players/${id}`);
+    const res = await fetch(`${API_URL}/players/${id}`, { headers: authHeader() });
     return res.json();
   },
 
@@ -71,7 +71,7 @@ export const api = {
 
   createChallenge: async (challengerId: string, challengedId: string): Promise<Challenge> => {
     const res = await fetch(`${API_URL}/challenges`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ challenger_id: challengerId, challenged_id: challengedId }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al crear desafío'); }
@@ -80,7 +80,7 @@ export const api = {
 
   acceptChallenge: async (challengeId: string, playerId: string): Promise<Challenge> => {
     const res = await fetch(`${API_URL}/challenges/${challengeId}/accept`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ player_id: playerId }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al aceptar desafío'); }
     return res.json();
@@ -88,7 +88,7 @@ export const api = {
 
   rejectChallenge: async (challengeId: string, playerId: string): Promise<Challenge> => {
     const res = await fetch(`${API_URL}/challenges/${challengeId}/reject`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ player_id: playerId }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al rechazar desafío'); }
     return res.json();
@@ -96,7 +96,7 @@ export const api = {
 
   submitResult: async (challengeId: string, playerId: string, winnerId: string, score: string): Promise<Challenge> => {
     const res = await fetch(`${API_URL}/challenges/${challengeId}/result`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ player_id: playerId, winner_id: winnerId, score }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al enviar resultado'); }
@@ -105,7 +105,7 @@ export const api = {
 
   scheduleMatch: async (challengeId: string, playerId: string, scheduledDate: string, courtId: string): Promise<{ message: string; challenge: Challenge }> => {
     const res = await fetch(`${API_URL}/challenges/${challengeId}/schedule`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({ player_id: playerId, scheduled_date: scheduledDate, court_id: courtId }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al fijar la fecha del partido'); }
@@ -115,7 +115,7 @@ export const api = {
   // Admin - Players
   createPlayer: async (data: any): Promise<Player> => {
     const res = await fetch(`${API_URL}/admin/players`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(data),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al crear jugador'); }
     return res.json();
@@ -123,33 +123,33 @@ export const api = {
 
   updatePlayer: async (id: string, data: any): Promise<Player> => {
     const res = await fetch(`${API_URL}/admin/players/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(data),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al actualizar jugador'); }
     return res.json();
   },
 
   deletePlayer: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_URL}/admin/players/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/players/${id}`, { method: 'DELETE', headers: authHeader() });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al eliminar jugador'); }
   },
 
   movePlayer: async (id: string, newPosition: number): Promise<Player> => {
     const res = await fetch(`${API_URL}/admin/players/${id}/move`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newPosition }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ newPosition }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al mover jugador'); }
     return res.json();
   },
 
   resetImmunity: async (id: string): Promise<Player> => {
-    const res = await fetch(`${API_URL}/admin/players/${id}/reset-immunity`, { method: 'POST' });
+    const res = await fetch(`${API_URL}/admin/players/${id}/reset-immunity`, { method: 'POST', headers: authHeader() });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error'); }
     return res.json();
   },
 
   resetVulnerability: async (id: string): Promise<Player> => {
-    const res = await fetch(`${API_URL}/admin/players/${id}/reset-vulnerability`, { method: 'POST' });
+    const res = await fetch(`${API_URL}/admin/players/${id}/reset-vulnerability`, { method: 'POST', headers: authHeader() });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error'); }
     return res.json();
   },
@@ -157,25 +157,25 @@ export const api = {
   // Admin - Challenges
   resolveChallenge: async (challengeId: string, winnerId: string, score: string): Promise<Challenge> => {
     const res = await fetch(`${API_URL}/admin/challenges/${challengeId}/resolve`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ winnerId, score }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ winnerId, score }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al resolver desafío'); }
     return res.json();
   },
 
   cancelChallenge: async (challengeId: string): Promise<void> => {
-    const res = await fetch(`${API_URL}/admin/challenges/${challengeId}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/challenges/${challengeId}`, { method: 'DELETE', headers: authHeader() });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al cancelar desafío'); }
   },
 
   forceDeleteChallenge: async (challengeId: string): Promise<void> => {
-    const res = await fetch(`${API_URL}/admin/challenges/${challengeId}/force`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/admin/challenges/${challengeId}/force`, { method: 'DELETE', headers: authHeader() });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al eliminar desafío'); }
   },
 
   extendDeadline: async (challengeId: string, hours: number, type: 'accept' | 'play'): Promise<Challenge> => {
     const res = await fetch(`${API_URL}/admin/challenges/${challengeId}/extend`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hours, type }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ hours, type }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al extender deadline'); }
     const data = await res.json();
@@ -221,13 +221,13 @@ export const api = {
   // ── Reservas ──────────────────────────────────────────────────────────────
 
   getCourts: async () => {
-    const res = await fetch(`${API_URL}/reservations/courts`);
+    const res = await fetch(`${API_URL}/reservations/courts`, { headers: authHeader() });
     if (!res.ok) return [];
     return res.json();
   },
 
   getSeason: async (): Promise<{ season: string }> => {
-    const res = await fetch(`${API_URL}/reservations/season`);
+    const res = await fetch(`${API_URL}/reservations/season`, { headers: authHeader() });
     if (!res.ok) return { season: 'verano' };
     return res.json();
   },
@@ -245,14 +245,14 @@ export const api = {
   },
 
   getPlayerReservations: async (playerId: string) => {
-    const res = await fetch(`${API_URL}/reservations/player/${playerId}`);
+    const res = await fetch(`${API_URL}/reservations/player/${playerId}`, { headers: authHeader() });
     if (!res.ok) return { reservations: [], weekUsage: null };
     return res.json();
   },
 
   getAllReservations: async (date?: string) => {
     const url = date ? `${API_URL}/reservations?date=${date}` : `${API_URL}/reservations`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: authHeader() });
     if (!res.ok) return [];
     return res.json();
   },
@@ -285,7 +285,7 @@ export const api = {
 
   adminCancelReservation: async (id: string, reason?: string) => {
     const res = await fetch(`${API_URL}/reservations/${id}/admin`, {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
+      method: 'DELETE', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ reason }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al cancelar reserva'); }
     return res.json();
@@ -293,7 +293,7 @@ export const api = {
 
   adminSetSeason: async (season: string) => {
     const res = await fetch(`${API_URL}/reservations/season`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ season }),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify({ season }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al actualizar temporada'); }
     return res.json();
@@ -301,7 +301,7 @@ export const api = {
 
   getStats: async (month?: string) => {
     const url = month ? `${API_URL}/reservations/stats?month=${month}` : `${API_URL}/reservations/stats`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: authHeader() });
     if (!res.ok) throw new Error('Error al obtener estadísticas');
     return res.json();
   },
@@ -309,14 +309,14 @@ export const api = {
   // ── Bloqueos ──────────────────────────────────────────────────────────────
 
   getBlocks: async (date: string) => {
-    const res = await fetch(`${API_URL}/reservations/blocks?date=${date}`);
+    const res = await fetch(`${API_URL}/reservations/blocks?date=${date}`, { headers: authHeader() });
     if (!res.ok) return [];
     return res.json();
   },
 
   saveBlocks: async (data: { court_id: string; date: string; slots: string[]; reason?: string }) => {
     const res = await fetch(`${API_URL}/reservations/blocks`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(data),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar bloqueos'); }
     return res.json();
@@ -325,27 +325,27 @@ export const api = {
   // ── Cobro de luz ──────────────────────────────────────────────────────────
 
   getLightConfig: async (date: string) => {
-    const res = await fetch(`${API_URL}/reservations/light-config?date=${date}`);
+    const res = await fetch(`${API_URL}/reservations/light-config?date=${date}`, { headers: authHeader() });
     if (!res.ok) return null;
     return res.json();
   },
 
   saveLightConfig: async (data: { date: string; time_slots: string[]; amount_per_slot: number }) => {
     const res = await fetch(`${API_URL}/reservations/light-config`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(data),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar cobro de luz'); }
     return res.json();
   },
 
   getLightSummary: async (month: string) => {
-    const res = await fetch(`${API_URL}/reservations/light-summary?month=${month}`);
+    const res = await fetch(`${API_URL}/reservations/light-summary?month=${month}`, { headers: authHeader() });
     if (!res.ok) return null;
     return res.json();
   },
 
   getReservationsByMonth: async (month: string) => {
-    const res = await fetch(`${API_URL}/reservations?month=${month}`);
+    const res = await fetch(`${API_URL}/reservations?month=${month}`, { headers: authHeader() });
     if (!res.ok) throw new Error('Error al obtener reservas del mes');
     return res.json();
   },
