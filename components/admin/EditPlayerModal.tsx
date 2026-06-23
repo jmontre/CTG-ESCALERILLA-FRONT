@@ -51,7 +51,7 @@ export default function EditPlayerModal({ isOpen, onClose, onSuccess, player, al
         parent_id:               (player as any).parent_id    || '',
         has_debt:                (player as any).has_debt     || false,
         extra_high_demand_slots: (player as any).extra_high_demand_slots ?? 0,
-        admin_role:              player.admin_role || '',
+        admin_role:              (player.admin_role ?? player.user?.admin_role) || '',
       });
       loadPlayerReservations(player.id);
     }

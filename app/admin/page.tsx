@@ -59,11 +59,11 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       const [playersData, challengesData, masterData] = await Promise.all([
-        api.getPlayers(),
+        api.getAllPlayersAdmin(),   // endpoint admin: incluye email/phone/has_debt
         api.getChallenges(),
         api.getMaster(),
       ]);
-      setPlayers(playersData);
+      setPlayers(playersData || []);
       setChallenges(challengesData);
       setMasterSeasons(masterData || []);
     } catch (err) {
@@ -287,7 +287,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {players.filter(p => (p.position ?? 0) > 0).map((p) => (
+                  {players.filter(p => (p.position ?? 0) > 0).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((p) => (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-ctg-dark">#{p.position ?? '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">{p.name}</td>
