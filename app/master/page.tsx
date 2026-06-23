@@ -87,14 +87,18 @@ function Calendar({ selectedDate, onSelect, minDate, maxDate }: {
 
 // ── Schedule Modal ────────────────────────────────────────────────────────────
 function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
-  match: MasterMatchExt; onClose: () => void; onSubmit: (iso: string) => Promise<void>;
+  match: MasterMatchExt; onClose: () => void; onSubmit: (iso: string, courtId: string) => Promise<void>;
   minDate: Date; maxDate: Date;
 }) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [courts, setCourts] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCourt, setSelectedCourt] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const now = new Date();
+
+  useEffect(() => { api.getCourts().then(setCourts).catch(() => setCourts([])); }, []);
 
   const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
   const formatDisplay = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -113,12 +117,13 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
   const handleSubmit = async () => {
     setError('');
     if (!selectedDate || !selectedSlot) { setError('Debes seleccionar fecha y horario.'); return; }
+    if (!selectedCourt) { setError('Debes seleccionar una cancha.'); return; }
     const [h, m] = selectedSlot.split(':').map(Number);
     const final = new Date(selectedDate); final.setHours(h, m, 0, 0);
     if (final <= now) { setError('El horario seleccionado ya pasó.'); return; }
     if (final > maxDate) { setError('La fecha supera el límite del round.'); return; }
     setLoading(true);
-    try { await onSubmit(final.toISOString()); onClose(); }
+    try { await onSubmit(final.toISOString(), selectedCourt); onClose(); }
     catch (err: any) { setError(err.message || 'Error al fijar la fecha.'); }
     finally { setLoading(false); }
   };
@@ -171,6 +176,25 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
               </div>
             )}
           </div>
+          <div>
+            <p className={`text-sm font-semibold mb-3 flex items-center gap-1 ${selectedSlot ? 'text-gray-700' : 'text-gray-400'}`}>
+              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedSlot ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>3</span>
+              Selecciona la cancha
+            </p>
+            {!selectedSlot ? (
+              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige un horario</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {courts.map(c => (
+                  <button key={c.id} type="button" onClick={() => { setSelectedCourt(c.id); setError(''); }}
+                    className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
+                      ${selectedCourt === c.id ? 'bg-ctg-dark border-ctg-dark text-white shadow-md' : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {selectedDate && selectedSlot && (
             <div className="bg-ctg-light/60 rounded-xl px-4 py-3 text-sm text-ctg-dark font-semibold flex items-center gap-2">
               <span>✅</span>
@@ -180,7 +204,7 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
           {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition font-medium">Cancelar</button>
-            <button type="button" onClick={handleSubmit} disabled={loading || !selectedDate || !selectedSlot}
+            <button type="button" onClick={handleSubmit} disabled={loading || !selectedDate || !selectedSlot || !selectedCourt}
               className="flex-1 px-4 py-2.5 bg-ctg-green text-white font-bold rounded-xl hover:bg-ctg-lime transition disabled:opacity-40">
               {loading ? 'Guardando...' : 'Confirmar'}
             </button>
@@ -372,7 +396,7 @@ function StandingsTable({ group }: { group: MasterGroup }) {
 function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
   match: MasterMatchExt;
   currentPlayerId?: string;
-  onSchedule: (matchId: string, isoDate: string) => Promise<void>;
+  onSchedule: (matchId: string, isoDate: string, courtId: string) => Promise<void>;
   onResult: (matchId: string, winnerId: string, score: string) => Promise<void>;
   season: MasterSeason;
 }) {
@@ -468,7 +492,7 @@ function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
 
       {showSchedule && (
         <MasterScheduleModal match={match} onClose={() => setShowSchedule(false)}
-          onSubmit={(iso) => onSchedule(match.id, iso)} minDate={minDate} maxDate={maxDate} />
+          onSubmit={(iso, courtId) => onSchedule(match.id, iso, courtId)} minDate={minDate} maxDate={maxDate} />
       )}
       {showResult && (
         <MasterResultModal match={match} onClose={() => setShowResult(false)}
@@ -524,14 +548,14 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
     final: '🟡 Final', completed: '✅ Completado',
   };
 
-  const handleSchedule = async (matchId: string, isoDate: string) => {
+  const handleSchedule = async (matchId: string, isoDate: string, courtId: string) => {
     const token = localStorage.getItem('auth_token');
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/matches/${matchId}/schedule`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ scheduled_date: isoDate }),
+      body: JSON.stringify({ scheduled_date: isoDate, court_id: courtId }),
     });
-    if (!res.ok) throw new Error('Error al fijar fecha');
+    if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.message || 'Error al fijar fecha'); }
     onRefresh();
   };
 
