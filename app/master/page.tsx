@@ -94,11 +94,32 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [courts, setCourts] = useState<{ id: string; name: string }[]>([]);
   const [selectedCourt, setSelectedCourt] = useState<string>('');
+  const [availability, setAvailability] = useState<any | null>(null);
+  const [loadingAvail, setLoadingAvail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const now = new Date();
 
   useEffect(() => { api.getCourts().then(setCourts).catch(() => setCourts([])); }, []);
+
+  // Al elegir fecha, consultar disponibilidad real (reservas + bloqueos)
+  useEffect(() => {
+    if (!selectedDate) { setAvailability(null); return; }
+    const ymd = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
+    setLoadingAvail(true);
+    api.getAvailability(ymd)
+      .then(setAvailability)
+      .catch(() => setAvailability(null))
+      .finally(() => setLoadingAvail(false));
+  }, [selectedDate]);
+
+  // Un slot está disponible si al menos una cancha lo tiene libre
+  const slotHasFreeCourt = (slotStart: string): boolean =>
+    !!availability?.courts?.some((c: any) => c.slots?.find((s: any) => s.slot === slotStart)?.available);
+
+  // Una cancha está libre en el slot elegido
+  const courtFreeAt = (courtId: string, slotStart: string): boolean =>
+    !!availability?.courts?.find((c: any) => c.id === courtId)?.slots?.find((s: any) => s.slot === slotStart)?.available;
 
   const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
   const formatDisplay = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -151,7 +172,7 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
               Selecciona la fecha
             </p>
             <div className="border-2 border-gray-100 rounded-xl p-4">
-              <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setError(''); }} minDate={minDate} maxDate={maxDate} />
+              <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setSelectedCourt(''); setError(''); }} minDate={minDate} maxDate={maxDate} />
             </div>
             {selectedDate && <p className="text-xs text-ctg-dark font-semibold mt-2 ml-1">📆 {formatDisplay(selectedDate)}</p>}
           </div>
@@ -162,17 +183,25 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
             </p>
             {!selectedDate ? (
               <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige una fecha</div>
+            ) : loadingAvail ? (
+              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Cargando disponibilidad…</div>
             ) : slots.length === 0 ? (
               <div className="rounded-xl border-2 border-dashed border-orange-200 py-6 text-center text-orange-500 text-sm">No hay horarios disponibles</div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {slots.map(slot => (
-                  <button key={slot.start} type="button" onClick={() => { setSelectedSlot(slot.start); setError(''); }}
-                    className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
-                      ${selectedSlot === slot.start ? 'bg-ctg-dark border-ctg-dark text-white shadow-md' : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
-                    {slot.label}
-                  </button>
-                ))}
+                {slots.map(slot => {
+                  const free = slotHasFreeCourt(slot.start);
+                  return (
+                    <button key={slot.start} type="button" disabled={!free}
+                      onClick={() => { setSelectedSlot(slot.start); setSelectedCourt(''); setError(''); }}
+                      className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
+                        ${!free ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                          : selectedSlot === slot.start ? 'bg-ctg-dark border-ctg-dark text-white shadow-md'
+                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
+                      {slot.label}{!free && <span className="block text-[10px] font-normal">ocupado</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -185,13 +214,19 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
               <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige un horario</div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {courts.map(c => (
-                  <button key={c.id} type="button" onClick={() => { setSelectedCourt(c.id); setError(''); }}
-                    className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
-                      ${selectedCourt === c.id ? 'bg-ctg-dark border-ctg-dark text-white shadow-md' : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
-                    {c.name}
-                  </button>
-                ))}
+                {courts.map(c => {
+                  const free = courtFreeAt(c.id, selectedSlot!);
+                  return (
+                    <button key={c.id} type="button" disabled={!free}
+                      onClick={() => { setSelectedCourt(c.id); setError(''); }}
+                      className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
+                        ${!free ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                          : selectedCourt === c.id ? 'bg-ctg-dark border-ctg-dark text-white shadow-md'
+                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
+                      {c.name}{!free && <span className="block text-[10px] font-normal">ocupada</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
