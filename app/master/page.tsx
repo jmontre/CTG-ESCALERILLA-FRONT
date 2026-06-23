@@ -90,66 +90,68 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
   match: MasterMatchExt; onClose: () => void; onSubmit: (iso: string, courtId: string) => Promise<void>;
   minDate: Date; maxDate: Date;
 }) {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [courts, setCourts] = useState<{ id: string; name: string }[]>([]);
-  const [selectedCourt, setSelectedCourt] = useState<string>('');
-  const [availability, setAvailability] = useState<any | null>(null);
-  const [loadingAvail, setLoadingAvail] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [courts, setCourts]               = useState<{ id: string; name: string }[]>([]);
+  const [selectedCourt, setSelectedCourt] = useState<{ id: string; name: string } | null>(null);
+  const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
+  const [selectedSlot, setSelectedSlot]   = useState<string | null>(null);
+  const [availability, setAvailability]   = useState<any | null>(null);
+  const [loadingSlots, setLoadingSlots]   = useState(false);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState('');
   const now = new Date();
+
+  // No permitir fechas pasadas: el mínimo efectivo es el mayor entre el inicio del round y hoy
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const effMinDate = minDate > today ? minDate : today;
 
   useEffect(() => { api.getCourts().then(setCourts).catch(() => setCourts([])); }, []);
 
-  // Al elegir fecha, consultar disponibilidad real (reservas + bloqueos)
+  // Al tener cancha + fecha, consultar disponibilidad real (reservas + bloqueos)
   useEffect(() => {
-    if (!selectedDate) { setAvailability(null); return; }
+    if (!selectedCourt || !selectedDate) return;
+    setLoadingSlots(true);
+    setSelectedSlot(null);
     const ymd = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
-    setLoadingAvail(true);
     api.getAvailability(ymd)
       .then(setAvailability)
       .catch(() => setAvailability(null))
-      .finally(() => setLoadingAvail(false));
-  }, [selectedDate]);
-
-  // Un slot está disponible si al menos una cancha lo tiene libre
-  const slotHasFreeCourt = (slotStart: string): boolean =>
-    !!availability?.courts?.some((c: any) => c.slots?.find((s: any) => s.slot === slotStart)?.available);
-
-  // Una cancha está libre en el slot elegido
-  const courtFreeAt = (courtId: string, slotStart: string): boolean =>
-    !!availability?.courts?.find((c: any) => c.id === courtId)?.slots?.find((s: any) => s.slot === slotStart)?.available;
+      .finally(() => setLoadingSlots(false));
+  }, [selectedCourt, selectedDate]);
 
   const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
   const formatDisplay = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
   const roundLabel = match.round === 'group' ? 'Round Robin' : 'Semifinal';
 
-  const availableSlots = () => {
-    if (!selectedDate) return TIME_SLOTS;
-    if (!isSameDay(selectedDate, now)) return TIME_SLOTS;
-    return TIME_SLOTS.filter(s => {
-      const [h, m] = s.start.split(':').map(Number);
-      const t = new Date(selectedDate); t.setHours(h, m, 0, 0);
-      return t > now;
+  // Slots de la cancha elegida: ocupado (reserva/bloqueo) o pasado (hoy) → no disponible
+  const getAvailableSlots = () => {
+    if (!selectedDate || !selectedCourt) return [];
+    const courtSlots = availability?.courts?.find((c: any) => c.id === selectedCourt.id)?.slots || [];
+    const highDemand: string[] = availability?.high_demand_slots || [];
+    return TIME_SLOTS.map(slot => {
+      const courtSlot = courtSlots.find((cs: any) => cs.slot === slot.start);
+      const isOccupied = courtSlot ? !courtSlot.available : false;
+      const isPast = isSameDay(selectedDate, now) && (() => {
+        const [h, m] = slot.start.split(':').map(Number);
+        const t = new Date(selectedDate); t.setHours(h, m, 0, 0);
+        return t <= now;
+      })();
+      return { ...slot, available: !isOccupied && !isPast, isHighDemand: highDemand.includes(slot.start) };
     });
   };
 
   const handleSubmit = async () => {
     setError('');
-    if (!selectedDate || !selectedSlot) { setError('Debes seleccionar fecha y horario.'); return; }
     if (!selectedCourt) { setError('Debes seleccionar una cancha.'); return; }
+    if (!selectedDate || !selectedSlot) { setError('Debes seleccionar fecha y horario.'); return; }
     const [h, m] = selectedSlot.split(':').map(Number);
     const final = new Date(selectedDate); final.setHours(h, m, 0, 0);
     if (final <= now) { setError('El horario seleccionado ya pasó.'); return; }
     if (final > maxDate) { setError('La fecha supera el límite del round.'); return; }
     setLoading(true);
-    try { await onSubmit(final.toISOString(), selectedCourt); onClose(); }
+    try { await onSubmit(final.toISOString(), selectedCourt.id); onClose(); }
     catch (err: any) { setError(err.message || 'Error al fijar la fecha.'); }
     finally { setLoading(false); }
   };
-
-  const slots = availableSlots();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -166,80 +168,88 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
             <span>⏰</span>
             <span>{roundLabel}: <strong>{fmt(minDate)}</strong> — <strong>{fmt(maxDate)}</strong></span>
           </div>
+
+          {/* Paso 1 — Cancha */}
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
               <span className="w-5 h-5 rounded-full bg-ctg-green text-white text-xs flex items-center justify-center font-bold">1</span>
+              Selecciona la cancha
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {courts.map(court => (
+                <button key={court.id} type="button" onClick={() => { setSelectedCourt(court); setSelectedSlot(null); setError(''); }}
+                  className={`p-3 rounded-xl border-2 text-sm font-semibold transition-all text-center
+                    ${selectedCourt?.id === court.id
+                      ? 'border-ctg-green bg-ctg-light/30 text-ctg-dark shadow-md'
+                      : 'border-gray-200 text-gray-600 hover:border-ctg-green/50'}`}>
+                  🎾 {court.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Paso 2 — Fecha */}
+          <div>
+            <p className={`text-sm font-semibold mb-3 flex items-center gap-1 ${selectedCourt ? 'text-gray-700' : 'text-gray-400'}`}>
+              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedCourt ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>2</span>
               Selecciona la fecha
             </p>
-            <div className="border-2 border-gray-100 rounded-xl p-4">
-              <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setSelectedCourt(''); setError(''); }} minDate={minDate} maxDate={maxDate} />
-            </div>
-            {selectedDate && <p className="text-xs text-ctg-dark font-semibold mt-2 ml-1">📆 {formatDisplay(selectedDate)}</p>}
+            {!selectedCourt ? (
+              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige una cancha</div>
+            ) : (
+              <>
+                <div className="border-2 border-gray-100 rounded-xl p-4">
+                  <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setError(''); }} minDate={effMinDate} maxDate={maxDate} />
+                </div>
+                {selectedDate && <p className="text-xs text-ctg-dark font-semibold mt-2 ml-1">📆 {formatDisplay(selectedDate)}</p>}
+              </>
+            )}
           </div>
+
+          {/* Paso 3 — Horario */}
           <div>
             <p className={`text-sm font-semibold mb-3 flex items-center gap-1 ${selectedDate ? 'text-gray-700' : 'text-gray-400'}`}>
-              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedDate ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>2</span>
+              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedDate ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>3</span>
               Selecciona el horario
             </p>
             {!selectedDate ? (
               <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige una fecha</div>
-            ) : loadingAvail ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Cargando disponibilidad…</div>
-            ) : slots.length === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-orange-200 py-6 text-center text-orange-500 text-sm">No hay horarios disponibles</div>
+            ) : loadingSlots ? (
+              <div className="text-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-ctg-green mx-auto"></div></div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {slots.map(slot => {
-                  const free = slotHasFreeCourt(slot.start);
-                  return (
-                    <button key={slot.start} type="button" disabled={!free}
-                      onClick={() => { setSelectedSlot(slot.start); setSelectedCourt(''); setError(''); }}
-                      className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
-                        ${!free ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                          : selectedSlot === slot.start ? 'bg-ctg-dark border-ctg-dark text-white shadow-md'
-                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
-                      {slot.label}{!free && <span className="block text-[10px] font-normal">ocupado</span>}
-                    </button>
-                  );
-                })}
+                {getAvailableSlots().map(slot => (
+                  <button key={slot.start} type="button" disabled={!slot.available}
+                    onClick={() => { if (slot.available) { setSelectedSlot(slot.start); setError(''); } }}
+                    className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
+                      ${!slot.available
+                        ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
+                        : selectedSlot === slot.start
+                          ? 'bg-ctg-dark border-ctg-dark text-white shadow-md scale-[1.02]'
+                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green hover:bg-ctg-light'}`}>
+                    <div>{slot.label}</div>
+                    {slot.isHighDemand && slot.available && <div className={`text-xs mt-0.5 ${selectedSlot === slot.start ? 'text-white/70' : 'text-orange-500'}`}>🔥 Alta demanda</div>}
+                    {!slot.available && <div className="text-xs mt-0.5 text-gray-400">Ocupado</div>}
+                  </button>
+                ))}
               </div>
             )}
           </div>
-          <div>
-            <p className={`text-sm font-semibold mb-3 flex items-center gap-1 ${selectedSlot ? 'text-gray-700' : 'text-gray-400'}`}>
-              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedSlot ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>3</span>
-              Selecciona la cancha
-            </p>
-            {!selectedSlot ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige un horario</div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {courts.map(c => {
-                  const free = courtFreeAt(c.id, selectedSlot!);
-                  return (
-                    <button key={c.id} type="button" disabled={!free}
-                      onClick={() => { setSelectedCourt(c.id); setError(''); }}
-                      className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
-                        ${!free ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                          : selectedCourt === c.id ? 'bg-ctg-dark border-ctg-dark text-white shadow-md'
-                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green'}`}>
-                      {c.name}{!free && <span className="block text-[10px] font-normal">ocupada</span>}
-                    </button>
-                  );
-                })}
+
+          {/* Resumen */}
+          {selectedCourt && selectedDate && selectedSlot && (
+            <div className="bg-ctg-light/60 rounded-xl px-4 py-3 text-sm text-ctg-dark font-semibold space-y-1">
+              <div className="flex items-center gap-2"><span>🎾</span><span>{selectedCourt.name}</span></div>
+              <div className="flex items-center gap-2">
+                <span>✅</span>
+                <span>{formatDisplay(selectedDate)}, {TIME_SLOTS.find(s => s.start === selectedSlot)?.label}</span>
               </div>
-            )}
-          </div>
-          {selectedDate && selectedSlot && (
-            <div className="bg-ctg-light/60 rounded-xl px-4 py-3 text-sm text-ctg-dark font-semibold flex items-center gap-2">
-              <span>✅</span>
-              <span>{formatDisplay(selectedDate)}, {TIME_SLOTS.find(s => s.start === selectedSlot)?.label}</span>
             </div>
           )}
           {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition font-medium">Cancelar</button>
-            <button type="button" onClick={handleSubmit} disabled={loading || !selectedDate || !selectedSlot || !selectedCourt}
+            <button type="button" onClick={handleSubmit} disabled={loading || !selectedCourt || !selectedDate || !selectedSlot}
               className="flex-1 px-4 py-2.5 bg-ctg-green text-white font-bold rounded-xl hover:bg-ctg-lime transition disabled:opacity-40">
               {loading ? 'Guardando...' : 'Confirmar'}
             </button>
