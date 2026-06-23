@@ -30,13 +30,21 @@ export const metadata: Metadata = {
   },
 };
 
+// El script corre en <head>, antes de que <body> exista en el DOM.
+// Usamos documentElement como ancla temporal y luego migramos la clase
+// al body cuando el parser lo crea (DOMContentLoaded).
 const themeScript = `
   (function(){
     try {
       var t = localStorage.getItem('ctg_theme');
-      if (t === 'light') return;
-      document.body.classList.add('dark');
-    } catch(e){ document.body.classList.add('dark'); }
+      var dark = t !== 'light';
+      var apply = function(el){ if(el) el.classList.toggle('dark', dark); };
+      apply(document.documentElement);
+      document.addEventListener('DOMContentLoaded', function(){
+        apply(document.body);
+        document.documentElement.classList.remove('dark');
+      }, { once: true });
+    } catch(e){}
   })();
 `;
 
