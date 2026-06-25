@@ -38,7 +38,7 @@ export const api = {
 
   forgotPassword: async (username: string): Promise<{ message: string }> => {
     const res = await fetch(`${API_URL}/auth/forgot-password`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username }),
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ username }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al procesar la solicitud'); }
     return res.json();
@@ -46,7 +46,7 @@ export const api = {
 
   resetPassword: async (token: string, password: string): Promise<{ message: string }> => {
     const res = await fetch(`${API_URL}/auth/reset-password`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password }),
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ token, password }),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al restablecer la contraseña'); }
     return res.json();
