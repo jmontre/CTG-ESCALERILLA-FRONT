@@ -18,6 +18,8 @@ export function useAuth() {
   // ─── Logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
+    // Limpiar cookie usada por el middleware de Next.js para proteger rutas /admin
+    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
     authCache = null;
     setUser(null);
     setPlayer(null);
@@ -120,6 +122,8 @@ export function useAuth() {
   const login = async (username: string, password: string) => {
     const data = await api.login(username, password);
     localStorage.setItem('auth_token', data.token);
+    // Cookie usada por el middleware de Next.js para proteger rutas /admin
+    document.cookie = `auth_token=${data.token}; path=/; SameSite=Strict`;
     setUser(data.user);
     setPlayer(data.player);
     authCache = { user: data.user, player: data.player };
