@@ -4,6 +4,7 @@ import ChallengeModal from '@/components/ChallengeModal';
 import Header from '@/components/Header';
 import Ladder from '@/components/Ladder';
 import LoginModal from '@/components/LoginModal';
+import LoginPrompt from '@/components/LoginPrompt';
 import PlayerModal from '@/components/PlayerModal';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,8 +33,10 @@ export default function EscalerillaPage() {
     try {
       const data = await api.getPlayers();
       setPlayers(data);
-    } catch (err) {
-      error('Error al cargar jugadores');
+    } catch (err: any) {
+      if (err?.message !== 'Sin sesión activa') {
+        error('Error al cargar jugadores');
+      }
     } finally {
       setLoading(false);
     }
@@ -101,18 +104,10 @@ export default function EscalerillaPage() {
         </div>
 
         {!currentPlayer && (
-          <div className="mb-8 bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500 rounded-xl p-6 shadow-card animate-slide-up">
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">🎾</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-amber-900 mb-1">¡Únete a la competencia!</h3>
-                <p className="text-amber-800 mb-3">Inicia sesión para participar en la escalerilla y desafiar a otros jugadores</p>
-                <button onClick={() => setLoginModalOpen(true)} className="px-5 py-2 bg-ctg-green text-white rounded-lg font-bold hover:bg-ctg-lime transition-colors shadow-soft">
-                  Iniciar sesión
-                </button>
-              </div>
-            </div>
-          </div>
+          <LoginPrompt
+            emoji="🎾"
+            message="Inicia sesión para participar en la escalerilla y desafiar a otros jugadores."
+          />
         )}
 
         {loading ? (

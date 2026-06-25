@@ -73,23 +73,27 @@ export const api = {
 
   // Players
   getPlayers: async (): Promise<Player[]> => {
-    const res = await fetch(`${API_URL}/players`);
+    const res = await authFetch(`${API_URL}/players`);
+    if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 
   getPlayerByUserId: async (userId: string): Promise<Player> => {
     const res = await authFetch(`${API_URL}/players/user/${userId}`);
+    if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 
   getPlayer: async (id: string): Promise<Player> => {
     const res = await authFetch(`${API_URL}/players/${id}`);
+    if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 
   // Challenges
   getChallenges: async (): Promise<Challenge[]> => {
-    const res = await fetch(`${API_URL}/challenges`);
+    const res = await authFetch(`${API_URL}/challenges`);
+    if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 

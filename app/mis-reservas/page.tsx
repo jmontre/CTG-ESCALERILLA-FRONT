@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import LoginPrompt from '@/components/LoginPrompt';
 import ModifyReservationModal from '@/components/ModifyReservationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
@@ -25,17 +26,17 @@ export default function MisReservasPage() {
   const [successMsg, setSuccessMsg]     = useState('');
 
   useEffect(() => {
-    if (!authLoading && !player) { router.push('/'); return; }
-    if (player) {
-      loadReservations();
-      api.getPlayers().then(setAllPlayers);
-    }
-  }, [player, authLoading]);
+    if (!player) return;
+    loadReservations();
+    api.getPlayers().then(setAllPlayers).catch(() => setAllPlayers([]));
+  }, [player]);
 
   const loadReservations = async () => {
     try {
       const data = await api.getMyReservations();
-      setReservations(data);
+      setReservations(data || []);
+    } catch {
+      setReservations([]);
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export default function MisReservasPage() {
 
   const playerType = (player as any)?.member_type || 'socio';
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
@@ -82,6 +83,13 @@ export default function MisReservasPage() {
       <Header currentPage="escalerilla" onLoginClick={() => {}} />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
+        {!player ? (
+          <LoginPrompt
+            emoji="📅"
+            message="Inicia sesión para ver y gestionar tus reservas."
+          />
+        ) : (
+          <>
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-ctg-dark mb-1">Mis Reservas</h1>
@@ -190,6 +198,8 @@ export default function MisReservasPage() {
               ))}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 
