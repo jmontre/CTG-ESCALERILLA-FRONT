@@ -144,10 +144,10 @@ export default function AdminPage() {
     if (!confirm(`¿Generar torneo Master para Categoría ${category}?\n\nSe tomarán los 8 primeros jugadores de la categoría y se armarán los grupos con serpenteo.`)) return;
     setGeneratingCategory(category);
     try {
-      const token = localStorage.getItem('auth_token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ ...masterDates, category }),
       });
       if (!res.ok) {
@@ -167,10 +167,9 @@ export default function AdminPage() {
     if (!confirm(`¿Eliminar el torneo Master de Categoría ${category}?\n\nSe borrarán todos los grupos y partidos.`)) return;
     setDeletingSeasonId(seasonId);
     try {
-      const token = localStorage.getItem('auth_token');
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/${seasonId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       await fetchData();
       success(`Torneo Categoría ${category} eliminado.`);

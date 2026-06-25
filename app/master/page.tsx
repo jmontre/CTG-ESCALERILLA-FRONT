@@ -594,10 +594,10 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
   };
 
   const handleSchedule = async (matchId: string, isoDate: string, courtId: string) => {
-    const token = localStorage.getItem('auth_token');
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/matches/${matchId}/schedule`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ scheduled_date: isoDate, court_id: courtId }),
     });
     if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.message || 'Error al fijar fecha'); }
@@ -605,10 +605,10 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
   };
 
   const handleResult = async (matchId: string, winnerId: string, score: string) => {
-    const token = localStorage.getItem('auth_token');
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/matches/${matchId}/player-result`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ winner_id: winnerId, score }),
     });
     if (!res.ok) {
