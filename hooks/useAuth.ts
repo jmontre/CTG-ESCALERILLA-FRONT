@@ -17,9 +17,7 @@ export function useAuth() {
 
   // ─── Logout ───────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
-    await api.logout(); // limpia la cookie httpOnly en el servidor (dominio railway.app)
-    // Limpiar cookie de routing del middleware (dominio vercel.app — no httpOnly, solo UX)
-    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
+    await api.logout(); // limpia la cookie httpOnly en el servidor (.clubdetenisgraneros.cl)
     authCache = null;
     hasSession.current = false;
     setUser(null);
@@ -113,17 +111,11 @@ export function useAuth() {
 
   // ─── Login ────────────────────────────────────────────────────────────────
   const login = async (username: string, password: string) => {
-    // El backend setea la cookie httpOnly de API en /auth/login (dominio railway.app):
-    // JS no puede leerla, y es la que el guard de NestJS valida en cada request.
-    //
-    // El front setea una cookie de routing separada (dominio vercel.app, no httpOnly):
-    // la necesita el middleware de Next.js para proteger /admin. Contiene el JWT completo
-    // y ES legible por JS — en arquitectura cross-domain (vercel.app ↔ railway.app) no
-    // hay forma de evitarlo sin mover ambos servicios al mismo dominio padre.
-    // Consecuencia: XSS puede robar esta cookie. La defensa real contra robo de token
-    // es prevenir XSS (CSP, no usar dangerouslySetInnerHTML sin sanitizar).
+    // El backend setea la cookie httpOnly en /auth/login (domain: .clubdetenisgraneros.cl).
+    // El middleware de Next.js la lee directamente con request.cookies.get('auth_token')
+    // porque reservas.clubdetenisgraneros.cl comparte el dominio padre. JS no puede leerla.
     const result = await api.login(username, password);
-    document.cookie = `auth_token=${result.token}; path=/; SameSite=Strict`;
+    void result; // token en body mantenido por backward compat; la cookie es la fuente de verdad
     const data = await api.validateToken();
     setUser(data.user);
     setPlayer(data.player);
