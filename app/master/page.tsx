@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
-import { MasterSeason, MasterGroup, MasterMatch, Player } from '@/types';
+import LoginPrompt from '@/components/LoginPrompt';
+import { MasterSeason, MasterGroup, MasterMatch } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -688,7 +689,7 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MasterPage() {
-  const { player } = useAuth();
+  const { player, loading: authLoading } = useAuth();
   const [seasons, setSeasons] = useState<MasterSeason[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -703,12 +704,30 @@ export default function MasterPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!player) { setLoading(false); return; }
+    loadData();
+  }, [authLoading, player?.id]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
+        <Header currentPage="master" onLoginClick={() => {}} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center mb-10">
+            <h1 className="text-5xl font-bold text-ctg-dark mb-2">🏆 Master</h1>
+          </div>
+          <LoginPrompt emoji="🏆" message="Inicia sesión para ver el torneo Master y los resultados." />
+        </div>
       </div>
     );
   }
