@@ -105,8 +105,8 @@ export default function ReservarPage() {
   const [confirmedCourt, setConfirmedCourt]   = useState<any | null>(null); // cancha real asignada
 
   useEffect(() => {
-    api.getCourts().then(setCourts);
-    api.getPlayers().then(setAllPlayers);
+    api.getCourts().then(setCourts).catch(() => {});
+    api.getPlayers().then(setAllPlayers).catch(() => {});
   }, []);
 
   // Cargar disponibilidad cuando cambia fecha (si hay cancha seleccionada o modo any)

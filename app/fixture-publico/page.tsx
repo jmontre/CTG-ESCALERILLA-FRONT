@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import LoginModal from '@/components/LoginModal';
+import LoginPrompt from '@/components/LoginPrompt';
 import { Challenge } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function FixturePublicoPage() {
-  const { player, refreshPlayer } = useAuth();
+  const { player, loading: authLoading, refreshPlayer } = useAuth();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [filteredChallenges, setFilteredChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +21,10 @@ export default function FixturePublicoPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!player) { setLoading(false); return; }
     loadChallenges();
-  }, []);
+  }, [authLoading, player?.id]);
 
   useEffect(() => {
     applyFilters();
@@ -180,6 +183,18 @@ export default function FixturePublicoPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
+        <Header currentPage="partidos" onLoginClick={() => setLoginModalOpen(true)} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <LoginPrompt emoji="🎾" message="Inicia sesión para ver los partidos y desafíos del club." />
+        </div>
+        <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} onSuccess={() => { setLoginModalOpen(false); refreshPlayer(); }} />
       </div>
     );
   }
