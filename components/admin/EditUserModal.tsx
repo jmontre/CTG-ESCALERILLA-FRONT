@@ -218,7 +218,7 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, player, allP
               {formData.member_type === 'profe' && (
                 <div className="md:col-span-2">
                   <label className={labelClass}>Nombres de la escuela</label>
-                  <p className="text-xs text-gray-400 mb-2">Ej: Nano, Mondaca, Isma — aparecerán como "Escuela Nano"</p>
+                  <p className="text-xs text-gray-400 mb-2">Ej: Nano, Mondaca, Isma — aparecerán como &quot;Escuela Nano&quot;</p>
                   <div className="flex gap-2 mb-2">
                     <input type="text" value={newSchoolName}
                       onChange={e => setNewSchoolName(e.target.value)}
