@@ -237,14 +237,14 @@ export const api = {
 
   // Master
   getMaster: async (): Promise<MasterSeason[]> => {
-    const res = await fetch(`${API_URL}/master`);
-    if (!res.ok) return [];
+    const res = await authFetch(`${API_URL}/master`);
+    if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 
   getMasterCategory: async (category: string): Promise<MasterSeason | null> => {
-    const res = await fetch(`${API_URL}/master/${category}`);
-    if (!res.ok) return null;
+    const res = await authFetch(`${API_URL}/master/${category}`);
+    if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 

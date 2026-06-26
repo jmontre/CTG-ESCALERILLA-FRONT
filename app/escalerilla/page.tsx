@@ -24,10 +24,14 @@ export default function EscalerillaPage() {
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
-  const { player: currentPlayer, refreshPlayer } = useAuth();
+  const { player: currentPlayer, loading: authLoading, refreshPlayer } = useAuth();
   const { toasts, removeToast, success, error, warning } = useToast();
 
-  useEffect(() => { loadPlayers(); }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!currentPlayer) { setLoading(false); return; }
+    loadPlayers();
+  }, [authLoading, currentPlayer?.id]);
 
   const loadPlayers = async () => {
     try {
@@ -103,14 +107,14 @@ export default function EscalerillaPage() {
           )}
         </div>
 
-        {!currentPlayer && (
+        {!authLoading && !currentPlayer && (
           <LoginPrompt
             emoji="🎾"
             message="Inicia sesión para participar en la escalerilla y desafiar a otros jugadores."
           />
         )}
 
-        {loading ? (
+        {currentPlayer && (loading ? (
           <div className="bg-white rounded-2xl shadow-card p-16 animate-fade-in">
             <div className="flex flex-col items-center justify-center gap-4">
               <div className="relative">
@@ -124,7 +128,7 @@ export default function EscalerillaPage() {
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-card p-6 md:p-10 animate-slide-up">
             <Ladder players={players} currentPlayerId={currentPlayer?.id} onPlayerClick={handlePlayerClick} />
           </div>
-        )}
+        ))}
 
         {currentPlayer && (currentPlayer.position ?? 0) > 0 && (
           <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
