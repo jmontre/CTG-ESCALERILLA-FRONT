@@ -114,8 +114,7 @@ export function useAuth() {
     // El backend setea la cookie httpOnly en /auth/login (domain: .clubdetenisgraneros.cl).
     // El middleware de Next.js la lee directamente con request.cookies.get('auth_token')
     // porque reservas.clubdetenisgraneros.cl comparte el dominio padre. JS no puede leerla.
-    const result = await api.login(username, password);
-    void result; // token en body mantenido por backward compat; la cookie es la fuente de verdad
+    await api.login(username, password); // el token viaja solo en la cookie httpOnly
     const data = await api.validateToken();
     setUser(data.user);
     setPlayer(data.player);

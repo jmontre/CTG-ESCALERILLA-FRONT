@@ -53,8 +53,8 @@ export interface Challenge {
   results_match?: boolean;
 }
 
+// El token ya no viene en el body: viaja solo en la cookie httpOnly.
 export interface AuthResponse {
-  token: string;
   user: User;
   player: Player;
 }
