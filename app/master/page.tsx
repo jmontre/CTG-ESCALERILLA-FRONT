@@ -781,7 +781,7 @@ export default function MasterPage() {
           <h1 className="text-5xl font-bold text-ctg-dark mb-2">🏆 Master</h1>
           <p className="text-gray-500 text-lg">Final de Temporada 2026 — 1er Semestre</p>
           <div className="flex justify-center gap-6 mt-4 text-sm text-gray-500 flex-wrap">
-            <span>📅 Round Robin: 22 Jun — 10 Jul</span>
+            <span>📅 Round Robin: 22 Jun — 12 Jul</span>
             <span>🎾 Final: Sábado 18 de Julio</span>
           </div>
         </div>
