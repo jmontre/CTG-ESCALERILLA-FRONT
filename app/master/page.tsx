@@ -580,6 +580,25 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
   );
 }
 
+// ── Category Tabs ────────────────────────────────────────────────────────────
+function CategoryTabs({ active, onSelect }: { active: string; onSelect: (cat: string) => void }) {
+  return (
+    <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-gray-200 mb-8 flex-wrap">
+      {(['A', 'B', 'C', 'D'] as const).map(cat => {
+        const isActive = cat === active;
+        const colors = CATEGORY_COLORS[cat];
+        return (
+          <button key={cat} type="button" onClick={() => onSelect(cat)}
+            className={`pb-3 text-sm sm:text-base transition-colors border-b-[3px] -mb-0.5
+              ${isActive ? `${colors.text} border-current font-extrabold` : 'text-gray-400 border-transparent font-semibold hover:text-gray-600'}`}>
+            Categoría {cat} <span className="font-normal opacity-70">{CATEGORY_NAMES[cat]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Category Tournament ───────────────────────────────────────────────────────
 function CategoryTournament({ season, currentPlayerId, onRefresh }: {
   season: MasterSeason; currentPlayerId?: string; onRefresh: () => void;
