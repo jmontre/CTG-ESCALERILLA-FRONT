@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import LoginPrompt from '@/components/LoginPrompt';
 import { MasterSeason, MasterGroup, MasterMatch } from '@/types';
@@ -729,10 +730,17 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function MasterPage() {
+const VALID_CATEGORIES = ['A', 'B', 'C', 'D'];
+
+function MasterPageContent() {
   const { player, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [seasons, setSeasons] = useState<MasterSeason[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const catParam = searchParams.get('cat') || '';
+  const activeCategory = VALID_CATEGORIES.includes(catParam) ? catParam : 'A';
 
   const ROUND_ROBIN_START = new Date('2026-06-22');
   const isBeforeStart = new Date() < ROUND_ROBIN_START;
@@ -750,6 +758,10 @@ export default function MasterPage() {
     if (!player) { setLoading(false); return; }
     loadData();
   }, [authLoading, player?.id]);
+
+  const handleSelectCategory = (cat: string) => {
+    router.replace(`/master?cat=${cat}`, { scroll: false });
+  };
 
   if (loading) {
     return (
@@ -772,6 +784,8 @@ export default function MasterPage() {
       </div>
     );
   }
+
+  const activeSeason = seasons.find(s => s.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
@@ -805,16 +819,17 @@ export default function MasterPage() {
         )}
 
         {seasons.length > 0 ? (
-          ['A','B','C','D'].map(cat => {
-            const season = seasons.find(s => s.category === cat);
-            if (!season) return (
-              <div key={cat} className={`bg-white rounded-2xl shadow-card p-6 mb-6 border-l-4 ${CATEGORY_COLORS[cat].border} opacity-60`}>
-                <p className={`font-bold ${CATEGORY_COLORS[cat].text}`}>Categoría {cat} — {CATEGORY_NAMES[cat]}</p>
+          <>
+            <CategoryTabs active={activeCategory} onSelect={handleSelectCategory} />
+            {activeSeason ? (
+              <CategoryTournament key={activeCategory} season={activeSeason} currentPlayerId={player?.id} onRefresh={loadData} />
+            ) : (
+              <div className={`bg-white rounded-2xl shadow-card p-6 mb-6 border-l-4 ${CATEGORY_COLORS[activeCategory].border} opacity-60`}>
+                <p className={`font-bold ${CATEGORY_COLORS[activeCategory].text}`}>Categoría {activeCategory} — {CATEGORY_NAMES[activeCategory]}</p>
                 <p className="text-sm text-gray-400 mt-1">Torneo no generado aún</p>
               </div>
-            );
-            return <CategoryTournament key={cat} season={season} currentPlayerId={player?.id} onRefresh={loadData} />;
-          })
+            )}
+          </>
         ) : !isBeforeStart ? (
           <div className="bg-white rounded-2xl shadow-card p-12 text-center">
             <p className="text-gray-500">No hay torneos generados aún.</p>
@@ -823,5 +838,17 @@ export default function MasterPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function MasterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      </div>
+    }>
+      <MasterPageContent />
+    </Suspense>
   );
 }
