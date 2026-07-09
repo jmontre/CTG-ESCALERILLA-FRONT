@@ -47,7 +47,7 @@ export default function AdminPage() {
   const [masterDates, setMasterDates] = useState({
     name: '1er Semestre 2026',
     round_robin_start: '2026-06-22',
-    round_robin_end: '2026-07-10',
+    round_robin_end: '2026-07-12',
     final_date: '2026-07-18',
   });
 
