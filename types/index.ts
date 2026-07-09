@@ -105,4 +105,5 @@ export interface MasterSeason {
   final_date: string | null;
   created_at: string;
   groups: MasterGroup[];
+  matches: MasterMatch[];
 }

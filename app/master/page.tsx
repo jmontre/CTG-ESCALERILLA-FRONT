@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import LoginPrompt from '@/components/LoginPrompt';
 import { MasterSeason, MasterGroup, MasterMatch } from '@/types';
@@ -580,14 +581,36 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
   );
 }
 
+// ── Category Tabs ────────────────────────────────────────────────────────────
+function CategoryTabs({ active, onSelect }: { active: string; onSelect: (cat: string) => void }) {
+  return (
+    <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-gray-200 mb-8 flex-wrap">
+      {(['A', 'B', 'C', 'D'] as const).map(cat => {
+        const isActive = cat === active;
+        const colors = CATEGORY_COLORS[cat];
+        return (
+          <button key={cat} type="button" onClick={() => onSelect(cat)}
+            className={`pb-3 text-sm sm:text-base transition-colors border-b-[3px] -mb-0.5
+              ${isActive ? `${colors.text} border-current font-extrabold` : 'text-gray-400 border-transparent font-semibold hover:text-gray-600'}`}>
+            Categoría {cat} <span className="font-normal opacity-70">{CATEGORY_NAMES[cat]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Category Tournament ───────────────────────────────────────────────────────
 function CategoryTournament({ season, currentPlayerId, onRefresh }: {
   season: MasterSeason; currentPlayerId?: string; onRefresh: () => void;
 }) {
   const colors = CATEGORY_COLORS[season.category];
-  const allMatches   = season.groups.flatMap(g => g.matches) as MasterMatchExt[];
-  const semiMatches  = allMatches.filter(m => m.round === 'semifinal');
-  const finalMatches = allMatches.filter(m => m.round === 'final');
+  const seasonMatches = (season.matches ?? []) as MasterMatchExt[];
+  const semiMatches   = seasonMatches.filter(m => m.round === 'semifinal');
+  const finalMatches  = seasonMatches.filter(m => m.round === 'final');
+  const hasBracket    = semiMatches.length > 0;
+
+  const [subTab, setSubTab] = useState<'groups' | 'bracket'>('groups');
 
   const statusLabel: Record<string, string> = {
     active: '🟢 Round Robin en curso', semifinals: '🔵 Semifinales',
@@ -640,46 +663,65 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
       </div>
 
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {season.groups.map(group => (
-            <div key={group.id} className={`border-2 ${colors.border} rounded-xl overflow-hidden`}>
-              <div className={`${colors.badge} px-4 py-2`}>
-                <h3 className={`font-bold ${colors.text}`}>{group.name}</h3>
-              </div>
-              <StandingsTable group={group} />
-              <div className="px-4 pb-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Partidos</p>
-                {(group.matches as MasterMatchExt[]).filter(m => m.round === 'group').map(match => (
-                  <MatchCard key={match.id} match={match} currentPlayerId={currentPlayerId}
-                    onSchedule={handleSchedule} onResult={handleResult} season={season} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {['semifinals','final','completed'].includes(season.status) && semiMatches.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-ctg-dark mb-4">🏅 Semifinales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {semiMatches.map((m,i) => <BracketMatch key={m.id} match={m} label={`Semifinal ${i+1}`} />)}
-            </div>
+        {hasBracket && (
+          <div className="flex justify-center gap-3 mb-6">
+            <button type="button" onClick={() => setSubTab('groups')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors
+                ${subTab === 'groups' ? 'bg-ctg-dark text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              Fase de grupos
+            </button>
+            <button type="button" onClick={() => setSubTab('bracket')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors
+                ${subTab === 'bracket' ? 'bg-ctg-dark text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              Llaves 🏅
+            </button>
           </div>
         )}
 
-        {['final','completed'].includes(season.status) && finalMatches.length > 0 && (
+        {(!hasBracket || subTab === 'groups') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {season.groups.map(group => (
+              <div key={group.id} className={`border-2 ${colors.border} rounded-xl overflow-hidden`}>
+                <div className={`${colors.badge} px-4 py-2`}>
+                  <h3 className={`font-bold ${colors.text}`}>{group.name}</h3>
+                </div>
+                <StandingsTable group={group} />
+                <div className="px-4 pb-4 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Partidos</p>
+                  {(group.matches as MasterMatchExt[]).filter(m => m.round === 'group').map(match => (
+                    <MatchCard key={match.id} match={match} currentPlayerId={currentPlayerId}
+                      onSchedule={handleSchedule} onResult={handleResult} season={season} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {hasBracket && subTab === 'bracket' && (
           <div>
-            <h3 className="text-lg font-bold text-ctg-dark mb-4">
-              🏆 Final
-              {season.final_date && (
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </span>
-              )}
-            </h3>
-            <div className="max-w-md mx-auto">
-              {finalMatches.map(m => <BracketMatch key={m.id} match={m} label="Gran Final" />)}
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-ctg-dark mb-4">🏅 Semifinales</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {semiMatches.map((m,i) => <BracketMatch key={m.id} match={m} label={`Semifinal ${i+1}`} />)}
+              </div>
             </div>
+
+            {finalMatches.length > 0 && (
+              <div>
+                <h3 className="text-lg font-bold text-ctg-dark mb-4">
+                  🏆 Final
+                  {season.final_date && (
+                    <span className="text-sm font-normal text-gray-500 ml-2">
+                      · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </span>
+                  )}
+                </h3>
+                <div className="max-w-md mx-auto">
+                  {finalMatches.map(m => <BracketMatch key={m.id} match={m} label="Gran Final" />)}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -688,10 +730,17 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function MasterPage() {
+const VALID_CATEGORIES = ['A', 'B', 'C', 'D'];
+
+function MasterPageContent() {
   const { player, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [seasons, setSeasons] = useState<MasterSeason[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const catParam = searchParams.get('cat') || '';
+  const activeCategory = VALID_CATEGORIES.includes(catParam) ? catParam : 'A';
 
   const ROUND_ROBIN_START = new Date('2026-06-22');
   const isBeforeStart = new Date() < ROUND_ROBIN_START;
@@ -709,6 +758,10 @@ export default function MasterPage() {
     if (!player) { setLoading(false); return; }
     loadData();
   }, [authLoading, player?.id]);
+
+  const handleSelectCategory = (cat: string) => {
+    router.replace(`/master?cat=${cat}`, { scroll: false });
+  };
 
   if (loading) {
     return (
@@ -732,6 +785,8 @@ export default function MasterPage() {
     );
   }
 
+  const activeSeason = seasons.find(s => s.category === activeCategory);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
       <Header currentPage="master" onLoginClick={() => {}} />
@@ -740,7 +795,7 @@ export default function MasterPage() {
           <h1 className="text-5xl font-bold text-ctg-dark mb-2">🏆 Master</h1>
           <p className="text-gray-500 text-lg">Final de Temporada 2026 — 1er Semestre</p>
           <div className="flex justify-center gap-6 mt-4 text-sm text-gray-500 flex-wrap">
-            <span>📅 Round Robin: 22 Jun — 10 Jul</span>
+            <span>📅 Round Robin: 22 Jun — 12 Jul</span>
             <span>🎾 Final: Sábado 18 de Julio</span>
           </div>
         </div>
@@ -764,16 +819,17 @@ export default function MasterPage() {
         )}
 
         {seasons.length > 0 ? (
-          ['A','B','C','D'].map(cat => {
-            const season = seasons.find(s => s.category === cat);
-            if (!season) return (
-              <div key={cat} className={`bg-white rounded-2xl shadow-card p-6 mb-6 border-l-4 ${CATEGORY_COLORS[cat].border} opacity-60`}>
-                <p className={`font-bold ${CATEGORY_COLORS[cat].text}`}>Categoría {cat} — {CATEGORY_NAMES[cat]}</p>
+          <>
+            <CategoryTabs active={activeCategory} onSelect={handleSelectCategory} />
+            {activeSeason ? (
+              <CategoryTournament key={activeCategory} season={activeSeason} currentPlayerId={player?.id} onRefresh={loadData} />
+            ) : (
+              <div className={`bg-white rounded-2xl shadow-card p-6 mb-6 border-l-4 ${CATEGORY_COLORS[activeCategory].border} opacity-60`}>
+                <p className={`font-bold ${CATEGORY_COLORS[activeCategory].text}`}>Categoría {activeCategory} — {CATEGORY_NAMES[activeCategory]}</p>
                 <p className="text-sm text-gray-400 mt-1">Torneo no generado aún</p>
               </div>
-            );
-            return <CategoryTournament key={cat} season={season} currentPlayerId={player?.id} onRefresh={loadData} />;
-          })
+            )}
+          </>
         ) : !isBeforeStart ? (
           <div className="bg-white rounded-2xl shadow-card p-12 text-center">
             <p className="text-gray-500">No hay torneos generados aún.</p>
@@ -782,5 +838,17 @@ export default function MasterPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function MasterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      </div>
+    }>
+      <MasterPageContent />
+    </Suspense>
   );
 }
