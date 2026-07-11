@@ -156,8 +156,8 @@ export default function ReservarPage() {
   const [confirmedCourt, setConfirmedCourt]   = useState<any | null>(null);
 
   useEffect(() => {
-    api.getCourts().then(setCourts);
-    api.getPlayers().then(setAllPlayers);
+    api.getCourts().then(setCourts).catch(() => {});
+    api.getPlayers().then(setAllPlayers).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -310,7 +310,7 @@ export default function ReservarPage() {
           {step === 1 && (
             <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
               <h2 className="font-display text-xl font-bold text-[#F0F7E8] mb-1">Elige una cancha</h2>
-              <p className="text-[#F0F7E8]/45 text-sm mb-5">Puedes dejar "sin preferencia" si te da igual</p>
+              <p className="text-[#F0F7E8]/45 text-sm mb-5">Puedes dejar &quot;sin preferencia&quot; si te da igual</p>
               <div className="grid grid-cols-2 gap-3 mb-3">
                 {courts.map(court => (
                   <button key={court.id} onClick={() => { setSelectedCourt(court); setAnyCourtMode(false); }}

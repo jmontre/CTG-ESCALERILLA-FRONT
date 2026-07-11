@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ChallengesList from '@/components/ChallengesList';
+import LoginPrompt from '@/components/LoginPrompt';
 import ResultModal from '@/components/ResultModal';
 import ScheduleDateModal from '@/components/ScheduleDateModal';
 import Toast from '@/components/Toast';
@@ -24,22 +25,19 @@ export default function FixturePage() {
   const [scheduleChallenge, setScheduleChallenge] = useState<Challenge | null>(null);
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!currentPlayer) { router.push('/'); return; }
-      if (currentPlayer.is_admin) { router.push('/admin'); return; }
-    }
-    if (currentPlayer && !currentPlayer.is_admin) fetchChallenges();
-  }, [currentPlayer, authLoading, router]);
+    if (!currentPlayer || currentPlayer.is_admin) return;
+    fetchChallenges();
+  }, [currentPlayer, router]);
 
   const fetchChallenges = async () => {
     if (!currentPlayer) return;
     try {
       const allChallenges = await api.getChallenges();
-      setChallenges(allChallenges.filter(
+      setChallenges((allChallenges || []).filter(
         (c) => c.challenger_id === currentPlayer.id || c.challenged_id === currentPlayer.id
       ));
-    } catch (err) {
-      console.error('Error al cargar desafíos:', err);
+    } catch {
+      setChallenges([]);
     } finally {
       setLoading(false);
     }
@@ -103,7 +101,7 @@ export default function FixturePage() {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
@@ -111,13 +109,28 @@ export default function FixturePage() {
     );
   }
 
-  if (!currentPlayer || currentPlayer.is_admin) return null;
-
   return (
     <div className="min-h-screen bg-[#0a1608]">
       <Header onLoginClick={() => { }} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+        {!currentPlayer ? (
+          <LoginPrompt
+            emoji="🎾"
+            message="Inicia sesión para ver y gestionar tus desafíos."
+          />
+        ) : currentPlayer.is_admin ? (
+          <div className="max-w-md mx-auto mt-16 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-8 text-center">
+            <p className="text-[#F0F7E8]/50">Los admins no tienen desafíos personales.</p>
+            <button
+              onClick={() => router.push('/admin')}
+              className="btn-primary w-full py-3 mt-6"
+            >
+              Ir al panel de admin →
+            </button>
+          </div>
+        ) : (
+          <>
         <div className="mb-8">
           <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Tu actividad</p>
           <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mis Desafíos</h1>
@@ -147,6 +160,8 @@ export default function FixturePage() {
           currentPlayerId={currentPlayer.id}
           onSubmit={handleSubmitScheduleDate}
         />
+          </>
+        )}
       </div>
 
       {toasts.map((toast) => (

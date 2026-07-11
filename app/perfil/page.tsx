@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import LoginPrompt from '@/components/LoginPrompt';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
@@ -44,13 +45,11 @@ export default function PerfilPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!authLoading && !player) { router.push('/'); return; }
-    if (player) {
-      setName(player.name);
-      setPhone(player.phone || '');
-      setAvatarPreview(player.avatar_url || null);
-    }
-  }, [player, authLoading, router]);
+    if (!player) return;
+    setName(player.name);
+    setPhone(player.phone || '');
+    setAvatarPreview(player.avatar_url || null);
+  }, [player]);
 
   const handleSaveProfile = async () => {
     if (!name.trim()) { error('El nombre no puede estar vacío.'); return; }
@@ -116,7 +115,19 @@ export default function PerfilPage() {
     );
   }
 
-  if (!player) return null;
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-[#0a1608]">
+        <Header onLoginClick={() => {}} />
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+          <LoginPrompt
+            emoji="👤"
+            message="Inicia sesión para editar tu perfil y foto."
+          />
+        </div>
+      </div>
+    );
+  }
 
   const initials = getInitials(player.name);
   const cat      = getCat(player.position);

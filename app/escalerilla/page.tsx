@@ -4,6 +4,7 @@ import ChallengeModal from '@/components/ChallengeModal';
 import Header from '@/components/Header';
 import Ladder from '@/components/Ladder';
 import LoginModal from '@/components/LoginModal';
+import LoginPrompt from '@/components/LoginPrompt';
 import PlayerModal from '@/components/PlayerModal';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,17 +43,23 @@ export default function EscalerillaPage() {
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
-  const { player: currentPlayer, refreshPlayer } = useAuth();
+  const { player: currentPlayer, loading: authLoading, refreshPlayer } = useAuth();
   const { toasts, removeToast, success, error, warning } = useToast();
 
-  useEffect(() => { loadPlayers(); }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!currentPlayer) { setLoading(false); return; }
+    loadPlayers();
+  }, [authLoading, currentPlayer?.id]);
 
   const loadPlayers = async () => {
     try {
       const data = await api.getPlayers();
       setPlayers(data);
-    } catch {
-      error('Error al cargar jugadores');
+    } catch (err: any) {
+      if (err?.message !== 'Sin sesión activa') {
+        error('Error al cargar jugadores');
+      }
     } finally {
       setLoading(false);
     }
@@ -124,41 +131,39 @@ export default function EscalerillaPage() {
           )}
         </div>
 
-        {/* Stats — logged in with position */}
-        {currentPlayer && hasPosition && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-            <StatCard label="Victorias"    value={currentPlayer.wins}    colorClass="text-ctg-green" glow />
-            <StatCard label="Derrotas"     value={currentPlayer.losses}  colorClass="text-red-400" />
-            <StatCard label="Partidos"     value={currentPlayer.total_matches} colorClass="text-[#F0F7E8]" />
-            <StatCard label="Efectividad"  value={effectiveness + '%'}   colorClass="text-ctg-green" />
-          </div>
+        {/* Not logged in — prompt */}
+        {!authLoading && !currentPlayer && (
+          <LoginPrompt
+            emoji="🎾"
+            message="Inicia sesión para participar en la escalerilla y desafiar a otros jugadores."
+          />
         )}
 
-        {/* Join CTA — not logged in */}
-        {!currentPlayer && (
-          <div className="bg-ctg-green/8 border border-ctg-green/25 rounded-2xl p-5 mb-10 flex items-center gap-4">
-            <span className="w-2.5 h-2.5 rounded-full bg-ctg-green animate-pulse shrink-0" style={{ boxShadow: '0 0 12px #8BC234' }} />
-            <div className="flex-1">
-              <div className="text-[#F0F7E8] font-semibold">Únete a la escalerilla</div>
-              <div className="text-[#F0F7E8]/55 text-sm">Inicia sesión para desafiar jugadores y subir posiciones</div>
-            </div>
-            <button onClick={() => setLoginModalOpen(true)} className="btn-primary text-sm px-4 py-2 shrink-0">
-              Iniciar sesión
-            </button>
-          </div>
-        )}
+        {currentPlayer && (
+          <>
+            {/* Stats — logged in with position */}
+            {hasPosition && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+                <StatCard label="Victorias"    value={currentPlayer.wins}    colorClass="text-ctg-green" glow />
+                <StatCard label="Derrotas"     value={currentPlayer.losses}  colorClass="text-red-400" />
+                <StatCard label="Partidos"     value={currentPlayer.total_matches} colorClass="text-[#F0F7E8]" />
+                <StatCard label="Efectividad"  value={effectiveness + '%'}   colorClass="text-ctg-green" />
+              </div>
+            )}
 
-        {/* Ladder */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-20">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-ctg-green/20" />
-              <div className="w-12 h-12 rounded-full border-t-2 border-ctg-green animate-spin absolute inset-0" />
-            </div>
-            <p className="text-[#F0F7E8]/50 text-sm">Cargando escalerilla…</p>
-          </div>
-        ) : (
-          <Ladder players={players} currentPlayerId={currentPlayer?.id} onPlayerClick={handlePlayerClick} />
+            {/* Ladder */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-20">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full border-2 border-ctg-green/20" />
+                  <div className="w-12 h-12 rounded-full border-t-2 border-ctg-green animate-spin absolute inset-0" />
+                </div>
+                <p className="text-[#F0F7E8]/50 text-sm">Cargando escalerilla…</p>
+              </div>
+            ) : (
+              <Ladder players={players} currentPlayerId={currentPlayer?.id} onPlayerClick={handlePlayerClick} />
+            )}
+          </>
         )}
       </main>
 

@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
-import { MasterSeason, MasterGroup, MasterMatch, Player } from '@/types';
+import LoginPrompt from '@/components/LoginPrompt';
+import { MasterSeason, MasterGroup, MasterMatch } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -87,43 +89,71 @@ function Calendar({ selectedDate, onSelect, minDate, maxDate }: {
 
 // ── Schedule Modal ────────────────────────────────────────────────────────────
 function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
-  match: MasterMatchExt; onClose: () => void; onSubmit: (iso: string) => Promise<void>;
+  match: MasterMatchExt; onClose: () => void; onSubmit: (iso: string, courtId: string) => Promise<void>;
   minDate: Date; maxDate: Date;
 }) {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [courts, setCourts]               = useState<{ id: string; name: string }[]>([]);
+  const [selectedCourt, setSelectedCourt] = useState<{ id: string; name: string } | null>(null);
+  const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
+  const [selectedSlot, setSelectedSlot]   = useState<string | null>(null);
+  const [availability, setAvailability]   = useState<any | null>(null);
+  const [loadingSlots, setLoadingSlots]   = useState(false);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState('');
   const now = new Date();
+
+  // No permitir fechas pasadas: el mínimo efectivo es el mayor entre el inicio del round y hoy
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const effMinDate = minDate > today ? minDate : today;
+
+  useEffect(() => { api.getCourts().then(setCourts).catch(() => setCourts([])); }, []);
+
+  // Al tener cancha + fecha, consultar disponibilidad real (reservas + bloqueos)
+  useEffect(() => {
+    if (!selectedCourt || !selectedDate) return;
+    setLoadingSlots(true);
+    setSelectedSlot(null);
+    const ymd = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
+    api.getAvailability(ymd)
+      .then(setAvailability)
+      .catch(() => setAvailability(null))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedCourt, selectedDate]);
 
   const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
   const formatDisplay = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
   const roundLabel = match.round === 'group' ? 'Round Robin' : 'Semifinal';
 
-  const availableSlots = () => {
-    if (!selectedDate) return TIME_SLOTS;
-    if (!isSameDay(selectedDate, now)) return TIME_SLOTS;
-    return TIME_SLOTS.filter(s => {
-      const [h, m] = s.start.split(':').map(Number);
-      const t = new Date(selectedDate); t.setHours(h, m, 0, 0);
-      return t > now;
+  // Slots de la cancha elegida: ocupado (reserva/bloqueo) o pasado (hoy) → no disponible
+  const getAvailableSlots = () => {
+    if (!selectedDate || !selectedCourt) return [];
+    const courtSlots = availability?.courts?.find((c: any) => c.id === selectedCourt.id)?.slots || [];
+    const highDemand: string[] = availability?.high_demand_slots || [];
+    return TIME_SLOTS.map(slot => {
+      const courtSlot = courtSlots.find((cs: any) => cs.slot === slot.start);
+      const isOccupied = courtSlot ? !courtSlot.available : false;
+      const isPast = isSameDay(selectedDate, now) && (() => {
+        const [h, m] = slot.start.split(':').map(Number);
+        const t = new Date(selectedDate); t.setHours(h, m, 0, 0);
+        return t <= now;
+      })();
+      return { ...slot, available: !isOccupied && !isPast, isHighDemand: highDemand.includes(slot.start) };
     });
   };
 
   const handleSubmit = async () => {
     setError('');
+    if (!selectedCourt) { setError('Debes seleccionar una cancha.'); return; }
     if (!selectedDate || !selectedSlot) { setError('Debes seleccionar fecha y horario.'); return; }
     const [h, m] = selectedSlot.split(':').map(Number);
     const final = new Date(selectedDate); final.setHours(h, m, 0, 0);
     if (final <= now) { setError('El horario seleccionado ya pasó.'); return; }
     if (final > maxDate) { setError('La fecha supera el límite del round.'); return; }
     setLoading(true);
-    try { await onSubmit(final.toISOString()); onClose(); }
+    try { await onSubmit(final.toISOString(), selectedCourt.id); onClose(); }
     catch (err: any) { setError(err.message || 'Error al fijar la fecha.'); }
     finally { setLoading(false); }
   };
-
-  const slots = availableSlots();
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 animate-fade-in">
@@ -141,48 +171,84 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
             <span>{roundLabel}:</span>
             <span><strong className="text-amber-300">{fmt(minDate)}</strong> — <strong className="text-amber-300">{fmt(maxDate)}</strong></span>
           </div>
+
+          {/* Paso 1 — Cancha */}
           <div>
             <p className="text-sm font-semibold text-[#F0F7E8]/70 mb-3 flex items-center gap-1">
               <span className="w-5 h-5 rounded-full bg-ctg-green text-[#0a1608] text-xs flex items-center justify-center font-bold">1</span>
+              Selecciona la cancha
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {courts.map(court => (
+                <button key={court.id} type="button" onClick={() => { setSelectedCourt(court); setSelectedSlot(null); setError(''); }}
+                  className={'p-3 rounded-xl border-2 text-sm font-semibold transition-all text-center ' +
+                    (selectedCourt?.id === court.id
+                      ? 'border-ctg-green bg-ctg-green/10 text-ctg-green shadow-[0_0_12px_rgba(139,194,52,.2)]'
+                      : 'border-[#1e4020] bg-[#152b18] text-[#F0F7E8]/60 hover:border-ctg-green/40')}>
+                  🎾 {court.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Paso 2 — Fecha */}
+          <div>
+            <p className={'text-sm font-semibold mb-3 flex items-center gap-1 ' + (selectedCourt ? 'text-[#F0F7E8]/70' : 'text-[#F0F7E8]/30')}>
+              <span className={'w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ' + (selectedCourt ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/30')}>2</span>
               Selecciona la fecha
             </p>
-            <div className="border border-[#1e4020] rounded-xl p-4">
-              <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setError(''); }} minDate={minDate} maxDate={maxDate} />
-            </div>
-            {selectedDate && <p className="text-xs text-ctg-green font-semibold mt-2 ml-1 capitalize">{formatDisplay(selectedDate)}</p>}
+            {!selectedCourt ? (
+              <div className="rounded-xl border border-dashed border-[#1e4020] py-6 text-center text-[#F0F7E8]/30 text-sm">Primero elige una cancha</div>
+            ) : (
+              <>
+                <div className="border border-[#1e4020] rounded-xl p-4">
+                  <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setError(''); }} minDate={effMinDate} maxDate={maxDate} />
+                </div>
+                {selectedDate && <p className="text-xs text-ctg-green font-semibold mt-2 ml-1 capitalize">{formatDisplay(selectedDate)}</p>}
+              </>
+            )}
           </div>
+
+          {/* Paso 3 — Horario */}
           <div>
             <p className={'text-sm font-semibold mb-3 flex items-center gap-1 ' + (selectedDate ? 'text-[#F0F7E8]/70' : 'text-[#F0F7E8]/30')}>
-              <span className={'w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ' + (selectedDate ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/30')}>2</span>
+              <span className={'w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ' + (selectedDate ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/30')}>3</span>
               Selecciona el horario
             </p>
             {!selectedDate ? (
               <div className="rounded-xl border border-dashed border-[#1e4020] py-6 text-center text-[#F0F7E8]/30 text-sm">Primero elige una fecha</div>
-            ) : slots.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-amber-500/20 py-6 text-center text-amber-400/60 text-sm">No hay horarios disponibles</div>
+            ) : loadingSlots ? (
+              <div className="text-center py-6"><div className="w-6 h-6 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin mx-auto" /></div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {slots.map(slot => (
-                  <button key={slot.start} type="button" onClick={() => { setSelectedSlot(slot.start); setError(''); }}
+                {getAvailableSlots().map(slot => (
+                  <button key={slot.start} type="button" disabled={!slot.available}
+                    onClick={() => { if (slot.available) { setSelectedSlot(slot.start); setError(''); } }}
                     className={'py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all ' +
-                      (selectedSlot === slot.start
-                        ? 'bg-ctg-green/10 border-ctg-green text-ctg-green shadow-[0_0_12px_rgba(139,194,52,.2)]'
-                        : 'bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/60 hover:border-ctg-green/40')}>
-                    {slot.label}
+                      (!slot.available
+                        ? 'bg-[#0a1608] border-[#152b18] text-[#F0F7E8]/20 cursor-not-allowed'
+                        : selectedSlot === slot.start
+                          ? 'bg-ctg-green/10 border-ctg-green text-ctg-green shadow-[0_0_12px_rgba(139,194,52,.2)]'
+                          : 'bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/60 hover:border-ctg-green/40')}>
+                    <div>{slot.label}</div>
+                    {slot.isHighDemand && slot.available && <div className={'text-xs mt-0.5 ' + (selectedSlot === slot.start ? 'text-ctg-green/70' : 'text-orange-400')}>🔥 Alta demanda</div>}
+                    {!slot.available && <div className="text-xs mt-0.5 text-[#F0F7E8]/25">Ocupado</div>}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          {selectedDate && selectedSlot && (
-            <div className="bg-ctg-green/10 border border-ctg-green/20 rounded-xl px-4 py-3 text-sm text-ctg-green font-semibold capitalize">
-              ✓ {formatDisplay(selectedDate)}, {TIME_SLOTS.find(s => s.start === selectedSlot)?.label}
+          {/* Resumen */}
+          {selectedCourt && selectedDate && selectedSlot && (
+            <div className="bg-ctg-green/10 border border-ctg-green/20 rounded-xl px-4 py-3 text-sm text-ctg-green font-semibold space-y-1">
+              <div>🎾 {selectedCourt.name}</div>
+              <div className="capitalize">✓ {formatDisplay(selectedDate)}, {TIME_SLOTS.find(s => s.start === selectedSlot)?.label}</div>
             </div>
           )}
           {error && <div className="bg-red-900/30 border border-red-500/30 text-red-400 rounded-xl p-3 text-sm">{error}</div>}
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancelar</button>
-            <button type="button" onClick={handleSubmit} disabled={loading || !selectedDate || !selectedSlot}
+            <button type="button" onClick={handleSubmit} disabled={loading || !selectedCourt || !selectedDate || !selectedSlot}
               className="btn-primary flex-1">
               {loading ? 'Guardando...' : 'Confirmar'}
             </button>
@@ -374,7 +440,7 @@ function StandingsTable({ group }: { group: MasterGroup }) {
 function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
   match: MasterMatchExt;
   currentPlayerId?: string;
-  onSchedule: (matchId: string, isoDate: string) => Promise<void>;
+  onSchedule: (matchId: string, isoDate: string, courtId: string) => Promise<void>;
   onResult: (matchId: string, winnerId: string, score: string) => Promise<void>;
   season: MasterSeason;
 }) {
@@ -473,7 +539,7 @@ function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
 
       {showSchedule && (
         <MasterScheduleModal match={match} onClose={() => setShowSchedule(false)}
-          onSubmit={(iso) => onSchedule(match.id, iso)} minDate={minDate} maxDate={maxDate} />
+          onSubmit={(iso, courtId) => onSchedule(match.id, iso, courtId)} minDate={minDate} maxDate={maxDate} />
       )}
       {showResult && (
         <MasterResultModal match={match} onClose={() => setShowResult(false)}
@@ -515,36 +581,57 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
   );
 }
 
+// ── Category Tabs ────────────────────────────────────────────────────────────
+function CategoryTabs({ active, onSelect }: { active: string; onSelect: (cat: string) => void }) {
+  return (
+    <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-[#1e4020] mb-8 flex-wrap">
+      {(['A', 'B', 'C', 'D'] as const).map(cat => {
+        const isActive = cat === active;
+        return (
+          <button key={cat} type="button" onClick={() => onSelect(cat)}
+            className={`pb-3 text-sm sm:text-base transition-colors border-b-[3px] -mb-0.5
+              ${isActive ? `cat-letter-${cat} border-current font-extrabold` : 'text-[#F0F7E8]/35 border-transparent font-semibold hover:text-[#F0F7E8]/60'}`}>
+            Categoría {cat} <span className="font-normal opacity-70">{CATEGORY_NAMES[cat]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Category Tournament ───────────────────────────────────────────────────────
 function CategoryTournament({ season, currentPlayerId, onRefresh }: {
   season: MasterSeason; currentPlayerId?: string; onRefresh: () => void;
 }) {
   const colors = CATEGORY_COLORS[season.category];
-  const allMatches   = season.groups.flatMap(g => g.matches) as MasterMatchExt[];
-  const semiMatches  = allMatches.filter(m => m.round === 'semifinal');
-  const finalMatches = allMatches.filter(m => m.round === 'final');
+  const seasonMatches = (season.matches ?? []) as MasterMatchExt[];
+  const semiMatches   = seasonMatches.filter(m => m.round === 'semifinal');
+  const finalMatches  = seasonMatches.filter(m => m.round === 'final');
+  const hasBracket    = semiMatches.length > 0;
+
+  const [subTab, setSubTab] = useState<'groups' | 'bracket'>('groups');
 
   const statusLabel: Record<string, string> = {
     active: '🟢 Round Robin en curso', semifinals: '🔵 Semifinales',
     final: '🟡 Final', completed: '✅ Completado',
   };
 
-  const handleSchedule = async (matchId: string, isoDate: string) => {
-    const token = localStorage.getItem('auth_token');
+  const handleSchedule = async (matchId: string, isoDate: string, courtId: string) => {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/matches/${matchId}/schedule`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ scheduled_date: isoDate }),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ scheduled_date: isoDate, court_id: courtId }),
     });
-    if (!res.ok) throw new Error('Error al fijar fecha');
+    if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.message || 'Error al fijar fecha'); }
     onRefresh();
   };
 
   const handleResult = async (matchId: string, winnerId: string, score: string) => {
-    const token = localStorage.getItem('auth_token');
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/matches/${matchId}/player-result`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ winner_id: winnerId, score }),
     });
     if (!res.ok) {
@@ -575,46 +662,65 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
       </div>
 
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {season.groups.map(group => (
-            <div key={group.id} className="border border-[#1e4020] bg-[#0a1608]/40 rounded-xl overflow-hidden">
-              <div className="bg-[#152b18] border-b border-[#1e4020] px-4 py-2">
-                <h3 className="font-bold text-[#F0F7E8]">{group.name}</h3>
-              </div>
-              <StandingsTable group={group} />
-              <div className="px-4 pb-4 space-y-2">
-                <p className="text-xs font-semibold text-[#F0F7E8]/35 uppercase tracking-wider mb-2">Partidos</p>
-                {(group.matches as MasterMatchExt[]).filter(m => m.round === 'group').map(match => (
-                  <MatchCard key={match.id} match={match} currentPlayerId={currentPlayerId}
-                    onSchedule={handleSchedule} onResult={handleResult} season={season} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {['semifinals','final','completed'].includes(season.status) && semiMatches.length > 0 && (
-          <div className="mb-6">
-            <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">Semifinales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {semiMatches.map((m,i) => <BracketMatch key={m.id} match={m} label={`Semifinal ${i+1}`} />)}
-            </div>
+        {hasBracket && (
+          <div className="flex justify-center gap-3 mb-6">
+            <button type="button" onClick={() => setSubTab('groups')}
+              className={'px-4 py-1.5 rounded-full text-xs font-bold transition-colors ' +
+                (subTab === 'groups' ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/50 hover:text-[#F0F7E8]')}>
+              Fase de grupos
+            </button>
+            <button type="button" onClick={() => setSubTab('bracket')}
+              className={'px-4 py-1.5 rounded-full text-xs font-bold transition-colors ' +
+                (subTab === 'bracket' ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/50 hover:text-[#F0F7E8]')}>
+              Llaves 🏅
+            </button>
           </div>
         )}
 
-        {['final','completed'].includes(season.status) && finalMatches.length > 0 && (
+        {(!hasBracket || subTab === 'groups') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {season.groups.map(group => (
+              <div key={group.id} className="border border-[#1e4020] bg-[#0a1608]/40 rounded-xl overflow-hidden">
+                <div className="bg-[#152b18] border-b border-[#1e4020] px-4 py-2">
+                  <h3 className="font-bold text-[#F0F7E8]">{group.name}</h3>
+                </div>
+                <StandingsTable group={group} />
+                <div className="px-4 pb-4 space-y-2">
+                  <p className="text-xs font-semibold text-[#F0F7E8]/35 uppercase tracking-wider mb-2">Partidos</p>
+                  {(group.matches as MasterMatchExt[]).filter(m => m.round === 'group').map(match => (
+                    <MatchCard key={match.id} match={match} currentPlayerId={currentPlayerId}
+                      onSchedule={handleSchedule} onResult={handleResult} season={season} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {hasBracket && subTab === 'bracket' && (
           <div>
-            <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">
-              Gran Final
-              {season.final_date && (
-                <span className="text-sm font-normal text-[#F0F7E8]/40 ml-2">
-                  · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </span>
-              )}
-            </h3>
-            <div className="max-w-md mx-auto">
-              {finalMatches.map(m => <BracketMatch key={m.id} match={m} label="Gran Final" />)}
+            <div className="mb-6">
+              <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">🏅 Semifinales</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {semiMatches.map((m,i) => <BracketMatch key={m.id} match={m} label={`Semifinal ${i+1}`} />)}
+              </div>
             </div>
+
+            {finalMatches.length > 0 && (
+              <div>
+                <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">
+                  🏆 Final
+                  {season.final_date && (
+                    <span className="text-sm font-normal text-[#F0F7E8]/40 ml-2">
+                      · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </span>
+                  )}
+                </h3>
+                <div className="max-w-md mx-auto">
+                  {finalMatches.map(m => <BracketMatch key={m.id} match={m} label="Gran Final" />)}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -623,10 +729,17 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function MasterPage() {
-  const { player } = useAuth();
+const VALID_CATEGORIES = ['A', 'B', 'C', 'D'];
+
+function MasterPageContent() {
+  const { player, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [seasons, setSeasons] = useState<MasterSeason[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const catParam = searchParams.get('cat') || '';
+  const activeCategory = VALID_CATEGORIES.includes(catParam) ? catParam : 'A';
 
   const ROUND_ROBIN_START = new Date('2026-06-22');
   const isBeforeStart = new Date() < ROUND_ROBIN_START;
@@ -639,7 +752,15 @@ export default function MasterPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!player) { setLoading(false); return; }
+    loadData();
+  }, [authLoading, player?.id]);
+
+  const handleSelectCategory = (cat: string) => {
+    router.replace(`/master?cat=${cat}`, { scroll: false });
+  };
 
   if (loading) {
     return (
@@ -649,6 +770,19 @@ export default function MasterPage() {
     );
   }
 
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-[#0a1608]">
+        <Header onLoginClick={() => {}} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+          <LoginPrompt emoji="🏆" message="Inicia sesión para ver el torneo Master y los resultados." />
+        </div>
+      </div>
+    );
+  }
+
+  const activeSeason = seasons.find(s => s.category === activeCategory);
+
   return (
     <div className="min-h-screen bg-[#0a1608]">
       <Header onLoginClick={() => {}} />
@@ -657,7 +791,7 @@ export default function MasterPage() {
           <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Temporada 2026</p>
           <h1 className="font-display text-4xl font-extrabold text-[#F0F7E8]">Master</h1>
           <div className="flex gap-6 mt-3 text-sm text-[#F0F7E8]/40 flex-wrap">
-            <span>Round Robin: 22 Jun — 10 Jul</span>
+            <span>Round Robin: 22 Jun — 12 Jul</span>
             <span>Final: Sáb 18 de Julio</span>
           </div>
         </div>
@@ -683,16 +817,17 @@ export default function MasterPage() {
         )}
 
         {seasons.length > 0 ? (
-          ['A','B','C','D'].map(cat => {
-            const season = seasons.find(s => s.category === cat);
-            if (!season) return (
-              <div key={cat} className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6 opacity-50">
-                <p className={`font-bold cat-letter-${cat}`}>Categoría {cat} — {CATEGORY_NAMES[cat]}</p>
+          <>
+            <CategoryTabs active={activeCategory} onSelect={handleSelectCategory} />
+            {activeSeason ? (
+              <CategoryTournament key={activeCategory} season={activeSeason} currentPlayerId={player?.id} onRefresh={loadData} />
+            ) : (
+              <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6 opacity-50">
+                <p className={`font-bold cat-letter-${activeCategory}`}>Categoría {activeCategory} — {CATEGORY_NAMES[activeCategory]}</p>
                 <p className="text-sm text-[#F0F7E8]/35 mt-1">Torneo no generado aún</p>
               </div>
-            );
-            return <CategoryTournament key={cat} season={season} currentPlayerId={player?.id} onRefresh={loadData} />;
-          })
+            )}
+          </>
         ) : !isBeforeStart ? (
           <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-12 text-center">
             <p className="text-[#F0F7E8]/50">No hay torneos generados aún.</p>
@@ -701,5 +836,17 @@ export default function MasterPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+export default function MasterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
+      </div>
+    }>
+      <MasterPageContent />
+    </Suspense>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import LoginModal from '@/components/LoginModal';
+import LoginPrompt from '@/components/LoginPrompt';
 import { Challenge } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,7 +57,7 @@ function getStatusChip(challenge: Challenge) {
 }
 
 export default function FixturePublicoPage() {
-  const { refreshPlayer } = useAuth();
+  const { player, loading: authLoading, refreshPlayer } = useAuth();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [filtered, setFiltered]     = useState<Challenge[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -67,7 +68,11 @@ export default function FixturePublicoPage() {
   const [dateF,      setDateF]      = useState<string>('all');
   const [sortBy,     setSortBy]     = useState<string>('newest');
 
-  useEffect(() => { loadChallenges(); }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!player) { setLoading(false); return; }
+    loadChallenges();
+  }, [authLoading, player?.id]);
 
   useEffect(() => {
     let list = [...challenges];
@@ -100,6 +105,18 @@ export default function FixturePublicoPage() {
     return (
       <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-[#0a1608]">
+        <Header onLoginClick={() => setShowLogin(true)} />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+          <LoginPrompt emoji="🎾" message="Inicia sesión para ver los partidos y desafíos del club." />
+        </div>
+        <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setShowLogin(false); refreshPlayer(); }} />
       </div>
     );
   }

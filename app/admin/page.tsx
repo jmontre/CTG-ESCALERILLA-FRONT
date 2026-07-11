@@ -41,7 +41,7 @@ export default function AdminPage() {
   const [masterDates, setMasterDates] = useState({
     name: '1er Semestre 2026',
     round_robin_start: '2026-06-22',
-    round_robin_end: '2026-07-10',
+    round_robin_end: '2026-07-12',
     final_date: '2026-07-18',
   });
 
@@ -53,11 +53,11 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       const [playersData, challengesData, masterData] = await Promise.all([
-        api.getPlayers(),
+        api.getAllPlayersAdmin(),   // endpoint admin: incluye email/phone/has_debt
         api.getChallenges(),
         api.getMaster(),
       ]);
-      setPlayers(playersData);
+      setPlayers(playersData || []);
       setChallenges(challengesData);
       setMasterSeasons(masterData || []);
     } catch (err) {
@@ -138,10 +138,10 @@ export default function AdminPage() {
     if (!confirm(`¿Generar torneo Master para Categoría ${category}?\n\nSe tomarán los 8 primeros jugadores de la categoría y se armarán los grupos con serpenteo.`)) return;
     setGeneratingCategory(category);
     try {
-      const token = localStorage.getItem('auth_token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ ...masterDates, category }),
       });
       if (!res.ok) {
@@ -161,10 +161,9 @@ export default function AdminPage() {
     if (!confirm(`¿Eliminar el torneo Master de Categoría ${category}?\n\nSe borrarán todos los grupos y partidos.`)) return;
     setDeletingSeasonId(seasonId);
     try {
-      const token = localStorage.getItem('auth_token');
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/${seasonId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       await fetchData();
       success(`Torneo Categoría ${category} eliminado.`);
@@ -278,7 +277,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1e4020]">
-                  {players.filter(p => (p.position ?? 0) > 0).map((p) => (
+                  {players.filter(p => (p.position ?? 0) > 0).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((p) => (
                     <tr key={p.id} className="hover:bg-[#152b18]/60 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono font-bold text-ctg-green">#{p.position ?? '—'}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-[#F0F7E8]">{p.name}</td>

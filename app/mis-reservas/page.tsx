@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import LoginPrompt from '@/components/LoginPrompt';
 import ModifyReservationModal from '@/components/ModifyReservationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
@@ -25,18 +26,20 @@ export default function MisReservasPage() {
   const [successMsg, setSuccessMsg]     = useState('');
 
   useEffect(() => {
-    if (!authLoading && !player) { router.push('/'); return; }
-    if (player) {
-      loadReservations();
-      api.getPlayers().then(setAllPlayers);
-    }
-  }, [player, authLoading]);
+    if (!player) return;
+    loadReservations();
+    api.getPlayers().then(setAllPlayers).catch(() => setAllPlayers([]));
+  }, [player]);
 
   const loadReservations = async () => {
     try {
       const data = await api.getMyReservations();
-      setReservations(data);
-    } finally { setLoading(false); }
+      setReservations(data || []);
+    } catch {
+      setReservations([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = async (id: string) => {
@@ -61,7 +64,7 @@ export default function MisReservasPage() {
   const past   = reservations.filter(r => r.status !== 'active');
   const playerType = (player as any)?.member_type || 'socio';
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
@@ -74,6 +77,13 @@ export default function MisReservasPage() {
       <Header onLoginClick={() => {}} />
 
       <div className="max-w-2xl mx-auto px-4 pt-28 pb-24 md:pb-10">
+        {!player ? (
+          <LoginPrompt
+            emoji="📅"
+            message="Inicia sesión para ver y gestionar tus reservas."
+          />
+        ) : (
+          <>
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Reservas</p>
@@ -187,6 +197,8 @@ export default function MisReservasPage() {
               ))}
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 

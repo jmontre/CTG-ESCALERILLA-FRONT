@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import LoginPrompt from '@/components/LoginPrompt';
 import { Challenge } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,19 +19,16 @@ export default function HistorialPage() {
   const [filterDate, setFilterDate]   = useState<string>('all');
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!currentPlayer) { router.push('/'); return; }
-      if (currentPlayer.is_admin) { router.push('/admin'); return; }
-    }
-    if (currentPlayer && !currentPlayer.is_admin) loadHistory(currentPlayer.id);
-  }, [currentPlayer, authLoading, router]);
+    if (!currentPlayer || currentPlayer.is_admin) return;
+    loadHistory(currentPlayer.id);
+  }, [currentPlayer, router]);
 
   useEffect(() => { applyFilters(); }, [challenges, searchTerm, filterStatus, filterDate]);
 
   const loadHistory = async (playerId: string) => {
     try {
       const all = await api.getChallenges();
-      const mine = all
+      const mine = (all || [])
         .filter(c => (c.challenger_id === playerId || c.challenged_id === playerId) && c.status === 'completed')
         .sort((a, b) => {
           const da = new Date(a.played_at || a.resolved_at || a.created_at).getTime();
@@ -38,7 +36,11 @@ export default function HistorialPage() {
           return db - da;
         });
       setChallenges(mine);
-    } finally { setLoading(false); }
+    } catch {
+      setChallenges([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const applyFilters = () => {
@@ -64,7 +66,7 @@ export default function HistorialPage() {
     setFiltered(list);
   };
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
@@ -72,9 +74,7 @@ export default function HistorialPage() {
     );
   }
 
-  if (!currentPlayer || currentPlayer.is_admin) return null;
-
-  const wins   = challenges.filter(c => c.winner_id === currentPlayer.id).length;
+  const wins   = currentPlayer ? challenges.filter(c => c.winner_id === currentPlayer.id).length : 0;
   const losses = challenges.length - wins;
   const eff    = challenges.length > 0 ? Math.round((wins / challenges.length) * 100) : 0;
 
@@ -83,6 +83,23 @@ export default function HistorialPage() {
       <Header onLoginClick={() => {}} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+        {!currentPlayer ? (
+          <LoginPrompt
+            emoji="📊"
+            message="Inicia sesión para ver tu historial de partidos."
+          />
+        ) : currentPlayer.is_admin ? (
+          <div className="max-w-md mx-auto mt-16 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-8 text-center">
+            <p className="text-[#F0F7E8]/50">Los admins no tienen historial personal.</p>
+            <button
+              onClick={() => router.push('/admin')}
+              className="btn-primary w-full py-3 mt-6"
+            >
+              Ir al panel de admin →
+            </button>
+          </div>
+        ) : (
+          <>
         <div className="mb-8">
           <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Escalerilla</p>
           <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mi Historial</h1>
@@ -181,6 +198,8 @@ export default function HistorialPage() {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );
