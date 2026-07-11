@@ -131,35 +131,35 @@ export default function FixturePage() {
           </div>
         ) : (
           <>
-        <div className="mb-8">
-          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Tu actividad</p>
-          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mis Desafíos</h1>
-        </div>
+            <div className="mb-8">
+              <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Tu actividad</p>
+              <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mis Desafíos</h1>
+            </div>
 
-        <ChallengesList
-          challenges={challenges}
-          currentPlayer={currentPlayer}
-          onAccept={handleAccept}
-          onReject={handleReject}
-          onSubmitResult={handleReportResult}
-          onScheduleDate={handleOpenScheduleDate}
-        />
+            <ChallengesList
+              challenges={challenges}
+              currentPlayer={currentPlayer}
+              onAccept={handleAccept}
+              onReject={handleReject}
+              onSubmitResult={handleReportResult}
+              onScheduleDate={handleOpenScheduleDate}
+            />
 
-        <ResultModal
-          isOpen={resultModalOpen}
-          onClose={() => { setResultModalOpen(false); setSelectedChallenge(null); }}
-          challenge={selectedChallenge}
-          currentPlayer={currentPlayer}
-          onSubmit={handleSubmitResult}
-        />
+            <ResultModal
+              isOpen={resultModalOpen}
+              onClose={() => { setResultModalOpen(false); setSelectedChallenge(null); }}
+              challenge={selectedChallenge}
+              currentPlayer={currentPlayer}
+              onSubmit={handleSubmitResult}
+            />
 
-        <ScheduleDateModal
-          isOpen={scheduleDateModalOpen}
-          onClose={() => { setScheduleDateModalOpen(false); setScheduleChallenge(null); }}
-          challenge={scheduleChallenge}
-          currentPlayerId={currentPlayer.id}
-          onSubmit={handleSubmitScheduleDate}
-        />
+            <ScheduleDateModal
+              isOpen={scheduleDateModalOpen}
+              onClose={() => { setScheduleDateModalOpen(false); setScheduleChallenge(null); }}
+              challenge={scheduleChallenge}
+              currentPlayerId={currentPlayer.id}
+              onSubmit={handleSubmitScheduleDate}
+            />
           </>
         )}
       </div>

@@ -64,9 +64,9 @@ export default function FixturePublicoPage() {
   const [showLogin, setShowLogin]   = useState(false);
 
   const [search,     setSearch]     = useState('');
-  const [statusF,    setStatusF]    = useState<string>('all');
-  const [dateF,      setDateF]      = useState<string>('all');
-  const [sortBy,     setSortBy]     = useState<string>('newest');
+  const [statusF,    setStatusF]    = useState<'all' | 'pending' | 'accepted' | 'completed' | 'disputed' | 'cancelled'>('all');
+  const [dateF,      setDateF]      = useState<'all' | 'week' | 'month' | 'year'>('all');
+  const [sortBy,     setSortBy]     = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     if (authLoading) return;
@@ -85,7 +85,7 @@ export default function FixturePublicoPage() {
     }
     if (statusF !== 'all') list = list.filter(c => c.status === statusF);
     if (dateF !== 'all') {
-      const ms = { week: 7, month: 30, year: 365 }[dateF as 'week'|'month'|'year'] * 86400000;
+      const ms = { week: 7, month: 30, year: 365 }[dateF] * 86400000;
       list = list.filter(c => Date.now() - new Date(c.created_at).getTime() <= ms);
     }
     list.sort((a, b) => {
@@ -165,7 +165,7 @@ export default function FixturePublicoPage() {
             </div>
             <div>
               <label className="label block mb-1.5">Estado</label>
-              <select value={statusF} onChange={e => setStatusF(e.target.value)} className="select w-full">
+              <select value={statusF} onChange={e => setStatusF(e.target.value as typeof statusF)} className="select w-full">
                 <option value="all">Todos</option>
                 <option value="pending">Esperando respuesta</option>
                 <option value="accepted">Por jugar</option>
@@ -176,7 +176,7 @@ export default function FixturePublicoPage() {
             </div>
             <div>
               <label className="label block mb-1.5">Período</label>
-              <select value={dateF} onChange={e => setDateF(e.target.value)} className="select w-full">
+              <select value={dateF} onChange={e => setDateF(e.target.value as typeof dateF)} className="select w-full">
                 <option value="all">Todo el tiempo</option>
                 <option value="week">Última semana</option>
                 <option value="month">Último mes</option>
@@ -185,7 +185,7 @@ export default function FixturePublicoPage() {
             </div>
             <div>
               <label className="label block mb-1.5">Ordenar</label>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="select w-full">
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} className="select w-full">
                 <option value="newest">Más recientes</option>
                 <option value="oldest">Más antiguos</option>
               </select>
