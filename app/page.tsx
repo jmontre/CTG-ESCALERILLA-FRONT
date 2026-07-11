@@ -84,7 +84,7 @@ function NextUpWidget({ challenges }: { challenges: Challenge[] }) {
     items.push({
       kind: 'pending',
       title: `${pending.length} desafío${pending.length > 1 ? 's' : ''} esperan tu respuesta`,
-      sub: 'Acepta o rechaza · 72h máximo',
+      sub: 'Acepta o rechaza · 24h máximo',
       action: 'Ir a desafíos', route: '/fixture', urgent: true,
     });
   }

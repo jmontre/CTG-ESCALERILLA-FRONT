@@ -93,8 +93,8 @@ export default function ChallengeModal({ challenger, challenged, isOpen, onClose
 
             {/* Rules */}
             <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl p-3 text-amber-300/80 text-xs mb-5 leading-relaxed">
-              <strong className="text-amber-300">Reglas:</strong> El desafiado tiene <strong>72 horas</strong> para responder.
-              Si acepta, deben fijar fecha en los siguientes <strong>10 días</strong>. Si ganas, intercambian posiciones.
+              <strong className="text-amber-300">Reglas:</strong> El desafiado tiene <strong>24 horas</strong> para responder.
+              Si acepta, deben fijar fecha en los siguientes <strong>5 días</strong>. Si ganas, intercambian posiciones.
             </div>
 
             {/* Actions */}
