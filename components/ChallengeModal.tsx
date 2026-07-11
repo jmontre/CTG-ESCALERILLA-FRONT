@@ -9,7 +9,6 @@ interface ChallengeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  loading?: boolean;
 }
 
 const SwordsIcon = () => (
@@ -38,20 +37,20 @@ function getCat(position: number | null | undefined): string {
   return 'D';
 }
 
-export default function ChallengeModal({ challenger, challenged, isOpen, onClose, onConfirm, loading = false }: ChallengeModalProps) {
+export default function ChallengeModal({ challenger, challenged, isOpen, onClose, onConfirm }: ChallengeModalProps) {
   useEffect(() => {
     if (!isOpen) return;
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !loading) onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-  }, [isOpen, loading, onClose]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8 animate-fade-in">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={loading ? undefined : onClose} />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md animate-scale-in">
         <div className="bg-[#0f2211] border border-ctg-green/15 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
           {/* Header */}
@@ -61,8 +60,7 @@ export default function ChallengeModal({ challenger, challenged, isOpen, onClose
               <p className="text-[#F0F7E8]/45 text-sm mt-0.5">El desafío se enviará inmediatamente</p>
             </div>
             <button
-              onClick={loading ? undefined : onClose}
-              disabled={loading}
+              onClick={onClose}
               className="text-[#F0F7E8]/30 hover:text-[#F0F7E8] text-2xl leading-none transition"
             >
               ×
@@ -99,18 +97,14 @@ export default function ChallengeModal({ challenger, challenged, isOpen, onClose
 
             {/* Actions */}
             <div className="flex gap-3">
-              <button onClick={loading ? undefined : onClose} disabled={loading} className="btn-ghost flex-1">
+              <button onClick={onClose} className="btn-ghost flex-1">
                 Cancelar
               </button>
-              <button onClick={onConfirm} disabled={loading} className="btn-primary flex-1">
-                {loading ? 'Creando…' : (
-                  <>
-                    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5L21 0M19 5l-5 5" />
-                    </svg>
-                    Confirmar Desafío
-                  </>
-                )}
+              <button onClick={onConfirm} className="btn-primary flex-1">
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5L21 0M19 5l-5 5" />
+                </svg>
+                Confirmar Desafío
               </button>
             </div>
           </div>
