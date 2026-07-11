@@ -67,161 +67,185 @@ export default function ChallengeManagementModal({
     return days > 0 ? `${days}d ${hours % 24}h restantes` : `${hours}h restantes`;
   };
 
+  const getStatusBadge = (status: string) => {
+    const map: Record<string, { label: string; chip: string }> = {
+      pending: { label: '⏳ Pendiente', chip: 'chip-warning' },
+      accepted: { label: '🎾 Por jugar', chip: 'chip-info' },
+      completed: { label: '✅ Completado', chip: 'chip-success' },
+      disputed: { label: '⚠️ Disputa', chip: 'chip-danger' },
+      cancelled: { label: '🚫 Cancelado', chip: 'chip-muted' },
+      rejected: { label: '🏆 W.O.', chip: 'chip-success' },
+      expired_not_accepted: { label: '⏰ Expiró (no resp)', chip: 'chip-warning' },
+      expired_not_played: { label: '⏰ Expiró (no jugó)', chip: 'chip-warning' },
+    };
+    const s = map[status] || { label: status, chip: 'chip-muted' };
+    return <span className={`chip ${s.chip}`}>{s.label}</span>;
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 animate-scale-in max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-ctg-dark">
-            {isDisputed ? '⚠️ Resolver Disputa' : isCompleted ? '✏️ Editar Resultado' : 'Gestionar Desafío'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
-        </div>
-
-        {/* Info */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <div className="text-center">
-              <p className="text-lg font-bold text-ctg-dark">{challenge.challenger?.name}</p>
-              <p className="text-sm text-gray-600">Pos #{challenge.challenger?.position}</p>
-            </div>
-            <span className="text-3xl">⚔️</span>
-            <div className="text-center">
-              <p className="text-lg font-bold text-ctg-dark">{challenge.challenged?.name}</p>
-              <p className="text-sm text-gray-600">Pos #{challenge.challenged?.position}</p>
-            </div>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8 animate-fade-in">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+      <div className="relative w-full max-w-2xl animate-scale-in">
+        <div className="bg-[#0f2211] border border-ctg-green/15 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden max-h-[85vh] overflow-y-auto">
+          <div className="bg-[#152b18] border-b border-[#1e4020] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+            <h3 className="font-display text-xl font-bold text-[#F0F7E8]">
+              {isDisputed ? '⚠️ Resolver Disputa' : isCompleted ? '✏️ Editar Resultado' : 'Gestionar Desafío'}
+            </h3>
+            <button onClick={onClose} className="text-[#F0F7E8]/30 hover:text-[#F0F7E8] text-2xl leading-none transition">×</button>
           </div>
 
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Estado:</span>
-              <span className="font-medium">{challenge.status}</span>
+          <div className="p-6 space-y-4">
+            {/* Info */}
+            <div className="bg-[#152b18] border border-[#1e4020] rounded-xl p-4">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-[#F0F7E8]">{challenge.challenger?.name}</p>
+                  <p className="text-sm text-[#F0F7E8]/50">Pos #{challenge.challenger?.position}</p>
+                </div>
+                <span className="text-3xl">⚔️</span>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-[#F0F7E8]">{challenge.challenged?.name}</p>
+                  <p className="text-sm text-[#F0F7E8]/50">Pos #{challenge.challenged?.position}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#F0F7E8]/50">Estado:</span>
+                  {getStatusBadge(challenge.status)}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#F0F7E8]/50">Creado:</span>
+                  <span className="text-[#F0F7E8]">{new Date(challenge.created_at).toLocaleDateString()}</span>
+                </div>
+
+                {isPending && (
+                  <div className="border-t border-[#1e4020] pt-2 mt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[#F0F7E8]/50">Plazo para aceptar:</span>
+                      <span className="font-medium text-amber-400">{getTimeLeft(challenge.accept_deadline)}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {[12, 24, 48].map(h => (
+                        <button key={h} onClick={() => handleExtendAccept(h)}
+                          className="flex-1 px-3 py-1 text-xs bg-blue-900/30 border border-blue-500/20 text-blue-300 rounded hover:bg-blue-900/50 transition">+{h}h</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(isPending || isAccepted) && (
+                  <div className="border-t border-[#1e4020] pt-2 mt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[#F0F7E8]/50">Plazo para jugar:</span>
+                      <span className="font-medium text-ctg-green">{getTimeLeft(challenge.play_deadline)}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleExtendPlay(24)}
+                        className="flex-1 px-3 py-1 text-xs bg-ctg-green/10 border border-ctg-green/25 text-ctg-green rounded hover:bg-ctg-green/20 transition">+1 día</button>
+                      <button onClick={() => handleExtendPlay(72)}
+                        className="flex-1 px-3 py-1 text-xs bg-ctg-green/10 border border-ctg-green/25 text-ctg-green rounded hover:bg-ctg-green/20 transition">+3 días</button>
+                      <button onClick={() => handleExtendPlay(168)}
+                        className="flex-1 px-3 py-1 text-xs bg-ctg-green/10 border border-ctg-green/25 text-ctg-green rounded hover:bg-ctg-green/20 transition">+1 semana</button>
+                    </div>
+                  </div>
+                )}
+
+                {challenge.final_score && (
+                  <div className="flex justify-between border-t border-[#1e4020] pt-2">
+                    <span className="text-[#F0F7E8]/50">Resultado actual:</span>
+                    <span className="font-medium text-[#F0F7E8]">{challenge.final_score}</span>
+                  </div>
+                )}
+                {challenge.winner_id && (
+                  <div className="flex justify-between">
+                    <span className="text-[#F0F7E8]/50">Ganador actual:</span>
+                    <span className="font-medium text-[#F0F7E8]">
+                      {challenge.winner_id === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {isDisputed && (
+                <div className="mt-4 space-y-3">
+                  {challenge.challenger_result && (
+                    <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-3">
+                      <p className="text-sm font-semibold text-blue-300 mb-1">Resultado de {challenge.challenger?.name}:</p>
+                      <p className="text-sm text-blue-300/80">
+                        Marcador: {challenge.challenger_result.score}<br />
+                        Ganador: {challenge.challenger_result.winnerId === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}
+                      </p>
+                    </div>
+                  )}
+                  {challenge.challenged_result && (
+                    <div className="bg-ctg-green/10 border border-ctg-green/25 rounded-lg p-3">
+                      <p className="text-sm font-semibold text-ctg-green mb-1">Resultado de {challenge.challenged?.name}:</p>
+                      <p className="text-sm text-ctg-green/80">
+                        Marcador: {challenge.challenged_result.score}<br />
+                        Ganador: {challenge.challenged_result.winnerId === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Creado:</span>
-              <span>{new Date(challenge.created_at).toLocaleDateString()}</span>
-            </div>
 
-            {isPending && (
-              <div className="border-t pt-2 mt-2">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Plazo para aceptar:</span>
-                  <span className="font-medium text-orange-600">{getTimeLeft(challenge.accept_deadline)}</span>
-                </div>
-                <div className="flex gap-2">
-                  {[12, 24, 48].map(h => (
-                    <button key={h} onClick={() => handleExtendAccept(h)} className="flex-1 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">+{h}h</button>
-                  ))}
-                </div>
+            {/* Formulario */}
+            <div className="space-y-4">
+              <div>
+                <label className="label block mb-1.5">{isCompleted ? 'Nuevo Ganador' : 'Ganador'} *</label>
+                <select
+                  value={winnerId}
+                  onChange={(e) => { setWinnerId(e.target.value); setFormError(''); }}
+                  className="field select"
+                >
+                  <option value="">Seleccionar ganador...</option>
+                  <option value={challenge.challenger_id}>{challenge.challenger?.name} (Pos #{challenge.challenger?.position})</option>
+                  <option value={challenge.challenged_id}>{challenge.challenged?.name} (Pos #{challenge.challenged?.position})</option>
+                </select>
               </div>
-            )}
 
-            {(isPending || isAccepted) && (
-              <div className="border-t pt-2 mt-2">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Plazo para jugar:</span>
-                  <span className="font-medium text-green-600">{getTimeLeft(challenge.play_deadline)}</span>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleExtendPlay(24)}  className="flex-1 px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">+1 día</button>
-                  <button onClick={() => handleExtendPlay(72)}  className="flex-1 px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">+3 días</button>
-                  <button onClick={() => handleExtendPlay(168)} className="flex-1 px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">+1 semana</button>
-                </div>
+              <div>
+                <label className="label block mb-1.5">{isCompleted ? 'Nuevo Marcador' : 'Marcador'} *</label>
+                <input
+                  type="text"
+                  value={score}
+                  onChange={(e) => { setScore(e.target.value); setFormError(''); }}
+                  className="field"
+                  placeholder="6-4, 7-5"
+                />
+                <p className="text-xs text-[#F0F7E8]/40 mt-1">Formato: 6-4, 7-5 (o con super tiebreak: 6-3, 4-6, 10-8)</p>
               </div>
-            )}
 
-            {challenge.final_score && (
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-gray-600">Resultado actual:</span>
-                <span className="font-medium">{challenge.final_score}</span>
-              </div>
-            )}
-            {challenge.winner_id && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Ganador actual:</span>
-                <span className="font-medium">
-                  {challenge.winner_id === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}
-                </span>
-              </div>
-            )}
-          </div>
+              {formError && (
+                <div className="bg-red-900/30 border border-red-500/30 text-red-400 rounded-xl p-3 text-sm">
+                  {formError}
+                </div>
+              )}
 
-          {isDisputed && (
-            <div className="mt-4 space-y-3">
-              {challenge.challenger_result && (
-                <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                  <p className="text-sm font-semibold text-blue-800 mb-1">Resultado de {challenge.challenger?.name}:</p>
-                  <p className="text-sm text-blue-700">
-                    Marcador: {challenge.challenger_result.score}<br />
-                    Ganador: {challenge.challenger_result.winnerId === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}
+              {isCompleted && (
+                <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl p-3">
+                  <p className="text-sm text-amber-300/80">
+                    ⚠️ <strong className="text-amber-300">Nota:</strong> Al editar un partido completado, se actualizarán las estadísticas y el ranking según el nuevo resultado.
                   </p>
                 </div>
               )}
-              {challenge.challenged_result && (
-                <div className="bg-green-50 border border-green-200 rounded p-3">
-                  <p className="text-sm font-semibold text-green-800 mb-1">Resultado de {challenge.challenged?.name}:</p>
-                  <p className="text-sm text-green-700">
-                    Marcador: {challenge.challenged_result.score}<br />
-                    Ganador: {challenge.challenged_result.winnerId === challenge.challenger_id ? challenge.challenger?.name : challenge.challenged?.name}
-                  </p>
-                </div>
-              )}
             </div>
-          )}
-        </div>
 
-        {/* Formulario */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">{isCompleted ? 'Nuevo Ganador' : 'Ganador'} *</label>
-            <select
-              value={winnerId}
-              onChange={(e) => { setWinnerId(e.target.value); setFormError(''); }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-            >
-              <option value="">Seleccionar ganador...</option>
-              <option value={challenge.challenger_id}>{challenge.challenger?.name} (Pos #{challenge.challenger?.position})</option>
-              <option value={challenge.challenged_id}>{challenge.challenged?.name} (Pos #{challenge.challenged?.position})</option>
-            </select>
+            {/* Botones */}
+            <div className="flex gap-3 pt-2">
+              <button onClick={onClose} className="btn-ghost flex-1">
+                Cerrar
+              </button>
+              <button onClick={handleCancel} className="btn-danger">
+                {isCompleted ? 'Anular Partido' : 'Cancelar Desafío'}
+              </button>
+              <button onClick={handleResolve} className="btn-primary flex-1">
+                {isCompleted ? 'Actualizar Resultado' : 'Resolver'}
+              </button>
+            </div>
           </div>
-
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">{isCompleted ? 'Nuevo Marcador' : 'Marcador'} *</label>
-            <input
-              type="text"
-              value={score}
-              onChange={(e) => { setScore(e.target.value); setFormError(''); }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ctg-green"
-              placeholder="6-4, 7-5"
-            />
-            <p className="text-xs text-gray-500 mt-1">Formato: 6-4, 7-5 (o con super tiebreak: 6-3, 4-6, 10-8)</p>
-          </div>
-
-          {formError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {formError}
-            </div>
-          )}
-
-          {isCompleted && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
-                ⚠️ <strong>Nota:</strong> Al editar un partido completado, se actualizarán las estadísticas y el ranking según el nuevo resultado.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Botones */}
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            Cerrar
-          </button>
-          <button onClick={handleCancel} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-            {isCompleted ? 'Anular Partido' : 'Cancelar Desafío'}
-          </button>
-          <button onClick={handleResolve} className="flex-1 bg-ctg-green text-white font-bold py-2 rounded-lg hover:bg-ctg-lime transition-colors">
-            {isCompleted ? 'Actualizar Resultado' : 'Resolver'}
-          </button>
         </div>
       </div>
     </div>
