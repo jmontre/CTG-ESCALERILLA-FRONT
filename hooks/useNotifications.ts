@@ -97,12 +97,8 @@ function fromApi(n: ApiNotification): Notification | null {
 
 async function fetchAll() {
   if (typeof window === 'undefined') return;
-  if (!localStorage.getItem('auth_token')) {
-    store = [];
-    loaded = true;
-    emit();
-    return;
-  }
+  // Sin gate de sesión: la cookie httpOnly no es visible desde JS, así que no hay
+  // señal confiable en el cliente. api.getNotifications() ya devuelve [] sin sesión.
   const data = await api.getNotifications();
   store = data.map(fromApi).filter((n): n is Notification => n !== null);
   loaded = true;
@@ -111,9 +107,7 @@ async function fetchAll() {
 
 function ensurePolling() {
   if (pollTimer) return;
-  pollTimer = setInterval(() => {
-    if (localStorage.getItem('auth_token')) fetchAll();
-  }, POLL_INTERVAL_MS);
+  pollTimer = setInterval(() => { fetchAll(); }, POLL_INTERVAL_MS);
 }
 
 function stopPollingIfIdle() {
