@@ -381,8 +381,8 @@ export const api = {
   },
 
   // ── Notificaciones ────────────────────────────────────────────────────────
-  // El backend puede no exponer estos endpoints todavía: getNotifications
-  // devuelve [] en error para que la UI funcione igual.
+  // Endpoints implementados en el backend (NotificationsModule). getNotifications
+  // igual devuelve [] en error, por robustez ante caídas de red o backend.
 
   getNotifications: async (): Promise<ApiNotification[]> => {
     try {

@@ -420,8 +420,9 @@ SVG inline path-based: cada archivo define un objeto `I = { nombre: 'path...' }`
 
 - `hooks/useNotifications.ts` consume `api.getNotifications()` con **store compartido a nivel de módulo** (mismo patrón que `authCache`): todas las instancias (badge del Header, panel) ven el mismo estado. Polling cada 60s + refetch en evento `auth:login`.
 - Interfaz del hook: `{ items, unreadCount, markRead, markAllRead }`. `markRead`/`markAllRead` son optimistas (UI primero, API fire-and-forget).
-- Si el backend aún no expone los endpoints, `getNotifications` devuelve `[]` y la UI muestra "Sin notificaciones" — no rompe nada.
-- **Contrato backend pendiente de implementar:** ver `docs/backend-notifications.md` (modelo Prisma + 3 endpoints + tabla de eventos que generan cada `NotifType`).
+- Ante caída de red/backend, `getNotifications` devuelve `[]` y la UI muestra "Sin notificaciones" — no rompe nada (fallback de robustez).
+- **Backend implementado** (rama `feature/notifications-inapp`, NestJS `NotificationsModule`): endpoints reales `GET /notifications`, `POST /notifications/:id/read`, `POST /notifications/read-all` (scoping por jugador dueño). Ver `docs/backend-notifications.md` para el contrato completo (modelo Prisma + tabla de eventos por `NotifType`).
+- **Tipos emitidos hoy por el backend:** `challenge_received`, `challenge_accepted`, `challenge_rejected`, `result_submitted`, `result_confirmed`, `result_disputed`, `position_up`, `position_down`, `reservation_done`, `reservation_cancelled`, `reservation_modified`.
 - `NOTIF_META` mapea cada `NotifType` a icono/color/urgencia/confetti. Tipos desconocidos del backend se ignoran silenciosamente.
 - El tipo wire es `ApiNotification` (`types/index.ts`); el shape de UI `Notification` (con `time` relativo) vive en el hook.
 - `NotificationsPanel.tsx` renderiza el dropdown desde la campana del Header.

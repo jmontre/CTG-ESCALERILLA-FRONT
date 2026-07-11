@@ -1,5 +1,7 @@
 # Contrato Backend — Notificaciones
 
+**Estado: IMPLEMENTADO** (2026-07-11) — rama backend `feature/notifications-inapp`. Este documento queda como referencia del contrato.
+
 El frontend ya consume estos endpoints (`lib/api.ts` → `getNotifications`, `markNotificationRead`, `markAllNotificationsRead`). Mientras el backend no los implemente, la UI muestra "Sin notificaciones" (fallback a lista vacía). Este documento define lo que hay que construir en NestJS + Prisma.
 
 ## Modelo Prisma
