@@ -368,7 +368,7 @@ export default function AdminReservasPage() {
                     {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => {
                       const blocked = blockedSlots.includes(slot);
                       return (
-                        <button key={slot} type="button" onClick={() => toggleSlot(slot)}
+                        <button key={slot} type="button" onClick={() => toggleSlot(slot)} aria-pressed={blocked}
                           className={'h-11 rounded-lg text-xs font-mono font-bold border transition ' + (
                             blocked
                               ? 'bg-red-500/12 border-red-500/35 text-red-400'
@@ -432,7 +432,7 @@ export default function AdminReservasPage() {
                     {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => {
                       const active = lightSlots.includes(slot);
                       return (
-                        <button key={slot} type="button" onClick={() => toggleLightSlot(slot)}
+                        <button key={slot} type="button" onClick={() => toggleLightSlot(slot)} aria-pressed={active}
                           className={'h-11 rounded-lg text-xs font-mono font-bold border transition ' + (
                             active
                               ? 'bg-amber-500/12 border-amber-500/35 text-amber-400'
@@ -883,7 +883,7 @@ export default function AdminReservasPage() {
                       <p className="font-display font-black text-3xl text-purple-400">{stats.guest.count}</p>
                       <p className="text-xs text-[#F0F7E8]/40 mt-2">{guestRate}% · ${(stats.guest.revenue || 0).toLocaleString('es-CL')} recaudado</p>
                     </div>
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-[#1e4020]">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-emerald-400">
                       <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Promedio / día activo</p>
                       <p className="font-display font-black text-3xl text-[#F0F7E8]">{avgPerDay}</p>
                       <p className="text-xs text-[#F0F7E8]/40 mt-2">{activeDays} días con actividad</p>
@@ -893,9 +893,9 @@ export default function AdminReservasPage() {
                       <p className="font-display font-black text-3xl text-amber-400">${((lightSummary?.total_revenue || 0) / 1000).toFixed(0)}k</p>
                       <p className="text-xs text-[#F0F7E8]/40 mt-2">${(lightSummary?.total_revenue || 0).toLocaleString('es-CL')} · {lightSummary?.by_day?.length ?? 0} días</p>
                     </div>
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-teal-400">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-blue-400">
                       <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Horario peak</p>
-                      <p className="font-display font-black text-3xl text-teal-400">{topSlot?.slot ?? '—'}</p>
+                      <p className="font-display font-black text-3xl text-blue-400">{topSlot?.slot ?? '—'}</p>
                       <p className="text-xs text-[#F0F7E8]/40 mt-2">{topSlot?.count ?? 0} reservas</p>
                     </div>
                   </div>
