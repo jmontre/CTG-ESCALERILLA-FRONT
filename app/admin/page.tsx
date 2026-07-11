@@ -175,18 +175,18 @@ export default function AdminPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { label: string; color: string }> = {
-      pending: { label: '⏳ Pendiente', color: 'bg-yellow-100 text-yellow-700' },
-      accepted: { label: '🎾 Por jugar', color: 'bg-blue-100 text-blue-700' },
-      completed: { label: '✅ Completado', color: 'bg-green-100 text-green-700' },
-      disputed: { label: '⚠️ Disputa', color: 'bg-red-100 text-red-700' },
-      cancelled: { label: '🚫 Cancelado', color: 'bg-gray-100 text-gray-600' },
-      rejected: { label: '🏆 W.O.', color: 'bg-green-100 text-green-700' },
-      expired_not_accepted: { label: '⏰ Expiró (no resp)', color: 'bg-orange-100 text-orange-700' },
-      expired_not_played: { label: '⏰ Expiró (no jugó)', color: 'bg-orange-100 text-orange-700' },
+    const map: Record<string, { label: string; chip: string }> = {
+      pending: { label: '⏳ Pendiente', chip: 'chip-warning' },
+      accepted: { label: '🎾 Por jugar', chip: 'chip-info' },
+      completed: { label: '✅ Completado', chip: 'chip-success' },
+      disputed: { label: '⚠️ Disputa', chip: 'chip-danger' },
+      cancelled: { label: '🚫 Cancelado', chip: 'chip-muted' },
+      rejected: { label: '🏆 W.O.', chip: 'chip-success' },
+      expired_not_accepted: { label: '⏰ Expiró (no resp)', chip: 'chip-warning' },
+      expired_not_played: { label: '⏰ Expiró (no jugó)', chip: 'chip-warning' },
     };
-    const s = map[status] || { label: status, color: 'bg-gray-100 text-gray-600' };
-    return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${s.color}`}>{s.label}</span>;
+    const s = map[status] || { label: status, chip: 'chip-muted' };
+    return <span className={`chip ${s.chip}`}>{s.label}</span>;
   };
 
   const canCancel = (status: string) => ['pending', 'accepted', 'disputed', 'completed'].includes(status);
@@ -214,20 +214,19 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
         <div className="mb-8">
-          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Administración</p>
-          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Panel de Administrador</h1>
+          <div className="text-ctg-green text-xs uppercase tracking-[0.28em] font-bold mb-2">Administración</div>
+          <h1 className="font-display font-extrabold text-[#F0F7E8] text-4xl md:text-5xl tracking-tight">Panel <span className="text-ctg-green">Escalerilla</span></h1>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-[#1e4020] overflow-x-auto">
+        <div className="flex gap-1 mb-8 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-1.5 overflow-x-auto">
           {(['dashboard', 'players', 'challenges', 'master'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={'px-5 py-3 font-medium transition-colors whitespace-nowrap text-sm ' +
-                (activeTab === tab
-                  ? 'text-ctg-green border-b-2 border-ctg-green'
-                  : 'text-[#F0F7E8]/40 hover:text-[#F0F7E8]/70')}
+              className={activeTab === tab
+                ? 'px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition bg-ctg-green text-[#0a1608]'
+                : 'px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition text-[#F0F7E8]/60 hover:text-[#F0F7E8] hover:bg-ctg-green/8'}
             >
               {tab === 'dashboard' ? 'Dashboard'
                 : tab === 'players' ? 'Jugadores'
@@ -239,16 +238,16 @@ export default function AdminPage() {
 
         {/* Dashboard */}
         {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {[
               { label: 'Jugadores',        value: stats.totalPlayers,     color: 'text-[#F0F7E8]' },
               { label: 'Desafíos Activos', value: stats.activeChallenges, color: 'text-amber-400'  },
               { label: 'Partidos Jugados', value: stats.completedMatches, color: 'text-ctg-green'  },
               { label: 'Disputas',         value: stats.disputes,         color: 'text-red-400'    },
             ].map((s) => (
-              <div key={s.label} className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
-                <p className="text-[#F0F7E8]/40 text-xs mb-1">{s.label}</p>
-                <p className={`font-display font-black text-3xl ${s.color}`}>{s.value}</p>
+              <div key={s.label} className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
+                <div className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold">{s.label}</div>
+                <div className={`font-display font-black text-3xl mt-1 ${s.color}`}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -256,29 +255,29 @@ export default function AdminPage() {
 
         {/* Players */}
         {activeTab === 'players' && (
-          <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="font-display font-bold text-[#F0F7E8] text-xl">Gestión de Jugadores</h2>
               <button onClick={() => setShowAddModal(true)} className="btn-primary">
                 + Agregar Jugador
               </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-[#1e4020]">
               <table className="w-full">
-                <thead className="bg-[#152b18]">
+                <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Pos</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Nombre</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Teléfono</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">W-L</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Estado</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-[#F0F7E8]/40 uppercase tracking-wider">Acciones</th>
+                    <th className="px-4 py-3 text-left font-semibold">Pos</th>
+                    <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                    <th className="px-4 py-3 text-left font-semibold">Email</th>
+                    <th className="px-4 py-3 text-left font-semibold">Teléfono</th>
+                    <th className="px-4 py-3 text-left font-semibold">W-L</th>
+                    <th className="px-4 py-3 text-left font-semibold">Estado</th>
+                    <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1e4020]">
                   {players.filter(p => (p.position ?? 0) > 0).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((p) => (
-                    <tr key={p.id} className="hover:bg-[#152b18]/60 transition-colors">
+                    <tr key={p.id} className="hover:bg-ctg-green/4 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono font-bold text-ctg-green">#{p.position ?? '—'}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-[#F0F7E8]">{p.name}</td>
                       <td className="px-4 py-3 text-sm text-[#F0F7E8]/50">{p.email}</td>
@@ -290,26 +289,26 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-sm">
                         <div className="flex flex-col gap-1">
                           {p.immune_until && new Date(p.immune_until) > new Date() && (
-                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs inline-flex items-center gap-1">
+                            <span className="chip chip-info">
                               🛡️ Inmune
-                              <button onClick={() => handleResetImmunity(p.id)} className="ml-1 hover:text-blue-900">×</button>
+                              <button onClick={() => handleResetImmunity(p.id)} className="ml-1 hover:opacity-70">×</button>
                             </span>
                           )}
                           {p.vulnerable_until && new Date(p.vulnerable_until) > new Date() && (
-                            <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs inline-flex items-center gap-1">
+                            <span className="chip chip-warning">
                               ⚠️ Vulnerable
-                              <button onClick={() => handleResetVulnerability(p.id)} className="ml-1 hover:text-orange-900">×</button>
+                              <button onClick={() => handleResetVulnerability(p.id)} className="ml-1 hover:opacity-70">×</button>
                             </span>
                           )}
                           {(!p.immune_until || new Date(p.immune_until) <= new Date()) &&
                             (!p.vulnerable_until || new Date(p.vulnerable_until) <= new Date()) && (
-                              <span className="px-2 py-0.5 bg-[#1e4020] text-[#F0F7E8]/40 rounded text-xs">Normal</span>
+                              <span className="chip chip-muted">Normal</span>
                             )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right">
-                        <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="text-ctg-green hover:text-ctg-lime transition mr-3 text-xs">Editar</button>
-                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="text-red-400 hover:text-red-300 transition text-xs">Eliminar</button>
+                      <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                        <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
+                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5">Eliminar</button>
                       </td>
                     </tr>
                   ))}
@@ -321,7 +320,7 @@ export default function AdminPage() {
 
         {/* Challenges */}
         {activeTab === 'challenges' && (
-          <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
             <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-6">Gestión de Desafíos</h2>
             <div className="space-y-3">
               {challenges.length === 0 ? (
@@ -350,7 +349,7 @@ export default function AdminPage() {
                           <button
                             onClick={() => handleCancelChallenge(challenge.id)}
                             disabled={cancellingId === challenge.id}
-                            className="px-3 py-1.5 text-xs font-medium bg-red-900/30 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-900/50 transition disabled:opacity-50"
+                            className="btn-danger text-xs px-2.5 py-1.5 disabled:opacity-50"
                           >
                             {cancellingId === challenge.id ? '...' : 'Cancelar'}
                           </button>
@@ -358,16 +357,16 @@ export default function AdminPage() {
                         <button
                           onClick={() => handleForceDelete(challenge.id)}
                           disabled={deletingId === challenge.id}
-                          className="px-3 py-1.5 text-xs font-medium bg-red-600/80 text-white rounded-lg hover:bg-red-600 transition disabled:opacity-50"
+                          className="btn-danger text-xs px-2.5 py-1.5 disabled:opacity-50"
                           title="Eliminar permanentemente de la DB"
                         >
                           {deletingId === challenge.id ? '...' : '🗑️'}
                         </button>
                         <button
                           onClick={() => { setSelectedChallenge(challenge); setShowChallengeModal(true); }}
-                          className={'px-3 py-1.5 text-xs font-medium rounded-lg transition ' + (challenge.status === 'disputed'
-                            ? 'bg-red-900/50 text-red-300 border border-red-500/30 hover:bg-red-900/70'
-                            : 'bg-ctg-green text-[#0a1608] hover:bg-ctg-lime')}
+                          className={challenge.status === 'disputed'
+                            ? 'btn-danger text-xs px-2.5 py-1.5'
+                            : 'btn-primary text-xs px-2.5 py-1.5'}
                         >
                           {challenge.status === 'disputed' ? 'Resolver' : 'Gestionar'}
                         </button>
@@ -384,7 +383,7 @@ export default function AdminPage() {
         {activeTab === 'master' && (
           <div className="space-y-6">
             {/* Config fechas */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
               <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-1">Configuración del Master</h2>
               <p className="text-sm text-[#F0F7E8]/40 mb-4">Estas fechas se aplicarán al generar cada categoría.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -435,16 +434,16 @@ export default function AdminPage() {
                 const isDeleting = deletingSeasonId === season?.id;
 
                 return (
-                  <div key={cat} className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-5">
+                  <div key={cat} className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className={`font-bold text-lg cat-letter-${cat}`}>Categoría {cat} — {CATEGORY_NAMES[cat]}</h3>
                         <p className="text-sm text-[#F0F7E8]/40">Posiciones {CATEGORY_RANGES[cat]}</p>
                       </div>
                       {season ? (
-                        <span className="chip chip-success text-xs">Activo</span>
+                        <span className="chip chip-success">Activo</span>
                       ) : (
-                        <span className="chip bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/40 text-xs">Sin generar</span>
+                        <span className="chip chip-muted">Sin generar</span>
                       )}
                     </div>
 
