@@ -259,8 +259,7 @@ export default function PerfilPage() {
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
 
-        <button onClick={() => setShowTour(true)}
-          className="w-full py-3 rounded-xl border border-[#1e4020] text-[#F0F7E8]/60 hover:text-ctg-green hover:border-ctg-green/40 text-base transition flex items-center justify-center gap-2 mt-3">
+        <button onClick={() => setShowTour(true)} className="btn-ghost w-full py-3 mt-3">
           Ver de nuevo el tutorial de bienvenida
         </button>
 

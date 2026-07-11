@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const SCREENS = [
   {
@@ -64,11 +64,11 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
   const isLast = screen === SCREENS.length - 1;
   const s = SCREENS[screen];
 
-  const finish = () => {
+  const finish = useCallback(() => {
     try { localStorage.setItem('ctg_onboarded', '1'); } catch {}
     setScreen(0);
     onClose();
-  };
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -76,8 +76,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, finish]);
 
   if (!isOpen) return null;
 
@@ -115,19 +114,4 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
       </div>
     </div>
   );
-}
-
-/** Auto-show en primer login: true si hay sesión y no se ha visto el tour. */
-export function useOnboarding(hasSession: boolean) {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    if (!hasSession) return;
-    const t = setTimeout(() => {
-      try {
-        if (!localStorage.getItem('ctg_onboarded')) setShow(true);
-      } catch {}
-    }, 0);
-    return () => clearTimeout(t);
-  }, [hasSession]);
-  return { showOnboarding: show, closeOnboarding: () => setShow(false) };
 }

@@ -6,7 +6,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationsPanel from '@/components/NotificationsPanel';
-import OnboardingModal, { useOnboarding } from '@/components/OnboardingModal';
+import OnboardingModal from '@/components/OnboardingModal';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 const I = {
   chevDown:  'M6 9l6 6 6-6',
