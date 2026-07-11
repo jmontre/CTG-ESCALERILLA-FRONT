@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import LoginPrompt from '@/components/LoginPrompt';
+import OnboardingModal from '@/components/OnboardingModal';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
@@ -41,6 +42,7 @@ export default function PerfilPage() {
   const [uploadingAvatar, setUploadingAvatar]     = useState(false);
   const [avatarPreview, setAvatarPreview]         = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTour, setShowTour]                   = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -256,6 +258,13 @@ export default function PerfilPage() {
         <button onClick={handleSaveProfile} disabled={saving} className="btn-primary w-full py-3">
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
+
+        <button onClick={() => setShowTour(true)}
+          className="w-full py-3 rounded-xl border border-[#1e4020] text-[#F0F7E8]/60 hover:text-ctg-green hover:border-ctg-green/40 text-base transition flex items-center justify-center gap-2 mt-3">
+          Ver de nuevo el tutorial de bienvenida
+        </button>
+
+        <OnboardingModal isOpen={showTour} onClose={() => setShowTour(false)} />
       </div>
 
       {/* Delete photo confirm */}
