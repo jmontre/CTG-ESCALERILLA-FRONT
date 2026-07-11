@@ -283,21 +283,20 @@ export default function AdminReservasPage() {
     <div className="min-h-screen bg-[#0a1608]">
       <Header onLoginClick={() => {}} />
 
-      <div className="max-w-5xl mx-auto px-4 pt-28 pb-24 md:pb-10">
-        <div className="mb-6">
-          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Administración</p>
-          <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Admin Reservas</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+        <div className="mb-8">
+          <div className="text-ctg-green text-xs uppercase tracking-[0.28em] font-bold mb-2">Administración</div>
+          <h1 className="font-display font-extrabold text-[#F0F7E8] text-4xl md:text-5xl tracking-tight leading-[1.02]">Panel <span className="text-ctg-green">Reservas</span></h1>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-[#1e4020]">
+        <div className="flex gap-1 mb-8 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-1.5 overflow-x-auto">
           {(['reservas', 'usuarios', 'stats'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={'px-5 py-3 font-medium transition-colors text-sm ' +
-                (activeTab === tab
-                  ? 'text-ctg-green border-b-2 border-ctg-green'
-                  : 'text-[#F0F7E8]/40 hover:text-[#F0F7E8]/70')}>
-              {tab === 'reservas' ? 'Reservas' : tab === 'usuarios' ? 'Usuarios' : 'Stats'}
+              className={activeTab === tab
+                ? 'px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition bg-ctg-green text-[#0a1608]'
+                : 'px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition text-[#F0F7E8]/60 hover:text-[#F0F7E8] hover:bg-ctg-green/8'}>
+              {tab === 'reservas' ? 'Reservas' : tab === 'usuarios' ? 'Usuarios' : 'Estadísticas'}
             </button>
           ))}
         </div>
@@ -309,90 +308,91 @@ export default function AdminReservasPage() {
             {error   && <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm mb-4">{error}</div>}
 
             {/* Config temporada */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
-              <h2 className="text-lg font-bold text-ctg-dark mb-4">⚙️ Configuración</h2>
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-4">⚙️ Configuración</h2>
               <div>
-                <p className="text-sm text-gray-500 mb-2">Temporada activa</p>
+                <p className="label mb-2">Temporada activa</p>
                 <div className="flex gap-2">
                   {['verano', 'invierno'].map(s => (
                     <button key={s} onClick={() => handleSetSeason(s)} disabled={savingSeason || season === s}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize
-                        ${season === s ? 'bg-ctg-green text-white shadow-md' : 'border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                      className={s === season
+                        ? 'px-4 py-2.5 rounded-xl text-sm font-semibold capitalize transition bg-ctg-green text-[#0a1608] disabled:opacity-100'
+                        : 'px-4 py-2.5 rounded-xl text-sm font-semibold capitalize transition border border-[#1e4020] text-[#F0F7E8]/60 hover:text-[#F0F7E8] hover:border-ctg-green/40 disabled:opacity-50'}>
                       {s === 'verano' ? '☀️ Verano' : '❄️ Invierno'}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-[#F0F7E8]/40 mt-3">
                   {season === 'verano' ? 'Alta demanda: 7:45, 9:30, 18:15, 20:00' : 'Alta demanda: 9:30, 11:15, 16:30, 18:15'}
                 </p>
               </div>
             </div>
 
             {/* Bloqueos de canchas */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
-              <h2 className="text-lg font-bold text-ctg-dark mb-4">🔒 Bloquear horarios</h2>
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-4">🔒 Bloquear horarios</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cancha</label>
-                  <select value={blockCourt} onChange={e => setBlockCourt(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green">
+                  <label className="label block mb-1.5">Cancha</label>
+                  <select value={blockCourt} onChange={e => setBlockCourt(e.target.value)} className="select w-full">
                     {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-                  <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                  <label className="label block mb-1.5">Fecha</label>
+                  <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)} className="field w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Motivo (opcional)</label>
+                  <label className="label block mb-1.5">Motivo (opcional)</label>
                   <input type="text" value={blockReason} onChange={e => setBlockReason(e.target.value)}
-                    placeholder="Ej: Mantenimiento"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                    placeholder="Ej: Mantenimiento" className="field w-full" />
                 </div>
               </div>
 
               {loadingBlocks ? (
-                <div className="text-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-ctg-green mx-auto"></div></div>
+                <div className="text-center py-4"><div className="w-6 h-6 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin mx-auto" /></div>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500 mb-3">Selecciona los horarios a bloquear:</p>
+                  <p className="text-xs text-[#F0F7E8]/40 mb-3">Selecciona los horarios a bloquear:</p>
                   <div className="flex gap-2 mb-3">
                     <button type="button" onClick={() => setBlockedSlots(['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'])}
-                      className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition font-medium">
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold bg-red-500/12 border border-red-500/35 text-red-400 hover:bg-red-500/20 transition">
                       🔒 Bloquear día completo
                     </button>
                     <button type="button" onClick={() => setBlockedSlots([])}
-                      className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition font-medium">
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold bg-ctg-green/10 border border-ctg-green/30 text-ctg-green hover:bg-ctg-green/20 transition">
                       🔓 Desbloquear todo
                     </button>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => (
-                      <label key={slot} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition text-sm font-medium
-                        ${blockedSlots.includes(slot) ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                        <input type="checkbox" checked={blockedSlots.includes(slot)} onChange={() => toggleSlot(slot)}
-                          className="accent-red-500" />
-                        {slot}
-                      </label>
-                    ))}
+                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => {
+                      const blocked = blockedSlots.includes(slot);
+                      return (
+                        <button key={slot} type="button" onClick={() => toggleSlot(slot)}
+                          className={'h-11 rounded-lg text-xs font-mono font-bold border transition ' + (
+                            blocked
+                              ? 'bg-red-500/12 border-red-500/35 text-red-400'
+                              : 'bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/70 hover:border-ctg-green/50')}>
+                          {slot}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button onClick={handleSaveBlocks} disabled={savingBlocks}
-                      className="px-4 py-2 bg-ctg-dark text-white rounded-lg text-sm font-medium hover:bg-ctg-green transition disabled:opacity-50 flex items-center gap-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button onClick={handleSaveBlocks} disabled={savingBlocks} className="btn-primary disabled:opacity-50">
                       {savingBlocks ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                           Guardando...
                         </>
                       ) : '💾 Guardar cambios'}
                     </button>
-                    {blockMessage && <span className="text-sm text-green-600">{blockMessage}</span>}
+                    {blockMessage && <span className="text-sm text-ctg-green">{blockMessage}</span>}
                     {blockedSlots.length > 0 && (
-                      <span className="text-xs text-red-600 font-medium">{blockedSlots.length} horario(s) bloqueado(s)</span>
+                      <span className="text-xs text-red-400 font-medium">{blockedSlots.length} horario(s) bloqueado(s)</span>
                     )}
                     {blockedSlots.length === 0 && (
-                      <span className="text-xs text-green-600 font-medium">Sin bloqueos</span>
+                      <span className="text-xs text-ctg-green font-medium">Sin bloqueos</span>
                     )}
                   </div>
                 </>
@@ -400,55 +400,57 @@ export default function AdminReservasPage() {
             </div>
 
             {/* Cobro de luz */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
-              <h2 className="text-lg font-bold text-ctg-dark mb-4">💡 Cobro de luz</h2>
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-4">💡 Cobro de luz</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-                  <input type="date" value={lightDate} onChange={e => setLightDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                  <label className="label block mb-1.5">Fecha</label>
+                  <input type="date" value={lightDate} onChange={e => setLightDate(e.target.value)} className="field w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Monto por horario ($)</label>
+                  <label className="label block mb-1.5">Monto por horario ($)</label>
                   <input type="number" value={lightAmount} onChange={e => setLightAmount(Number(e.target.value))} min={0} step={500}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                    className="field w-full" />
                 </div>
               </div>
               {loadingLight ? (
-                <div className="text-center py-4"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-yellow-400 mx-auto"></div></div>
+                <div className="text-center py-4"><div className="w-6 h-6 rounded-full border-2 border-amber-400/20 border-t-amber-400 animate-spin mx-auto" /></div>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500 mb-3">Selecciona los horarios donde se cobra luz:</p>
+                  <p className="text-xs text-[#F0F7E8]/40 mb-3">Selecciona los horarios donde se cobra luz:</p>
                   <div className="flex gap-2 mb-3">
                     <button type="button" onClick={() => setLightSlots(['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'])}
-                      className="text-xs px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition font-medium">
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold bg-amber-500/12 border border-amber-500/35 text-amber-400 hover:bg-amber-500/20 transition">
                       💡 Todos los horarios
                     </button>
                     <button type="button" onClick={() => setLightSlots([])}
-                      className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition font-medium">
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold border border-[#1e4020] text-[#F0F7E8]/50 hover:text-[#F0F7E8] hover:border-ctg-green/30 transition">
                       Limpiar
                     </button>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => (
-                      <label key={slot} className={`flex items-center gap-2 p-2 rounded-lg border-2 cursor-pointer transition text-sm font-medium
-                        ${lightSlots.includes(slot) ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                        <input type="checkbox" checked={lightSlots.includes(slot)} onChange={() => toggleLightSlot(slot)}
-                          className="accent-yellow-500" />
-                        {slot}
-                      </label>
-                    ))}
+                    {['06:00','07:45','09:30','11:15','13:00','14:45','16:30','18:15','20:00','21:45'].map(slot => {
+                      const active = lightSlots.includes(slot);
+                      return (
+                        <button key={slot} type="button" onClick={() => toggleLightSlot(slot)}
+                          className={'h-11 rounded-lg text-xs font-mono font-bold border transition ' + (
+                            active
+                              ? 'bg-amber-500/12 border-amber-500/35 text-amber-400'
+                              : 'bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/70 hover:border-ctg-green/50')}>
+                          {slot}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button onClick={handleSaveLightConfig} disabled={savingLight}
-                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition disabled:opacity-50 flex items-center gap-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button onClick={handleSaveLightConfig} disabled={savingLight} className="btn-primary disabled:opacity-50">
                       {savingLight ? (
-                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Guardando...</>
+                        <><div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>Guardando...</>
                       ) : '💾 Guardar cobro de luz'}
                     </button>
-                    {lightMessage && <span className="text-sm text-green-600">{lightMessage}</span>}
+                    {lightMessage && <span className="text-sm text-ctg-green">{lightMessage}</span>}
                     {lightSlots.length > 0 && (
-                      <span className="text-xs text-yellow-600 font-medium">💡 {lightSlots.length} horario(s) con cobro · ${(lightAmount * lightSlots.length).toLocaleString('es-CL')} posible</span>
+                      <span className="chip chip-warning">💡 {lightSlots.length} horario(s) con cobro · ${(lightAmount * lightSlots.length).toLocaleString('es-CL')} posible</span>
                     )}
                   </div>
                 </>
@@ -456,69 +458,68 @@ export default function AdminReservasPage() {
             </div>
 
             {/* Filtro fecha */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6">
               <div className="flex items-center gap-4 flex-wrap">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-                  <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                  <label className="label block mb-1.5">Fecha</label>
+                  <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="field" />
                 </div>
-                <div className="flex gap-4 text-sm mt-4">
-                  <span className="text-green-600 font-medium">✅ Activas: {activeReservations.length}</span>
-                  <span className="text-blue-500 font-medium">🏁 Completadas: {completedReservations.length}</span>
-                  <span className="text-gray-400">🚫 Canceladas: {cancelledReservations.length}</span>
+                <div className="flex gap-4 text-sm mt-5 flex-wrap">
+                  <span className="text-ctg-green font-medium">✅ Activas: {activeReservations.length}</span>
+                  <span className="text-blue-400 font-medium">🏁 Completadas: {completedReservations.length}</span>
+                  <span className="text-[#F0F7E8]/35">🚫 Canceladas: {cancelledReservations.length}</span>
                 </div>
               </div>
             </div>
 
             {/* Tabla reservas */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-ctg-dark">Reservas — {formatDate(selectedDate)}</h2>
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#1e4020]">
+                <h2 className="font-display font-bold text-[#F0F7E8] text-xl">Reservas — {formatDate(selectedDate)}</h2>
               </div>
               {reservations.length === 0 ? (
-                <div className="p-12 text-center text-gray-400">No hay reservas para esta fecha.</div>
+                <div className="p-12 text-center text-[#F0F7E8]/35">No hay reservas para esta fecha.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Hora</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Cancha</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Socio</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Tipo</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Con quién</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Estado</th>
-                        <th className="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
+                        <th className="px-4 py-3 text-left font-semibold">Hora</th>
+                        <th className="px-4 py-3 text-left font-semibold">Cancha</th>
+                        <th className="px-4 py-3 text-left font-semibold">Socio</th>
+                        <th className="px-4 py-3 text-left font-semibold">Tipo</th>
+                        <th className="px-4 py-3 text-left font-semibold">Con quién</th>
+                        <th className="px-4 py-3 text-left font-semibold">Estado</th>
+                        <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-[#1e4020]">
                       {reservations
                         .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
                         .map(r => (
-                          <tr key={r.id} className={r.status === 'active' ? 'hover:bg-gray-50' : 'opacity-50'}>
-                            <td className="px-4 py-3 font-mono font-bold text-ctg-dark">{r.time_slot}</td>
-                            <td className="px-4 py-3 text-gray-700">{r.court?.name}</td>
+                          <tr key={r.id} className={r.status === 'active' ? 'hover:bg-ctg-green/4 transition-colors' : 'opacity-40'}>
+                            <td className="px-4 py-3 font-mono font-bold text-ctg-green">{r.time_slot}</td>
+                            <td className="px-4 py-3 text-[#F0F7E8]/70">{r.court?.name}</td>
                             <td className="px-4 py-3">
-                              <p className="font-medium text-ctg-dark">{r.player?.name}</p>
+                              <p className="font-semibold text-[#F0F7E8]">{r.player?.name}</p>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex gap-1 flex-wrap">
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${r.player?.member_type === 'hijo_socio' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                <span className={`chip ${r.player?.member_type === 'hijo_socio' ? 'chip-purple' : 'chip-info'}`}>
                                   {r.player?.member_type === 'hijo_socio' ? 'Hijo' : 'Socio'}
                                 </span>
-                                {r.is_high_demand && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">🔥 Alta</span>}
-                                {r.is_challenge && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">⚔️ Desafío</span>}
+                                {r.is_high_demand && <span className="chip chip-warning">🔥 Alta</span>}
+                                {r.is_challenge && <span className="chip chip-info">⚔️ Desafío</span>}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-gray-600 text-xs">
+                            <td className="px-4 py-3 text-[#F0F7E8]/50 text-xs">
                               {r.partner_name ? `🤝 ${r.partner_name}` : r.has_guest ? `👤 ${r.guest_name || 'Visita'}` : '—'}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                r.status === 'active'    ? 'bg-green-100 text-green-700'  :
-                                r.status === 'completed' ? 'bg-blue-100 text-blue-600'    :
-                                                           'bg-gray-100 text-gray-500'
+                              <span className={`chip ${
+                                r.status === 'active'    ? 'chip-success'  :
+                                r.status === 'completed' ? 'chip-info'     :
+                                                           'chip-muted'
                               }`}>
                                 {r.status === 'active' ? '✅ Activa' : r.status === 'completed' ? '🏁 Completada' : '🚫 Cancelada'}
                               </span>
@@ -527,22 +528,20 @@ export default function AdminReservasPage() {
                               {r.status === 'active' && (
                                 confirmCancelId === r.id ? (
                                   <div className="flex items-center gap-1.5 ml-auto justify-end">
-                                    <span className="text-xs text-gray-500">¿Confirmar?</span>
-                                    <button onClick={() => handleCancelReservation(r.id)}
-                                      className="text-xs px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                    <span className="text-xs text-[#F0F7E8]/40">¿Confirmar?</span>
+                                    <button onClick={() => handleCancelReservation(r.id)} className="btn-danger text-xs px-2.5 py-1.5">
                                       Sí
                                     </button>
-                                    <button onClick={() => setConfirmCancelId(null)}
-                                      className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition">
+                                    <button onClick={() => setConfirmCancelId(null)} className="btn-ghost text-xs px-2.5 py-1.5">
                                       No
                                     </button>
                                   </div>
                                 ) : (
                                   <button onClick={() => setConfirmCancelId(r.id)} disabled={cancellingId === r.id}
-                                    className="text-xs px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition disabled:opacity-50 flex items-center gap-1 ml-auto">
+                                    className="btn-danger text-xs px-2.5 py-1.5 disabled:opacity-50 ml-auto flex items-center gap-1">
                                     {cancellingId === r.id ? (
                                       <>
-                                        <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
                                         <span>Cancelando...</span>
                                       </>
                                     ) : 'Cancelar'}
@@ -563,23 +562,21 @@ export default function AdminReservasPage() {
         {/* ── TAB USUARIOS ── */}
         {activeTab === 'usuarios' && (
           <>
-            {userMessage && <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm mb-4">{userMessage}</div>}
-            {userError   && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm mb-4">{userError}</div>}
+            {userMessage && <div className="bg-ctg-green/10 border border-ctg-green/20 rounded-xl p-3 text-ctg-green text-sm mb-4">{userMessage}</div>}
+            {userError   && <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm mb-4">{userError}</div>}
 
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar por nombre o email..."
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green w-72" />
-              <button onClick={() => setShowAddUser(!showAddUser)}
-                className="px-4 py-2 bg-ctg-green text-white rounded-lg text-sm font-medium hover:bg-ctg-lime transition">
+                placeholder="Buscar por nombre o email..." className="field w-72" />
+              <button onClick={() => setShowAddUser(!showAddUser)} className="btn-primary">
                 + Nuevo usuario
               </button>
             </div>
 
             {/* Formulario nuevo usuario */}
             {showAddUser && (
-              <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-6 mb-6 border-2 border-ctg-green/30">
-                <h3 className="font-bold text-ctg-dark mb-4">Nuevo usuario de reservas</h3>
+              <div className="bg-[#0f2211] border border-ctg-green/30 rounded-2xl p-6 mb-6">
+                <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">Nuevo usuario de reservas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {[
                     { label: 'Nombre', key: 'name', type: 'text', placeholder: 'Nombre completo' },
@@ -589,17 +586,17 @@ export default function AdminReservasPage() {
                     { label: 'Contraseña', key: 'password', type: 'password', placeholder: 'Mínimo 6 caracteres' },
                   ].map(field => (
                     <div key={field.key}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
+                      <label className="label block mb-1.5">{field.label}</label>
                       <input type={field.type} placeholder={field.placeholder}
                         value={(newUser as any)[field.key]}
                         onChange={e => setNewUser({...newUser, [field.key]: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                        className="field w-full" />
                     </div>
                   ))}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de socio</label>
+                    <label className="label block mb-1.5">Tipo de socio</label>
                     <select value={newUser.member_type} onChange={e => setNewUser({...newUser, member_type: e.target.value, parent_id: ''})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green">
+                      className="select w-full">
                       <option value="socio">Socio</option>
                       <option value="hijo_socio">Hijo de socio</option>
                       <option value="profe">Profe / Escuela</option>
@@ -607,9 +604,9 @@ export default function AdminReservasPage() {
                   </div>
                   {newUser.member_type === 'hijo_socio' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Socio padre</label>
+                      <label className="label block mb-1.5">Socio padre</label>
                       <select value={newUser.parent_id} onChange={e => setNewUser({...newUser, parent_id: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green">
+                        className="select w-full">
                         <option value="">— Seleccionar —</option>
                         {socios.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
@@ -617,9 +614,8 @@ export default function AdminReservasPage() {
                   )}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setShowAddUser(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">Cancelar</button>
-                  <button onClick={handleCreateUser} disabled={savingUser}
-                    className="px-4 py-2 bg-ctg-green text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                  <button onClick={() => setShowAddUser(false)} className="btn-ghost">Cancelar</button>
+                  <button onClick={handleCreateUser} disabled={savingUser} className="btn-primary disabled:opacity-50">
                     {savingUser ? 'Creando...' : 'Crear usuario'}
                   </button>
                 </div>
@@ -627,64 +623,59 @@ export default function AdminReservasPage() {
             )}
 
             {/* Lista usuarios */}
-            <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-ctg-dark">Usuarios ({filteredPlayers.length})</h2>
-                <span className="text-xs text-gray-400">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#1e4020] flex items-center justify-between">
+                <h2 className="font-display font-bold text-[#F0F7E8] text-xl">Usuarios ({filteredPlayers.length})</h2>
+                <span className="text-xs text-[#F0F7E8]/40">
                   {allPlayers.filter(p => !(p as any).position).length} sin escalerilla
                 </span>
               </div>
               {loadingPlayers ? (
-                <div className="p-8 text-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-ctg-green mx-auto"></div></div>
+                <div className="p-8 text-center"><div className="w-8 h-8 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin mx-auto" /></div>
               ) : filteredPlayers.length === 0 ? (
-                <div className="p-8 text-center text-gray-400">No se encontraron usuarios.</div>
+                <div className="p-8 text-center text-[#F0F7E8]/35">No se encontraron usuarios.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Nombre</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Email / Teléfono</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Tipo</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Escalerilla</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">Deuda</th>
-                        <th className="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
+                        <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                        <th className="px-4 py-3 text-left font-semibold">Email / Teléfono</th>
+                        <th className="px-4 py-3 text-left font-semibold">Tipo</th>
+                        <th className="px-4 py-3 text-left font-semibold">Escalerilla</th>
+                        <th className="px-4 py-3 text-left font-semibold">Deuda</th>
+                        <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-[#1e4020]">
                       {filteredPlayers.map(p => (
-                        <tr key={p.id} className="hover:bg-gray-50">
+                        <tr key={p.id} className="hover:bg-ctg-green/4 transition-colors">
                           <td className="px-4 py-3">
-                            <p className="font-medium text-ctg-dark">{p.name}</p>
+                            <p className="font-semibold text-[#F0F7E8]">{p.name}</p>
                             {p.admin_role && <span className="text-xs text-ctg-green">Admin</span>}
                           </td>
-                          <td className="px-4 py-3 text-gray-500">
+                          <td className="px-4 py-3 text-[#F0F7E8]/50">
                             <p>{p.email}</p>
                             {p.phone && <p className="text-xs">{p.phone}</p>}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${(p as any).member_type === 'hijo_socio' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                            <span className={`chip ${(p as any).member_type === 'hijo_socio' ? 'chip-purple' : 'chip-info'}`}>
                               {(p as any).member_type === 'hijo_socio' ? 'Hijo' : 'Socio'}
                             </span>
                           </td>
                           <td className="px-4 py-3">
                             {p.position
-                              ? <span className="text-xs bg-ctg-light text-ctg-dark px-2 py-0.5 rounded-full">#{p.position}</span>
-                              : <span className="text-xs text-gray-400">Solo reservas</span>}
+                              ? <span className="text-sm font-mono font-bold text-ctg-green">#{p.position}</span>
+                              : <span className="text-xs text-[#F0F7E8]/35">Solo reservas</span>}
                           </td>
                           <td className="px-4 py-3">
                             <button onClick={() => handleToggleDebt(p.id, (p as any).has_debt)}
-                              className={`text-xs px-3 py-1 rounded-full font-medium transition ${
-                                (p as any).has_debt
-                                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                              }`}>
+                              className={`chip cursor-pointer hover:opacity-80 transition ${(p as any).has_debt ? 'chip-danger' : 'chip-muted'}`}>
                               {(p as any).has_debt ? '⚠️ Con deuda' : 'Sin deuda'}
                             </button>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button onClick={() => setEditingPlayer(p)}
-                              className="text-xs px-3 py-1.5 bg-ctg-green/10 text-ctg-green rounded-lg hover:bg-ctg-green/20 transition font-medium">
+                            <button onClick={() => setEditingPlayer(p)} className="btn-ghost text-xs px-2.5 py-1.5">
                               Editar
                             </button>
                           </td>
@@ -697,7 +688,6 @@ export default function AdminReservasPage() {
             </div>
           </>
         )}
-      </div>
 
         {/* ── TAB STATS ── */}
         {activeTab === 'stats' && (() => {
@@ -829,26 +819,23 @@ export default function AdminReservasPage() {
           return (
             <>
               {/* Header con filtros y export */}
-              <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-5 mb-6">
+              <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 mb-6">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div className="flex items-end gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Mes</label>
-                      <input type="month" value={statsMonth} onChange={e => setStatsMonth(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ctg-green" />
+                      <label className="label block mb-1.5">Mes</label>
+                      <input type="month" value={statsMonth} onChange={e => setStatsMonth(e.target.value)} className="field" />
                     </div>
                     {stats && (
-                      <p className="text-lg font-bold text-ctg-dark capitalize pb-0.5">{stats.month_label}</p>
+                      <p className="font-display font-bold text-[#F0F7E8] text-lg capitalize pb-0.5">{stats.month_label}</p>
                     )}
                   </div>
                   {stats && (
                     <div className="flex gap-2">
-                      <button onClick={handleExportCSV}
-                        className="flex items-center gap-2 px-4 py-2 border-2 border-ctg-green text-ctg-green rounded-lg text-sm font-semibold hover:bg-ctg-light transition">
+                      <button onClick={handleExportCSV} className="btn-ghost text-sm">
                         <span>⬇</span> CSV
                       </button>
-                      <button onClick={handleExportXLSX}
-                        className="flex items-center gap-2 px-4 py-2 bg-ctg-green text-white rounded-lg text-sm font-semibold hover:bg-ctg-lime transition">
+                      <button onClick={handleExportXLSX} className="btn-primary text-sm">
                         <span>📊</span> Excel (.xlsx)
                       </button>
                     </div>
@@ -858,81 +845,81 @@ export default function AdminReservasPage() {
 
               {loadingStats ? (
                 <div className="flex items-center justify-center py-20">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+                  <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
                 </div>
               ) : !stats ? (
-                <div className="text-center py-20 text-gray-400 text-lg">No hay datos para este mes.</div>
+                <div className="text-center py-20 text-[#F0F7E8]/35 text-lg">No hay datos para este mes.</div>
               ) : (
                 <div className="space-y-6">
 
                   {/* ── BLOQUE 1: KPIs principales (2 filas × 4) ── */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {/* Fila 1 */}
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-ctg-green">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Reservas normales</p>
-                      <p className="text-4xl font-extrabold text-ctg-green">{stats.totals.normal}</p>
-                      <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-ctg-green">
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Reservas normales</p>
+                      <p className="font-display font-black text-3xl text-ctg-green">{stats.totals.normal}</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2 flex items-center gap-1">
                         <span className="text-red-400 font-semibold">{stats.totals.cancelled_normal ?? 0} canceladas</span>
                         <span>·</span>
                         <span>{cancelRate}% tasa</span>
                       </p>
                     </div>
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-orange-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Alta demanda</p>
-                      <p className="text-4xl font-extrabold text-orange-500">{stats.demand.high}</p>
-                      <p className="text-xs text-gray-400 mt-2">{highDemandRate}% de reservas normales</p>
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-orange-400">
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Alta demanda</p>
+                      <p className="font-display font-black text-3xl text-orange-400">{stats.demand.high}</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2">{highDemandRate}% de reservas normales</p>
                     </div>
-                    <div className={`bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 ${stats.totals.growth >= 0 ? 'border-ctg-green' : 'border-red-400'}`}>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">vs mes anterior</p>
-                      <p className={`text-4xl font-extrabold ${stats.totals.growth >= 0 ? 'text-ctg-green' : 'text-red-500'}`}>
+                    <div className={`bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 ${stats.totals.growth >= 0 ? 'border-l-ctg-green' : 'border-l-red-400'}`}>
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">vs mes anterior</p>
+                      <p className={`font-display font-black text-3xl ${stats.totals.growth >= 0 ? 'text-ctg-green' : 'text-red-400'}`}>
                         {stats.totals.growth > 0 ? '+' : ''}{stats.totals.growth}%
                       </p>
-                      <p className="text-xs text-gray-400 mt-2">reservas normales</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2">reservas normales</p>
                     </div>
 
                     {/* Fila 2 */}
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-purple-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Visitas externas</p>
-                      <p className="text-4xl font-extrabold text-purple-600">{stats.guest.count}</p>
-                      <p className="text-xs text-gray-400 mt-2">{guestRate}% · ${(stats.guest.revenue || 0).toLocaleString('es-CL')} recaudado</p>
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-purple-400">
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Visitas externas</p>
+                      <p className="font-display font-black text-3xl text-purple-400">{stats.guest.count}</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2">{guestRate}% · ${(stats.guest.revenue || 0).toLocaleString('es-CL')} recaudado</p>
                     </div>
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-ctg-dark">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Promedio / día activo</p>
-                      <p className="text-4xl font-extrabold text-ctg-dark">{avgPerDay}</p>
-                      <p className="text-xs text-gray-400 mt-2">{activeDays} días con actividad</p>
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-[#1e4020]">
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Promedio / día activo</p>
+                      <p className="font-display font-black text-3xl text-[#F0F7E8]">{avgPerDay}</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2">{activeDays} días con actividad</p>
                     </div>
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-yellow-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">💡 Cobro de luz</p>
-                      <p className="text-4xl font-extrabold text-yellow-500">${((lightSummary?.total_revenue || 0) / 1000).toFixed(0)}k</p>
-                      <p className="text-xs text-gray-400 mt-2">${(lightSummary?.total_revenue || 0).toLocaleString('es-CL')} · {lightSummary?.by_day?.length ?? 0} días</p>
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-amber-400">
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">💡 Cobro de luz</p>
+                      <p className="font-display font-black text-3xl text-amber-400">${((lightSummary?.total_revenue || 0) / 1000).toFixed(0)}k</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2">${(lightSummary?.total_revenue || 0).toLocaleString('es-CL')} · {lightSummary?.by_day?.length ?? 0} días</p>
                     </div>
-                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-teal-400">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Horario peak</p>
-                      <p className="text-4xl font-extrabold text-teal-600">{topSlot?.slot ?? '—'}</p>
-                      <p className="text-xs text-gray-400 mt-2">{topSlot?.count ?? 0} reservas</p>
+                    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5 border-l-4 border-l-teal-400">
+                      <p className="text-[10px] uppercase tracking-wider text-[#F0F7E8]/40 font-semibold mb-1">Horario peak</p>
+                      <p className="font-display font-black text-3xl text-teal-400">{topSlot?.slot ?? '—'}</p>
+                      <p className="text-xs text-[#F0F7E8]/40 mt-2">{topSlot?.count ?? 0} reservas</p>
                     </div>
                   </div>
 
                   {/* ── BLOQUE 2: Por tipo de socio ── */}
                   <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
-                    <h3 className="font-bold text-gray-500 mb-4 text-sm uppercase tracking-wide">Reservas normales por tipo de socio</h3>
+                    <h3 className="text-xs font-bold text-[#F0F7E8]/40 uppercase tracking-wider mb-4">Reservas normales por tipo de socio</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {[
                         { key: 'socio',      label: 'Socios',          bar: 'bg-ctg-green',   text: 'text-ctg-green'  },
-                        { key: 'hijo_socio', label: 'Hijos de socios', bar: 'bg-blue-400',    text: 'text-blue-600'   },
-                        { key: 'profe',      label: 'Profes/Escuelas', bar: 'bg-emerald-400', text: 'text-emerald-600'},
-                        { key: 'visita',     label: 'Visitas',         bar: 'bg-purple-400',  text: 'text-purple-600' },
+                        { key: 'hijo_socio', label: 'Hijos de socios', bar: 'bg-blue-400',    text: 'text-blue-400'   },
+                        { key: 'profe',      label: 'Profes/Escuelas', bar: 'bg-emerald-400', text: 'text-emerald-400'},
+                        { key: 'visita',     label: 'Visitas',         bar: 'bg-purple-400',  text: 'text-purple-400' },
                       ].map(({ key, label, bar, text }) => {
                         const val = stats.by_member_type?.[key] ?? 0;
                         const pct = Math.round(val / Math.max(stats.totals.normal, 1) * 100);
                         return (
-                          <div key={key} className="bg-gray-50 rounded-xl p-4">
+                          <div key={key} className="bg-[#152b18] border border-[#1e4020] rounded-xl p-4">
                             <p className={`text-2xl font-extrabold ${text}`}>{val}</p>
-                            <p className="text-xs text-gray-500 mt-0.5 font-medium">{label}</p>
-                            <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <p className="text-xs text-[#F0F7E8]/40 mt-0.5 font-medium">{label}</p>
+                            <div className="mt-2 h-1.5 bg-[#0f2211] rounded-full overflow-hidden">
                               <div className={`h-full ${bar} rounded-full`} style={{ width: `${pct}%` }} />
                             </div>
-                            <p className="text-[10px] text-gray-400 mt-1">{pct}% del total</p>
+                            <p className="text-[10px] text-[#F0F7E8]/30 mt-1">{pct}% del total</p>
                           </div>
                         );
                       })}
@@ -942,8 +929,8 @@ export default function AdminReservasPage() {
                   {/* ── BLOQUE 3: Gráfico por día ── */}
                   <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
                     <div className="flex items-center justify-between mb-5">
-                      <h3 className="font-bold text-ctg-dark">Reservas normales por día del mes</h3>
-                      <div className="flex gap-4 text-xs text-gray-500">
+                      <h3 className="font-display font-bold text-[#F0F7E8]">Reservas normales por día del mes</h3>
+                      <div className="flex gap-4 text-xs text-[#F0F7E8]/40">
                         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-ctg-green inline-block"></span>Normales</span>
                       </div>
                     </div>
@@ -958,19 +945,19 @@ export default function AdminReservasPage() {
                                 title={`Día ${d.day}: ${d.count} reservas normales`}
                                 className="group flex flex-col items-center cursor-default"
                                 style={{ minWidth: '18px' }}>
-                                <span className={`text-[9px] font-bold transition-opacity ${d.count > 0 ? 'text-gray-500 group-hover:text-ctg-dark' : 'opacity-0'}`} style={{ height: '13px', lineHeight: '13px' }}>
+                                <span className={`text-[9px] font-bold transition-opacity ${d.count > 0 ? 'text-[#F0F7E8]/50 group-hover:text-[#F0F7E8]' : 'opacity-0'}`} style={{ height: '13px', lineHeight: '13px' }}>
                                   {d.count || ''}
                                 </span>
                                 <div className="relative" style={{ height: '80px', width: '100%' }}>
                                   {d.count === 0 && (
-                                    <div className="absolute bottom-0 left-0 right-0 bg-gray-100" style={{ height: '3px', borderRadius: '2px 2px 0 0' }} />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-[#1e4020]" style={{ height: '3px', borderRadius: '2px 2px 0 0' }} />
                                   )}
                                   {hN > 0 && (
                                     <div className="absolute bottom-0 left-0 right-0 bg-ctg-green"
                                       style={{ height: `${hN}px`, borderRadius: '2px 2px 0 0' }} />
                                   )}
                                 </div>
-                                <span className={`text-[9px] mt-0.5 ${d.count > 0 ? 'text-gray-600 font-semibold' : 'text-gray-300'}`}>
+                                <span className={`text-[9px] mt-0.5 ${d.count > 0 ? 'text-[#F0F7E8]/60 font-semibold' : 'text-[#F0F7E8]/20'}`}>
                                   {d.day}
                                 </span>
                               </div>
@@ -983,19 +970,19 @@ export default function AdminReservasPage() {
 
                   {/* ── BLOQUE 4: Por cancha ── */}
                   <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
-                    <h3 className="font-bold text-ctg-dark mb-4">Ocupación por cancha</h3>
+                    <h3 className="font-display font-bold text-[#F0F7E8] mb-4">Ocupación por cancha</h3>
                     <div className="space-y-4">
                       {stats.by_court.map((c: any) => {
                         return (
                           <div key={c.court}>
                             <div className="flex justify-between items-baseline mb-1">
-                              <span className="font-semibold text-ctg-dark">{c.court}</span>
-                              <span className="text-sm text-gray-500">{c.count_normal ?? 0} reservas normales</span>
+                              <span className="font-semibold text-[#F0F7E8]">{c.court}</span>
+                              <span className="text-sm text-[#F0F7E8]/50">{c.count_normal ?? 0} reservas normales</span>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                            <div className="w-full bg-[#152b18] rounded-full h-3 overflow-hidden">
                               <div className="bg-ctg-green h-full transition-all rounded-full" style={{ width: `${c.occupancy ?? 0}%` }} />
                             </div>
-                            <p className="mt-1 text-xs text-gray-400">{c.occupancy ?? 0}% ocupación total</p>
+                            <p className="mt-1 text-xs text-[#F0F7E8]/40">{c.occupancy ?? 0}% ocupación total</p>
                           </div>
                         );
                       })}
@@ -1005,19 +992,19 @@ export default function AdminReservasPage() {
                   {/* ── BLOQUE 5: Horarios + Top socios ── */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
-                      <h3 className="font-bold text-ctg-dark mb-4">Horarios más reservados <span className="text-xs text-gray-400 font-normal">(normales)</span></h3>
+                      <h3 className="font-display font-bold text-[#F0F7E8] mb-4">Horarios más reservados <span className="text-xs text-[#F0F7E8]/40 font-normal">(normales)</span></h3>
                       <div className="space-y-3">
                         {stats.by_slot.map((s: any, i: number) => {
                           const pct = stats.by_slot[0]?.count > 0 ? Math.round(s.count / stats.by_slot[0].count * 100) : 0;
                           const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
                           return (
                             <div key={s.slot} className="flex items-center gap-3">
-                              <span className="w-6 text-center text-sm">{medal ?? <span className="text-xs text-gray-300 font-bold">{i+1}</span>}</span>
-                              <span className="font-mono text-sm font-bold text-ctg-dark w-12">{s.slot}</span>
-                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <span className="w-6 text-center text-sm">{medal ?? <span className="text-xs text-[#F0F7E8]/25 font-bold">{i+1}</span>}</span>
+                              <span className="font-mono text-sm font-bold text-[#F0F7E8] w-12">{s.slot}</span>
+                              <div className="flex-1 h-2 bg-[#152b18] rounded-full overflow-hidden">
                                 <div className="h-full bg-ctg-green rounded-full transition-all" style={{ width: `${pct}%` }} />
                               </div>
-                              <span className="text-sm font-bold text-gray-600 w-6 text-right">{s.count}</span>
+                              <span className="text-sm font-bold text-[#F0F7E8]/60 w-6 text-right">{s.count}</span>
                             </div>
                           );
                         })}
@@ -1025,16 +1012,16 @@ export default function AdminReservasPage() {
                     </div>
 
                     <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
-                      <h3 className="font-bold text-ctg-dark mb-4">Socios más activos <span className="text-xs text-gray-400 font-normal">(normales)</span></h3>
+                      <h3 className="font-display font-bold text-[#F0F7E8] mb-4">Socios más activos <span className="text-xs text-[#F0F7E8]/40 font-normal">(normales)</span></h3>
                       <div className="space-y-2">
                         {stats.top_players.map((p: any, i: number) => {
                           const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
                           const maxC = stats.top_players[0]?.count ?? 1;
                           return (
                             <div key={p.player_id} className="flex items-center gap-3">
-                              <span className="w-6 text-center text-sm">{medal ?? <span className="text-xs text-gray-300 font-bold">{i+1}</span>}</span>
-                              <span className="text-sm text-ctg-dark flex-1 truncate font-medium">{p.name}</span>
-                              <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <span className="w-6 text-center text-sm">{medal ?? <span className="text-xs text-[#F0F7E8]/25 font-bold">{i+1}</span>}</span>
+                              <span className="text-sm text-[#F0F7E8] flex-1 truncate font-medium">{p.name}</span>
+                              <div className="w-16 h-1.5 bg-[#152b18] rounded-full overflow-hidden">
                                 <div className="h-full bg-ctg-green rounded-full" style={{ width: `${Math.round(p.count / maxC * 100)}%` }} />
                               </div>
                               <span className="text-sm font-bold text-ctg-green w-5 text-right">{p.count}</span>
@@ -1050,13 +1037,13 @@ export default function AdminReservasPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {stats.guest.by_player?.length > 0 && (
                         <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
-                          <h3 className="font-bold text-ctg-dark mb-4">Visitas externas por socio</h3>
+                          <h3 className="font-display font-bold text-[#F0F7E8] mb-4">Visitas externas por socio</h3>
                           <div className="space-y-2">
                             {stats.guest.by_player.map((p: any, i: number) => (
-                              <div key={p.player_id} className="flex items-center gap-3 py-1 border-b border-gray-50 last:border-0">
-                                <span className="text-xs font-bold text-gray-300 w-4">{i+1}</span>
-                                <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
-                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">{p.count}x</span>
+                              <div key={p.player_id} className="flex items-center gap-3 py-1 border-b border-[#1e4020] last:border-0">
+                                <span className="text-xs font-bold text-[#F0F7E8]/25 w-4">{i+1}</span>
+                                <span className="text-sm text-[#F0F7E8] flex-1 truncate">{p.name}</span>
+                                <span className="chip chip-purple">{p.count}x</span>
                               </div>
                             ))}
                           </div>
@@ -1064,13 +1051,13 @@ export default function AdminReservasPage() {
                       )}
                       {stats.hijos_socio?.by_player?.length > 0 && (
                         <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-5">
-                          <h3 className="font-bold text-ctg-dark mb-4">Hijos de socios</h3>
+                          <h3 className="font-display font-bold text-[#F0F7E8] mb-4">Hijos de socios</h3>
                           <div className="space-y-2">
                             {stats.hijos_socio.by_player.map((p: any, i: number) => (
-                              <div key={p.player_id} className="flex items-center gap-3 py-1 border-b border-gray-50 last:border-0">
-                                <span className="text-xs font-bold text-gray-300 w-4">{i+1}</span>
-                                <span className="text-sm text-ctg-dark flex-1 truncate">{p.name}</span>
-                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">{p.count}</span>
+                              <div key={p.player_id} className="flex items-center gap-3 py-1 border-b border-[#1e4020] last:border-0">
+                                <span className="text-xs font-bold text-[#F0F7E8]/25 w-4">{i+1}</span>
+                                <span className="text-sm text-[#F0F7E8] flex-1 truncate">{p.name}</span>
+                                <span className="chip chip-info">{p.count}</span>
                               </div>
                             ))}
                           </div>
@@ -1086,13 +1073,13 @@ export default function AdminReservasPage() {
                     const pageData = stats.guest.list.slice(guestPage * GUESTS_PER_PAGE, (guestPage + 1) * GUESTS_PER_PAGE);
                     return (
                       <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                          <h3 className="font-bold text-ctg-dark">Detalle visitas externas</h3>
-                          <span className="text-xs bg-purple-100 text-purple-700 font-bold px-2.5 py-1 rounded-full">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
+                        <div className="px-5 py-4 border-b border-[#1e4020] flex items-center justify-between">
+                          <h3 className="font-display font-bold text-[#F0F7E8]">Detalle visitas externas</h3>
+                          <span className="chip chip-purple">{stats.guest.count} visitas · ${(stats.guest.revenue || 0).toLocaleString('es-CL')}</span>
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
-                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                            <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
                               <tr>
                                 <th className="px-4 py-3 text-left font-semibold">Socio</th>
                                 <th className="px-4 py-3 text-left font-semibold">Cancha</th>
@@ -1102,44 +1089,44 @@ export default function AdminReservasPage() {
                                 <th className="px-4 py-3 text-right font-semibold">Monto</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-[#1e4020]">
                               {pageData.map((r: any) => (
-                                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                                  <td className="px-4 py-3 font-medium text-ctg-dark">{r.player_name}</td>
-                                  <td className="px-4 py-3 text-gray-600">{r.court}</td>
-                                  <td className="px-4 py-3 text-gray-600 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                                  <td className="px-4 py-3 font-mono font-bold text-gray-700">{r.time_slot}</td>
-                                  <td className="px-4 py-3 text-gray-600">{r.guest_name || <span className="text-gray-300">—</span>}</td>
+                                <tr key={r.id} className="hover:bg-ctg-green/4 transition-colors">
+                                  <td className="px-4 py-3 font-medium text-[#F0F7E8]">{r.player_name}</td>
+                                  <td className="px-4 py-3 text-[#F0F7E8]/60">{r.court}</td>
+                                  <td className="px-4 py-3 text-[#F0F7E8]/50 text-xs">{new Date(r.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                  <td className="px-4 py-3 font-mono font-bold text-[#F0F7E8]/70">{r.time_slot}</td>
+                                  <td className="px-4 py-3 text-[#F0F7E8]/60">{r.guest_name || <span className="text-[#F0F7E8]/25">—</span>}</td>
                                   <td className="px-4 py-3 text-right font-bold text-ctg-green">${(r.guest_fee || 3000).toLocaleString('es-CL')}</td>
                                 </tr>
                               ))}
                             </tbody>
-                            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                            <tfoot className="bg-[#152b18] border-t-2 border-[#1e4020]">
                               <tr>
-                                <td colSpan={5} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado</td>
+                                <td colSpan={5} className="px-4 py-3 text-sm font-bold text-[#F0F7E8]/60">Total recaudado</td>
                                 <td className="px-4 py-3 text-right text-base font-extrabold text-ctg-green">${(stats.guest.revenue || 0).toLocaleString('es-CL')}</td>
                               </tr>
                             </tfoot>
                           </table>
                         </div>
                         {totalGuestPages > 1 && (
-                          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
-                            <span className="text-xs text-gray-500">
+                          <div className="flex items-center justify-between px-5 py-3 border-t border-[#1e4020] bg-[#152b18]">
+                            <span className="text-xs text-[#F0F7E8]/40">
                               {guestPage * GUESTS_PER_PAGE + 1}–{Math.min((guestPage + 1) * GUESTS_PER_PAGE, stats.guest.list.length)} de {stats.guest.list.length} visitas
                             </span>
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => setGuestPage(p => Math.max(0, p - 1))}
                                 disabled={guestPage === 0}
-                                className="px-3 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-white transition-colors"
+                                className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-40"
                               >
                                 ← Anterior
                               </button>
-                              <span className="text-xs text-gray-400">{guestPage + 1} / {totalGuestPages}</span>
+                              <span className="text-xs text-[#F0F7E8]/40">{guestPage + 1} / {totalGuestPages}</span>
                               <button
                                 onClick={() => setGuestPage(p => Math.min(totalGuestPages - 1, p + 1))}
                                 disabled={guestPage >= totalGuestPages - 1}
-                                className="px-3 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-white transition-colors"
+                                className="btn-ghost text-xs px-3 py-1.5 disabled:opacity-40"
                               >
                                 Siguiente →
                               </button>
@@ -1153,15 +1140,15 @@ export default function AdminReservasPage() {
                   {/* ── BLOQUE 8: Cobro de luz ── */}
                   {lightSummary && lightSummary.by_day?.length > 0 && (
                     <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden">
-                      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <h3 className="font-bold text-ctg-dark">💡 Cobro de luz</h3>
-                        <span className="text-xs bg-yellow-100 text-yellow-700 font-bold px-2.5 py-1 rounded-full">
+                      <div className="px-5 py-4 border-b border-[#1e4020] flex items-center justify-between">
+                        <h3 className="font-display font-bold text-[#F0F7E8]">💡 Cobro de luz</h3>
+                        <span className="chip chip-warning">
                           Total: ${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}
                         </span>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                          <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
                             <tr>
                               <th className="px-4 py-3 text-left font-semibold">Fecha</th>
                               <th className="px-4 py-3 text-left font-semibold">Horarios con luz</th>
@@ -1170,27 +1157,27 @@ export default function AdminReservasPage() {
                               <th className="px-4 py-3 text-right font-semibold">Total día</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-50">
+                          <tbody className="divide-y divide-[#1e4020]">
                             {lightSummary.by_day.map((d: any) => (
-                              <tr key={d.date} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-gray-600 text-xs">{new Date(d.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                              <tr key={d.date} className="hover:bg-ctg-green/4 transition-colors">
+                                <td className="px-4 py-3 text-[#F0F7E8]/60 text-xs">{new Date(d.date + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
                                 <td className="px-4 py-3">
                                   <div className="flex flex-wrap gap-1">
                                     {d.time_slots.map((s: string) => (
-                                      <span key={s} className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-mono">{s}</span>
+                                      <span key={s} className="text-xs bg-amber-500/12 border border-amber-500/30 text-amber-400 px-1.5 py-0.5 rounded font-mono">{s}</span>
                                     ))}
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-right text-gray-600">${d.amount_per_slot.toLocaleString('es-CL')}</td>
-                                <td className="px-4 py-3 text-right font-bold text-gray-700">{d.count}</td>
-                                <td className="px-4 py-3 text-right font-bold text-yellow-600">${d.revenue.toLocaleString('es-CL')}</td>
+                                <td className="px-4 py-3 text-right text-[#F0F7E8]/60">${d.amount_per_slot.toLocaleString('es-CL')}</td>
+                                <td className="px-4 py-3 text-right font-bold text-[#F0F7E8]/70">{d.count}</td>
+                                <td className="px-4 py-3 text-right font-bold text-amber-400">${d.revenue.toLocaleString('es-CL')}</td>
                               </tr>
                             ))}
                           </tbody>
-                          <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                          <tfoot className="bg-[#152b18] border-t-2 border-[#1e4020]">
                             <tr>
-                              <td colSpan={4} className="px-4 py-3 text-sm font-bold text-gray-600">Total recaudado (luz)</td>
-                              <td className="px-4 py-3 text-right text-base font-extrabold text-yellow-600">${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}</td>
+                              <td colSpan={4} className="px-4 py-3 text-sm font-bold text-[#F0F7E8]/60">Total recaudado (luz)</td>
+                              <td className="px-4 py-3 text-right text-base font-extrabold text-amber-400">${(lightSummary.total_revenue || 0).toLocaleString('es-CL')}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -1203,6 +1190,7 @@ export default function AdminReservasPage() {
             </>
           );
         })()}
+      </div>
 
       <EditUserModal
         isOpen={!!editingPlayer}
