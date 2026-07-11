@@ -1,6 +1,7 @@
 'use client';
 
 import ChallengeModal from '@/components/ChallengeModal';
+import ConfirmModal from '@/components/ConfirmModal';
 import Header from '@/components/Header';
 import Ladder from '@/components/Ladder';
 import LoginModal from '@/components/LoginModal';
@@ -40,6 +41,7 @@ export default function EscalerillaPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
   const [challengeModalOpen, setChallengeModalOpen] = useState(false);
+  const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
@@ -81,12 +83,17 @@ export default function EscalerillaPage() {
     setChallengeModalOpen(true);
   };
 
+  const handleChallengeNext = () => {
+    setChallengeModalOpen(false);
+    setConfirmSendOpen(true);
+  };
+
   const handleConfirmChallenge = async () => {
     if (!currentPlayer || !selectedPlayer) return;
     setChallengeLoading(true);
     try {
       await api.createChallenge(currentPlayer.id, selectedPlayer.id);
-      setChallengeModalOpen(false);
+      setConfirmSendOpen(false);
       success(`¡Desafío creado! ${selectedPlayer.name} tiene 24 horas para responder.`);
       await refreshAll();
     } catch (err: any) {
@@ -179,8 +186,19 @@ export default function EscalerillaPage() {
           challenger={currentPlayer} challenged={selectedPlayer}
           isOpen={challengeModalOpen}
           onClose={() => setChallengeModalOpen(false)}
-          onConfirm={handleConfirmChallenge}
+          onConfirm={handleChallengeNext}
+        />
+      )}
+
+      {currentPlayer && selectedPlayer && (
+        <ConfirmModal
+          isOpen={confirmSendOpen}
+          title="¿Enviar el desafío?"
+          explanation={`Le llegará una notificación a ${selectedPlayer.name} y tendrá 24 horas para aceptar o rechazar. Si acepta, tendrán 5 días para jugar el partido.`}
+          confirmLabel="Sí, enviar desafío"
           loading={challengeLoading}
+          onConfirm={handleConfirmChallenge}
+          onClose={() => setConfirmSendOpen(false)}
         />
       )}
 
