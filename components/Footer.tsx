@@ -27,7 +27,7 @@ export default function Footer() {
           <span className="text-ctg-green/20">/</span>
           <Link href="/master" className="hover:text-ctg-green transition">Master</Link>
         </div>
-        <div className="text-[#F0F7E8]/25">MatchLab Chile · v1.0</div>
+        <div className="text-[#F0F7E8]/25">Baseline Chile · v1.0</div>
       </div>
     </footer>
   );
