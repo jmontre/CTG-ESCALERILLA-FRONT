@@ -6,7 +6,7 @@ import type { ApiNotification } from '@/types';
 
 export type NotifType =
   | 'challenge_received' | 'challenge_accepted' | 'challenge_rejected' | 'challenge_expiring'
-  | 'result_submitted' | 'result_confirmed'
+  | 'result_submitted' | 'result_confirmed' | 'result_disputed'
   | 'reservation_done' | 'reservation_cancelled' | 'reservation_modified'
   | 'position_up' | 'position_down' | 'category_promoted'
   | 'streak' | 'achievement' | 'personal_record'
@@ -25,6 +25,7 @@ export const NOTIF_META: Record<NotifType, NotifMeta> = {
   challenge_expiring:          { icon: 'clock',    color: 'amber', urgentByDefault: true },
   result_submitted:            { icon: 'flag',     color: 'blue',  urgentByDefault: true },
   result_confirmed:            { icon: 'check',    color: 'green' },
+  result_disputed:             { icon: 'flag',     color: 'amber', urgentByDefault: true },
   reservation_done:            { icon: 'calendar', color: 'green' },
   reservation_cancelled:       { icon: 'close',    color: 'red' },
   reservation_modified:        { icon: 'pencil',   color: 'blue' },
