@@ -455,7 +455,7 @@ export default function ReservarPage() {
                       onChange={e => { setHasGuest(e.target.checked); if (e.target.checked) setPartnerPlayerId(''); }}
                       className="w-4 h-4 accent-ctg-green" />
                     <div>
-                      <span className="text-sm font-medium text-[#F0F7E8]/80">Voy solo o traigo un invitado externo (+$3.000)</span>
+                      <span className="text-sm font-medium text-[#F0F7E8]/80">Voy solo o traigo un invitado externo (+$4.000)</span>
                       <p className="text-xs text-[#F0F7E8]/35">Persona que no es socio del club</p>
                     </div>
                   </label>
