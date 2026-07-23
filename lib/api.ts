@@ -1,4 +1,4 @@
-import { Player, Challenge, AuthResponse, MasterSeason } from '@/types';
+import { Player, Challenge, AuthResponse, MasterSeason, ApiNotification } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -377,6 +377,32 @@ export const api = {
   getReservationsByMonth: async (month: string) => {
     const res = await authFetch(`${API_URL}/reservations?month=${month}`);
     if (!res.ok) throw new Error('Error al obtener reservas del mes');
+    return res.json();
+  },
+
+  // ── Notificaciones ────────────────────────────────────────────────────────
+  // Endpoints implementados en el backend (NotificationsModule). getNotifications
+  // igual devuelve [] en error, por robustez ante caídas de red o backend.
+
+  getNotifications: async (): Promise<ApiNotification[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/notifications`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  markNotificationRead: async (id: string) => {
+    const res = await authFetch(`${API_URL}/notifications/${id}/read`, { method: 'POST' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al marcar notificación'); }
+    return res.json();
+  },
+
+  markAllNotificationsRead: async () => {
+    const res = await authFetch(`${API_URL}/notifications/read-all`, { method: 'POST' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al marcar notificaciones'); }
     return res.json();
   },
 

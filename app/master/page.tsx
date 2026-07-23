@@ -57,12 +57,12 @@ function Calendar({ selectedDate, onSelect, minDate, maxDate }: {
   return (
     <div className="select-none">
       <div className="flex items-center justify-between mb-3">
-        <button type="button" onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-ctg-light transition text-ctg-dark font-bold">‹</button>
-        <span className="font-semibold text-ctg-dark text-sm">{MONTHS[viewMonth]} {viewYear}</span>
-        <button type="button" onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-ctg-light transition text-ctg-dark font-bold">›</button>
+        <button type="button" onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#152b18] transition text-[#F0F7E8]/60 font-bold">‹</button>
+        <span className="font-semibold text-[#F0F7E8] text-sm">{MONTHS[viewMonth]} {viewYear}</span>
+        <button type="button" onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#152b18] transition text-[#F0F7E8]/60 font-bold">›</button>
       </div>
       <div className="grid grid-cols-7 mb-1">
-        {DAYS.map(d => <div key={d} className="text-center text-xs font-semibold text-gray-400 py-1">{d}</div>)}
+        {DAYS.map(d => <div key={d} className="text-center text-xs font-semibold text-[#F0F7E8]/35 py-1">{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-y-1">
         {cells.map((day, idx) => {
@@ -74,10 +74,10 @@ function Calendar({ selectedDate, onSelect, minDate, maxDate }: {
           return (
             <button key={idx} type="button" disabled={isDisabled} onClick={() => onSelect(date)}
               className={`mx-auto w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-all
-                ${isSelected ? 'bg-ctg-dark text-white shadow-md'
-                  : isToday && !isDisabled ? 'border-2 border-ctg-green text-ctg-dark hover:bg-ctg-light'
-                  : isDisabled ? 'text-gray-300 cursor-not-allowed'
-                  : 'text-gray-700 hover:bg-ctg-light'}`}>
+                ${isSelected ? 'bg-ctg-green text-[#0a1608] shadow-[0_0_12px_rgba(139,194,52,.4)]'
+                  : isToday && !isDisabled ? 'border-2 border-ctg-green text-ctg-green'
+                  : isDisabled ? 'text-[#F0F7E8]/20 cursor-not-allowed'
+                  : 'text-[#F0F7E8]/70 hover:bg-[#152b18]'}`}>
               {day}
             </button>
           );
@@ -156,34 +156,35 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto">
-        <div className="bg-ctg-dark px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#0f2211] border border-ctg-green/15 rounded-2xl shadow-2xl w-full max-w-md animate-scale-in overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div className="bg-[#152b18] border-b border-[#1e4020] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
-            <h2 className="text-xl font-bold text-white">📅 Agendar partido</h2>
-            <p className="text-ctg-light text-sm mt-0.5">{match.player1.name} vs {match.player2.name}</p>
+            <h2 className="font-display text-xl font-bold text-[#F0F7E8]">Agendar partido</h2>
+            <p className="text-[#F0F7E8]/45 text-sm mt-0.5">{match.player1.name} vs {match.player2.name}</p>
           </div>
-          <button onClick={onClose} className="text-ctg-light hover:text-white text-2xl leading-none">×</button>
+          <button onClick={onClose} className="text-[#F0F7E8]/30 hover:text-[#F0F7E8] text-2xl leading-none transition">×</button>
         </div>
         <div className="p-6 space-y-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm text-amber-800 flex items-center gap-2">
-            <span>⏰</span>
-            <span>{roundLabel}: <strong>{fmt(minDate)}</strong> — <strong>{fmt(maxDate)}</strong></span>
+          <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl px-4 py-2 text-sm text-amber-300/80 flex items-center gap-2">
+            <span>{roundLabel}:</span>
+            <span><strong className="text-amber-300">{fmt(minDate)}</strong> — <strong className="text-amber-300">{fmt(maxDate)}</strong></span>
           </div>
 
           {/* Paso 1 — Cancha */}
           <div>
-            <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1">
-              <span className="w-5 h-5 rounded-full bg-ctg-green text-white text-xs flex items-center justify-center font-bold">1</span>
+            <p className="text-sm font-semibold text-[#F0F7E8]/70 mb-3 flex items-center gap-1">
+              <span className="w-5 h-5 rounded-full bg-ctg-green text-[#0a1608] text-xs flex items-center justify-center font-bold">1</span>
               Selecciona la cancha
             </p>
             <div className="grid grid-cols-2 gap-3">
               {courts.map(court => (
                 <button key={court.id} type="button" onClick={() => { setSelectedCourt(court); setSelectedSlot(null); setError(''); }}
-                  className={`p-3 rounded-xl border-2 text-sm font-semibold transition-all text-center
-                    ${selectedCourt?.id === court.id
-                      ? 'border-ctg-green bg-ctg-light/30 text-ctg-dark shadow-md'
-                      : 'border-gray-200 text-gray-600 hover:border-ctg-green/50'}`}>
+                  className={'p-3 rounded-xl border-2 text-sm font-semibold transition-all text-center ' +
+                    (selectedCourt?.id === court.id
+                      ? 'border-ctg-green bg-ctg-green/10 text-ctg-green shadow-[0_0_12px_rgba(139,194,52,.2)]'
+                      : 'border-[#1e4020] bg-[#152b18] text-[#F0F7E8]/60 hover:border-ctg-green/40')}>
                   🎾 {court.name}
                 </button>
               ))}
@@ -192,67 +193,63 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
 
           {/* Paso 2 — Fecha */}
           <div>
-            <p className={`text-sm font-semibold mb-3 flex items-center gap-1 ${selectedCourt ? 'text-gray-700' : 'text-gray-400'}`}>
-              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedCourt ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>2</span>
+            <p className={'text-sm font-semibold mb-3 flex items-center gap-1 ' + (selectedCourt ? 'text-[#F0F7E8]/70' : 'text-[#F0F7E8]/30')}>
+              <span className={'w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ' + (selectedCourt ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/30')}>2</span>
               Selecciona la fecha
             </p>
             {!selectedCourt ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige una cancha</div>
+              <div className="rounded-xl border border-dashed border-[#1e4020] py-6 text-center text-[#F0F7E8]/30 text-sm">Primero elige una cancha</div>
             ) : (
               <>
-                <div className="border-2 border-gray-100 rounded-xl p-4">
+                <div className="border border-[#1e4020] rounded-xl p-4">
                   <Calendar selectedDate={selectedDate} onSelect={d => { setSelectedDate(d); setSelectedSlot(null); setError(''); }} minDate={effMinDate} maxDate={maxDate} />
                 </div>
-                {selectedDate && <p className="text-xs text-ctg-dark font-semibold mt-2 ml-1">📆 {formatDisplay(selectedDate)}</p>}
+                {selectedDate && <p className="text-xs text-ctg-green font-semibold mt-2 ml-1 capitalize">{formatDisplay(selectedDate)}</p>}
               </>
             )}
           </div>
 
           {/* Paso 3 — Horario */}
           <div>
-            <p className={`text-sm font-semibold mb-3 flex items-center gap-1 ${selectedDate ? 'text-gray-700' : 'text-gray-400'}`}>
-              <span className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${selectedDate ? 'bg-ctg-green text-white' : 'bg-gray-200 text-gray-400'}`}>3</span>
+            <p className={'text-sm font-semibold mb-3 flex items-center gap-1 ' + (selectedDate ? 'text-[#F0F7E8]/70' : 'text-[#F0F7E8]/30')}>
+              <span className={'w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ' + (selectedDate ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/30')}>3</span>
               Selecciona el horario
             </p>
             {!selectedDate ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center text-gray-400 text-sm">Primero elige una fecha</div>
+              <div className="rounded-xl border border-dashed border-[#1e4020] py-6 text-center text-[#F0F7E8]/30 text-sm">Primero elige una fecha</div>
             ) : loadingSlots ? (
-              <div className="text-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-t-2 border-ctg-green mx-auto"></div></div>
+              <div className="text-center py-6"><div className="w-6 h-6 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin mx-auto" /></div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {getAvailableSlots().map(slot => (
                   <button key={slot.start} type="button" disabled={!slot.available}
                     onClick={() => { if (slot.available) { setSelectedSlot(slot.start); setError(''); } }}
-                    className={`py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all
-                      ${!slot.available
-                        ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
+                    className={'py-3 px-2 rounded-xl text-sm font-semibold border-2 transition-all ' +
+                      (!slot.available
+                        ? 'bg-[#0a1608] border-[#152b18] text-[#F0F7E8]/20 cursor-not-allowed'
                         : selectedSlot === slot.start
-                          ? 'bg-ctg-dark border-ctg-dark text-white shadow-md scale-[1.02]'
-                          : 'bg-ctg-light/40 border-ctg-light text-ctg-dark hover:border-ctg-green hover:bg-ctg-light'}`}>
+                          ? 'bg-ctg-green/10 border-ctg-green text-ctg-green shadow-[0_0_12px_rgba(139,194,52,.2)]'
+                          : 'bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/60 hover:border-ctg-green/40')}>
                     <div>{slot.label}</div>
-                    {slot.isHighDemand && slot.available && <div className={`text-xs mt-0.5 ${selectedSlot === slot.start ? 'text-white/70' : 'text-orange-500'}`}>🔥 Alta demanda</div>}
-                    {!slot.available && <div className="text-xs mt-0.5 text-gray-400">Ocupado</div>}
+                    {slot.isHighDemand && slot.available && <div className={'text-xs mt-0.5 ' + (selectedSlot === slot.start ? 'text-ctg-green/70' : 'text-orange-400')}>🔥 Alta demanda</div>}
+                    {!slot.available && <div className="text-xs mt-0.5 text-[#F0F7E8]/25">Ocupado</div>}
                   </button>
                 ))}
               </div>
             )}
           </div>
-
           {/* Resumen */}
           {selectedCourt && selectedDate && selectedSlot && (
-            <div className="bg-ctg-light/60 rounded-xl px-4 py-3 text-sm text-ctg-dark font-semibold space-y-1">
-              <div className="flex items-center gap-2"><span>🎾</span><span>{selectedCourt.name}</span></div>
-              <div className="flex items-center gap-2">
-                <span>✅</span>
-                <span>{formatDisplay(selectedDate)}, {TIME_SLOTS.find(s => s.start === selectedSlot)?.label}</span>
-              </div>
+            <div className="bg-ctg-green/10 border border-ctg-green/20 rounded-xl px-4 py-3 text-sm text-ctg-green font-semibold space-y-1">
+              <div>🎾 {selectedCourt.name}</div>
+              <div className="capitalize">✓ {formatDisplay(selectedDate)}, {TIME_SLOTS.find(s => s.start === selectedSlot)?.label}</div>
             </div>
           )}
-          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
+          {error && <div className="bg-red-900/30 border border-red-500/30 text-red-400 rounded-xl p-3 text-sm">{error}</div>}
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition font-medium">Cancelar</button>
+            <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancelar</button>
             <button type="button" onClick={handleSubmit} disabled={loading || !selectedCourt || !selectedDate || !selectedSlot}
-              className="flex-1 px-4 py-2.5 bg-ctg-green text-white font-bold rounded-xl hover:bg-ctg-lime transition disabled:opacity-40">
+              className="btn-primary flex-1">
               {loading ? 'Guardando...' : 'Confirmar'}
             </button>
           </div>
@@ -408,33 +405,33 @@ function StandingsTable({ group }: { group: MasterGroup }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="px-3 py-2 text-left font-semibold text-gray-600">#</th>
-            <th className="px-3 py-2 text-left font-semibold text-gray-600">Jugador</th>
-            <th className="px-3 py-2 text-center font-semibold text-gray-600">PJ</th>
-            <th className="px-3 py-2 text-center font-semibold text-green-600">G</th>
-            <th className="px-3 py-2 text-center font-semibold text-red-500">P</th>
-            <th className="px-3 py-2 text-center font-semibold text-gray-600">Sets</th>
+          <tr className="bg-[#0a1608]/60">
+            <th className="px-3 py-2 text-left font-semibold text-[#F0F7E8]/40 text-xs uppercase tracking-wider">#</th>
+            <th className="px-3 py-2 text-left font-semibold text-[#F0F7E8]/40 text-xs uppercase tracking-wider">Jugador</th>
+            <th className="px-3 py-2 text-center font-semibold text-[#F0F7E8]/40 text-xs uppercase tracking-wider">PJ</th>
+            <th className="px-3 py-2 text-center font-semibold text-ctg-green/70 text-xs uppercase tracking-wider">G</th>
+            <th className="px-3 py-2 text-center font-semibold text-red-400/70 text-xs uppercase tracking-wider">P</th>
+            <th className="px-3 py-2 text-center font-semibold text-[#F0F7E8]/40 text-xs uppercase tracking-wider">Sets</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-[#1e4020]">
           {sorted.map((gp, idx) => (
-            <tr key={gp.id} className={idx < 2 ? 'bg-ctg-light/30 font-medium' : ''}>
+            <tr key={gp.id} className={idx < 2 ? 'bg-ctg-green/5' : ''}>
               <td className="px-3 py-2">
                 {idx < 2
-                  ? <span className="inline-flex w-6 h-6 bg-ctg-green text-white rounded-full items-center justify-center text-xs font-bold">{idx+1}</span>
-                  : <span className="text-gray-400 text-xs pl-1">{idx+1}</span>}
+                  ? <span className="inline-flex w-6 h-6 bg-ctg-green text-[#0a1608] rounded-full items-center justify-center text-xs font-bold">{idx+1}</span>
+                  : <span className="text-[#F0F7E8]/30 text-xs pl-1">{idx+1}</span>}
               </td>
-              <td className="px-3 py-2 text-ctg-dark">{gp.player.name}</td>
-              <td className="px-3 py-2 text-center text-gray-600">{gp.wins + gp.losses}</td>
-              <td className="px-3 py-2 text-center text-green-600 font-bold">{gp.wins}</td>
-              <td className="px-3 py-2 text-center text-red-500">{gp.losses}</td>
-              <td className="px-3 py-2 text-center text-gray-500">{gp.sets_won}/{gp.sets_lost}</td>
+              <td className="px-3 py-2 text-[#F0F7E8]">{gp.player.name}</td>
+              <td className="px-3 py-2 text-center text-[#F0F7E8]/50">{gp.wins + gp.losses}</td>
+              <td className="px-3 py-2 text-center text-ctg-green font-bold">{gp.wins}</td>
+              <td className="px-3 py-2 text-center text-red-400">{gp.losses}</td>
+              <td className="px-3 py-2 text-center text-[#F0F7E8]/40">{gp.sets_won}/{gp.sets_lost}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="text-xs text-gray-400 px-3 py-2">🟢 Clasifican a semifinales</p>
+      <p className="text-xs text-[#F0F7E8]/30 px-3 py-2">Clasifican a semifinales (top 2 por grupo)</p>
     </div>
   );
 }
@@ -488,48 +485,51 @@ function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
 
   return (
     <>
-      <div className={`rounded-lg border p-3 ${isCompleted ? 'bg-green-50 border-green-200' : (match as any).status === 'disputed' ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
-        {/* Jugadores */}
+      <div className={'rounded-xl border p-3 ' +
+        (isCompleted ? 'bg-ctg-green/5 border-ctg-green/20' :
+         (match as any).status === 'disputed' ? 'bg-red-900/10 border-red-500/20' :
+         'bg-[#152b18] border-[#1e4020]')}>
+        {/* Players */}
         <div className="flex items-center justify-between">
           <div className="flex-1 text-right">
-            <p className={`font-medium text-sm ${match.winner_id === match.player1_id ? 'text-ctg-dark font-bold' : 'text-gray-600'}`}>
+            <p className={'font-medium text-sm ' + (match.winner_id === match.player1_id ? 'text-ctg-green font-bold' : 'text-[#F0F7E8]/60')}>
               {match.winner_id === match.player1_id && <span className="mr-1">🏆</span>}
               {match.player1.name}
             </p>
           </div>
           <div className="mx-3 text-center min-w-[90px]">
             {isCompleted ? (
-              <span className="text-xs font-bold text-ctg-dark">{match.score}</span>
+              <span className="text-xs font-mono font-bold text-[#F0F7E8]">{match.score}</span>
             ) : (match as any).status === 'disputed' ? (
-              <span className="text-xs text-red-600 font-medium bg-red-100 px-2 py-1 rounded-full">⚠️ Disputa</span>
+              <span className="text-xs text-red-400 bg-red-900/30 border border-red-500/20 px-2 py-1 rounded-full">En disputa</span>
             ) : match.scheduled_date ? (
-              <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded-full">📅 {formatDate(match.scheduled_date)}</span>
+              <span className="text-xs text-blue-300 bg-blue-900/20 border border-blue-500/20 px-2 py-1 rounded-full">{formatDate(match.scheduled_date)}</span>
             ) : (
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Por jugar</span>
+              <span className="text-xs text-[#F0F7E8]/35 bg-[#0a1608] border border-[#1e4020] px-2 py-1 rounded-full">Por jugar</span>
             )}
           </div>
           <div className="flex-1 text-left">
-            <p className={`font-medium text-sm ${match.winner_id === match.player2_id ? 'text-ctg-dark font-bold' : 'text-gray-600'}`}>
+            <p className={'font-medium text-sm ' + (match.winner_id === match.player2_id ? 'text-ctg-green font-bold' : 'text-[#F0F7E8]/60')}>
               {match.player2.name}
               {match.winner_id === match.player2_id && <span className="ml-1">🏆</span>}
             </p>
           </div>
         </div>
 
-        {/* Botones — solo si es mi partido y no está completado */}
+        {/* Buttons — only my match and not completed */}
         {isMyMatch && !isCompleted && (match as any).status !== 'disputed' && (
           <div className="flex gap-2 mt-2">
             <button onClick={() => setShowSchedule(true)}
-              className="flex-1 text-xs text-ctg-green border border-ctg-green rounded-lg py-1.5 hover:bg-ctg-green/10 transition">
-              📅 {match.scheduled_date ? 'Cambiar fecha' : 'Fijar fecha'}
+              className="flex-1 text-xs text-ctg-green border border-ctg-green/40 rounded-lg py-1.5 hover:bg-ctg-green/10 transition">
+              {match.scheduled_date ? 'Cambiar fecha' : 'Fijar fecha'}
             </button>
             {!myResultIngresado ? (
               <button onClick={() => setShowResult(true)}
-                className="flex-1 text-xs bg-ctg-green text-white rounded-lg py-1.5 hover:bg-ctg-lime transition font-medium">
-                🎾 Ingresar resultado
+                className="flex-1 text-xs bg-ctg-green text-[#0a1608] rounded-lg py-1.5 hover:bg-ctg-lime transition font-bold">
+                Ingresar resultado
               </button>
             ) : (
-              <div className="flex-1 text-xs text-center text-gray-400 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex-1 text-xs text-center text-ctg-green/60 py-1.5 bg-ctg-green/5 rounded-lg border border-ctg-green/20">
                 ✓ Resultado ingresado
               </div>
             )}
@@ -557,25 +557,25 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
       ' · ' + d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
   return (
-    <div className="bg-white rounded-xl shadow-card p-4 border-l-4 border-ctg-green">
+    <div className="bg-[#0f2211] border border-ctg-green/20 rounded-xl p-4 border-l-4">
       <p className="text-xs font-bold text-ctg-green mb-3 uppercase tracking-wide">{label}</p>
       <div className="space-y-2">
         {[
           { player: match.player1, isWinner: match.winner_id === match.player1_id },
           { player: match.player2, isWinner: match.winner_id === match.player2_id },
         ].map(({ player, isWinner }, i) => (
-          <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg ${isWinner ? 'bg-ctg-light/60 font-bold' : 'bg-gray-50'}`}>
-            <span className="text-sm text-ctg-dark">{player?.name ?? '— Por definir —'}</span>
+          <div key={i} className={'flex items-center justify-between px-3 py-2 rounded-lg ' + (isWinner ? 'bg-ctg-green/10 border border-ctg-green/20' : 'bg-[#152b18]')}>
+            <span className={'text-sm ' + (isWinner ? 'text-ctg-green font-bold' : 'text-[#F0F7E8]/60')}>{player?.name ?? '— Por definir —'}</span>
             {isWinner && <span className="text-sm">🏆</span>}
           </div>
         ))}
       </div>
-      {match.score && <p className="text-xs text-gray-500 mt-2 text-center">{match.score}</p>}
+      {match.score && <p className="text-xs text-[#F0F7E8]/40 mt-2 text-center font-mono">{match.score}</p>}
       {match.status === 'pending' && match.scheduled_date && (
-        <p className="text-xs text-blue-500 mt-2 text-center">📅 {formatDate(match.scheduled_date)}</p>
+        <p className="text-xs text-blue-300/60 mt-2 text-center">{formatDate(match.scheduled_date)}</p>
       )}
       {match.status === 'pending' && !match.scheduled_date && (
-        <p className="text-xs text-gray-400 mt-2 text-center">Por jugar</p>
+        <p className="text-xs text-[#F0F7E8]/30 mt-2 text-center">Por jugar</p>
       )}
     </div>
   );
@@ -584,14 +584,13 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
 // ── Category Tabs ────────────────────────────────────────────────────────────
 function CategoryTabs({ active, onSelect }: { active: string; onSelect: (cat: string) => void }) {
   return (
-    <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-gray-200 mb-8 flex-wrap">
+    <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-[#1e4020] mb-8 flex-wrap">
       {(['A', 'B', 'C', 'D'] as const).map(cat => {
         const isActive = cat === active;
-        const colors = CATEGORY_COLORS[cat];
         return (
           <button key={cat} type="button" onClick={() => onSelect(cat)}
             className={`pb-3 text-sm sm:text-base transition-colors border-b-[3px] -mb-0.5
-              ${isActive ? `${colors.text} border-current font-extrabold` : 'text-gray-400 border-transparent font-semibold hover:text-gray-600'}`}>
+              ${isActive ? `cat-letter-${cat} border-current font-extrabold` : 'text-[#F0F7E8]/35 border-transparent font-semibold hover:text-[#F0F7E8]/60'}`}>
             Categoría {cat} <span className="font-normal opacity-70">{CATEGORY_NAMES[cat]}</span>
           </button>
         );
@@ -643,11 +642,11 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-card overflow-hidden mb-8">
+    <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl overflow-hidden mb-8">
       <div className={`bg-gradient-to-r ${colors.bg} px-6 py-4`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white">Categoría {season.category}</h2>
+            <h2 className="font-display text-2xl font-bold text-white">Categoría {season.category}</h2>
             <p className="text-white/80 text-sm">{CATEGORY_NAMES[season.category]} · {season.name}</p>
           </div>
           <span className="text-xs bg-white/20 text-white px-3 py-1 rounded-full font-medium">
@@ -666,13 +665,13 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
         {hasBracket && (
           <div className="flex justify-center gap-3 mb-6">
             <button type="button" onClick={() => setSubTab('groups')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors
-                ${subTab === 'groups' ? 'bg-ctg-dark text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              className={'px-4 py-1.5 rounded-full text-xs font-bold transition-colors ' +
+                (subTab === 'groups' ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/50 hover:text-[#F0F7E8]')}>
               Fase de grupos
             </button>
             <button type="button" onClick={() => setSubTab('bracket')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors
-                ${subTab === 'bracket' ? 'bg-ctg-dark text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              className={'px-4 py-1.5 rounded-full text-xs font-bold transition-colors ' +
+                (subTab === 'bracket' ? 'bg-ctg-green text-[#0a1608]' : 'bg-[#152b18] border border-[#1e4020] text-[#F0F7E8]/50 hover:text-[#F0F7E8]')}>
               Llaves 🏅
             </button>
           </div>
@@ -681,13 +680,13 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
         {(!hasBracket || subTab === 'groups') && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {season.groups.map(group => (
-              <div key={group.id} className={`border-2 ${colors.border} rounded-xl overflow-hidden`}>
-                <div className={`${colors.badge} px-4 py-2`}>
-                  <h3 className={`font-bold ${colors.text}`}>{group.name}</h3>
+              <div key={group.id} className="border border-[#1e4020] bg-[#0a1608]/40 rounded-xl overflow-hidden">
+                <div className="bg-[#152b18] border-b border-[#1e4020] px-4 py-2">
+                  <h3 className="font-bold text-[#F0F7E8]">{group.name}</h3>
                 </div>
                 <StandingsTable group={group} />
                 <div className="px-4 pb-4 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Partidos</p>
+                  <p className="text-xs font-semibold text-[#F0F7E8]/35 uppercase tracking-wider mb-2">Partidos</p>
                   {(group.matches as MasterMatchExt[]).filter(m => m.round === 'group').map(match => (
                     <MatchCard key={match.id} match={match} currentPlayerId={currentPlayerId}
                       onSchedule={handleSchedule} onResult={handleResult} season={season} />
@@ -701,7 +700,7 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
         {hasBracket && subTab === 'bracket' && (
           <div>
             <div className="mb-6">
-              <h3 className="text-lg font-bold text-ctg-dark mb-4">🏅 Semifinales</h3>
+              <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">🏅 Semifinales</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {semiMatches.map((m,i) => <BracketMatch key={m.id} match={m} label={`Semifinal ${i+1}`} />)}
               </div>
@@ -709,10 +708,10 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 
             {finalMatches.length > 0 && (
               <div>
-                <h3 className="text-lg font-bold text-ctg-dark mb-4">
+                <h3 className="font-display font-bold text-[#F0F7E8] text-lg mb-4">
                   🏆 Final
                   {season.final_date && (
-                    <span className="text-sm font-normal text-gray-500 ml-2">
+                    <span className="text-sm font-normal text-[#F0F7E8]/40 ml-2">
                       · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </span>
                   )}
@@ -765,20 +764,17 @@ function MasterPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     );
   }
 
   if (!player) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-        <Header currentPage="master" onLoginClick={() => {}} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center mb-10">
-            <h1 className="text-5xl font-bold text-ctg-dark mb-2">🏆 Master</h1>
-          </div>
+      <div className="min-h-screen bg-[#0a1608]">
+        <Header onLoginClick={() => {}} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
           <LoginPrompt emoji="🏆" message="Inicia sesión para ver el torneo Master y los resultados." />
         </div>
       </div>
@@ -788,30 +784,32 @@ function MasterPageContent() {
   const activeSeason = seasons.find(s => s.category === activeCategory);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="master" onLoginClick={() => {}} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-ctg-dark mb-2">🏆 Master</h1>
-          <p className="text-gray-500 text-lg">Final de Temporada 2026 — 1er Semestre</p>
-          <div className="flex justify-center gap-6 mt-4 text-sm text-gray-500 flex-wrap">
-            <span>📅 Round Robin: 22 Jun — 12 Jul</span>
-            <span>🎾 Final: Sábado 18 de Julio</span>
+    <div className="min-h-screen bg-[#0a1608]">
+      <Header onLoginClick={() => {}} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
+        <div className="mb-10">
+          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Temporada 2026</p>
+          <h1 className="font-display text-4xl font-extrabold text-[#F0F7E8]">Master</h1>
+          <div className="flex gap-6 mt-3 text-sm text-[#F0F7E8]/40 flex-wrap">
+            <span>Round Robin: 22 Jun — 12 Jul</span>
+            <span>Final: Sáb 18 de Julio</span>
           </div>
         </div>
 
         {isBeforeStart && seasons.length === 0 && (
-          <div className="bg-white rounded-2xl shadow-card p-12 text-center mb-8">
-            <div className="text-6xl mb-4">🏆</div>
-            <h2 className="text-2xl font-bold text-ctg-dark mb-2">Próximamente</h2>
-            <p className="text-gray-500 mb-4">El Master se habilita el <strong>22 de junio de 2026</strong></p>
-            <p className="text-sm text-gray-400">Clasifican los 8 primeros de cada categoría (A, B, C y D)</p>
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-12 text-center mb-8">
+            <div className="w-20 h-20 rounded-full bg-ctg-green/15 border border-ctg-green/30 flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🏆</span>
+            </div>
+            <h2 className="font-display text-2xl font-bold text-[#F0F7E8] mb-2">Próximamente</h2>
+            <p className="text-[#F0F7E8]/50 mb-4">El Master se habilita el <strong className="text-[#F0F7E8]">22 de junio de 2026</strong></p>
+            <p className="text-sm text-[#F0F7E8]/35">Clasifican los 8 primeros de cada categoría (A, B, C y D)</p>
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto">
               {['A','B','C','D'].map(cat => (
-                <div key={cat} className={`rounded-xl p-3 ${CATEGORY_COLORS[cat].badge}`}>
-                  <p className={`font-bold text-lg ${CATEGORY_COLORS[cat].text}`}>Cat. {cat}</p>
-                  <p className="text-xs opacity-75">{CATEGORY_NAMES[cat]}</p>
-                  <p className="text-xs opacity-75 mt-1">Top 8</p>
+                <div key={cat} className={`rounded-xl p-3 bg-[#152b18] border border-[#1e4020]`}>
+                  <p className={`font-display font-black text-lg cat-letter-${cat}`}>Cat. {cat}</p>
+                  <p className="text-xs text-[#F0F7E8]/45">{CATEGORY_NAMES[cat]}</p>
+                  <p className="text-xs text-[#F0F7E8]/35 mt-1">Top 8</p>
                 </div>
               ))}
             </div>
@@ -824,16 +822,16 @@ function MasterPageContent() {
             {activeSeason ? (
               <CategoryTournament key={activeCategory} season={activeSeason} currentPlayerId={player?.id} onRefresh={loadData} />
             ) : (
-              <div className={`bg-white rounded-2xl shadow-card p-6 mb-6 border-l-4 ${CATEGORY_COLORS[activeCategory].border} opacity-60`}>
-                <p className={`font-bold ${CATEGORY_COLORS[activeCategory].text}`}>Categoría {activeCategory} — {CATEGORY_NAMES[activeCategory]}</p>
-                <p className="text-sm text-gray-400 mt-1">Torneo no generado aún</p>
+              <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6 opacity-50">
+                <p className={`font-bold cat-letter-${activeCategory}`}>Categoría {activeCategory} — {CATEGORY_NAMES[activeCategory]}</p>
+                <p className="text-sm text-[#F0F7E8]/35 mt-1">Torneo no generado aún</p>
               </div>
             )}
           </>
         ) : !isBeforeStart ? (
-          <div className="bg-white rounded-2xl shadow-card p-12 text-center">
-            <p className="text-gray-500">No hay torneos generados aún.</p>
-            <p className="text-sm text-gray-400 mt-1">El administrador debe generar los cuadros desde el panel admin.</p>
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-12 text-center">
+            <p className="text-[#F0F7E8]/50">No hay torneos generados aún.</p>
+            <p className="text-sm text-[#F0F7E8]/30 mt-1">El administrador debe generar los cuadros desde el panel admin.</p>
           </div>
         ) : null}
       </div>
@@ -844,8 +842,8 @@ function MasterPageContent() {
 export default function MasterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     }>
       <MasterPageContent />

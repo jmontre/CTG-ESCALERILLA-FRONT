@@ -26,20 +26,18 @@ export default function LoginPrompt({
 
   return (
     <>
-      <div className="mb-8 bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500 rounded-xl p-6 shadow-card animate-slide-up">
-        <div className="flex items-start gap-4">
-          <div className="text-3xl">{emoji}</div>
-          <div className="flex-1">
-            <h3 className="font-bold text-amber-900 mb-1">Inicia sesión para continuar</h3>
-            <p className="text-amber-800 mb-3">{message}</p>
-            <button
-              onClick={() => setIsOpen(true)}
-              className="px-5 py-2 bg-ctg-green text-white rounded-lg font-bold hover:bg-ctg-lime transition-colors shadow-soft"
-            >
-              Iniciar sesión
-            </button>
-          </div>
+      <div className="max-w-md mx-auto mt-16 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-8 text-center animate-slide-up">
+        <div className="w-16 h-16 rounded-full bg-ctg-green/15 border border-ctg-green/30 flex items-center justify-center mx-auto mb-5 text-3xl">
+          {emoji}
         </div>
+        <h2 className="font-display text-2xl font-bold text-[#F0F7E8]">Inicia sesión para continuar</h2>
+        <p className="text-[#F0F7E8]/50 text-sm mt-2">{message}</p>
+        <button
+          onClick={() => setIsOpen(true)}
+          className="btn-primary w-full py-3 mt-6"
+        >
+          Iniciar sesión
+        </button>
       </div>
       <LoginModal isOpen={isOpen} onClose={() => setIsOpen(false)} onSuccess={handleSuccess} />
     </>

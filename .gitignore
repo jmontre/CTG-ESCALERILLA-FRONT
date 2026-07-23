@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -44,3 +45,7 @@ next-env.d.ts
 
 # superpowers brainstorming mockups
 .superpowers/
+
+# superpowers specs/plans locales (no commitear)
+docs/superpowers/specs/
+docs/superpowers/plans/2026-07-10-completar-redesign.md

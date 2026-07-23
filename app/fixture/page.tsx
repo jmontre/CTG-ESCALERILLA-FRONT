@@ -103,63 +103,63 @@ export default function FixturePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-ctg-green"></div>
+      <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ctg-light via-white to-ctg-light/50">
-      <Header currentPage="fixture" onLoginClick={() => { }} />
+    <div className="min-h-screen bg-[#0a1608]">
+      <Header onLoginClick={() => { }} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
         {!currentPlayer ? (
           <LoginPrompt
             emoji="🎾"
             message="Inicia sesión para ver y gestionar tus desafíos."
           />
         ) : currentPlayer.is_admin ? (
-          <div className="bg-white rounded-2xl shadow-card p-8 text-center">
-            <p className="text-gray-500">Los admins no tienen desafíos personales.</p>
+          <div className="max-w-md mx-auto mt-16 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-8 text-center">
+            <p className="text-[#F0F7E8]/50">Los admins no tienen desafíos personales.</p>
             <button
               onClick={() => router.push('/admin')}
-              className="mt-4 px-4 py-2 bg-ctg-green text-white rounded-lg hover:bg-ctg-lime transition font-medium"
+              className="btn-primary w-full py-3 mt-6"
             >
               Ir al panel de admin →
             </button>
           </div>
         ) : (
           <>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-ctg-dark mb-2">Mis Desafíos</h1>
-          <p className="text-gray-600">Historial completo de tus desafíos</p>
-        </div>
+            <div className="mb-8">
+              <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Tu actividad</p>
+              <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Mis Desafíos</h1>
+            </div>
 
-        <ChallengesList
-          challenges={challenges}
-          currentPlayerId={currentPlayer.id}
-          onAccept={handleAccept}
-          onReject={handleReject}
-          onSubmitResult={handleReportResult}
-          onScheduleDate={handleOpenScheduleDate}
-        />
+            <ChallengesList
+              challenges={challenges}
+              currentPlayer={currentPlayer}
+              onAccept={handleAccept}
+              onReject={handleReject}
+              onSubmitResult={handleReportResult}
+              onScheduleDate={handleOpenScheduleDate}
+            />
 
-        <ResultModal
-          isOpen={resultModalOpen}
-          onClose={() => { setResultModalOpen(false); setSelectedChallenge(null); }}
-          challenge={selectedChallenge}
-          currentPlayer={currentPlayer}
-          onSubmit={handleSubmitResult}
-        />
+            <ResultModal
+              isOpen={resultModalOpen}
+              onClose={() => { setResultModalOpen(false); setSelectedChallenge(null); }}
+              challenge={selectedChallenge}
+              currentPlayer={currentPlayer}
+              onSubmit={handleSubmitResult}
+            />
 
-        <ScheduleDateModal
-          isOpen={scheduleDateModalOpen}
-          onClose={() => { setScheduleDateModalOpen(false); setScheduleChallenge(null); }}
-          challenge={scheduleChallenge}
-          currentPlayerId={currentPlayer.id}
-          onSubmit={handleSubmitScheduleDate}
-        />
+            <ScheduleDateModal
+              isOpen={scheduleDateModalOpen}
+              onClose={() => { setScheduleDateModalOpen(false); setScheduleChallenge(null); }}
+              challenge={scheduleChallenge}
+              currentPlayerId={currentPlayer.id}
+              onSubmit={handleSubmitScheduleDate}
+            />
           </>
         )}
       </div>
