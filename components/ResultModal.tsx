@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Challenge, Player } from '@/types';
 
 interface ResultModalProps {
@@ -12,278 +12,200 @@ interface ResultModalProps {
   loading?: boolean;
 }
 
-export default function ResultModal({
-  challenge,
-  currentPlayer,
-  isOpen,
-  onClose,
-  onSubmit,
-  loading = false
-}: ResultModalProps) {
-  const [set1Player1, setSet1Player1] = useState('');
-  const [set1Player2, setSet1Player2] = useState('');
-  const [set2Player1, setSet2Player1] = useState('');
-  const [set2Player2, setSet2Player2] = useState('');
-  const [set3Player1, setSet3Player1] = useState('');
-  const [set3Player2, setSet3Player2] = useState('');
-  const [stPlayer1, setStPlayer1]     = useState('');
-  const [stPlayer2, setStPlayer2]     = useState('');
-  const [hasRetirement, setHasRetirement] = useState(false);
-  const [retiredPlayerId, setRetiredPlayerId] = useState('');
+function AvatarEl({ player, size = 26 }: { player: Player; size?: number }) {
+  const initials = player.name.trim().split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase();
+  const style: React.CSSProperties = {
+    width: size, height: size, fontSize: size * 0.36,
+    background: 'linear-gradient(135deg, #9ed944, #8BC234 60%, #6ea127)',
+  };
+  if (player.avatar_url) {
+    return <div className="rounded-full overflow-hidden shrink-0" style={style}><img src={player.avatar_url} alt="" className="w-full h-full object-cover" /></div>;
+  }
+  return <div className="inline-flex items-center justify-center rounded-full font-display font-bold text-[#0a1608] shrink-0" style={style}>{initials}</div>;
+}
+
+export default function ResultModal({ challenge, currentPlayer, isOpen, onClose, onSubmit, loading = false }: ResultModalProps) {
+  // sets[col][row]: col=set index (0-2), row=player index (0-1)
+  const [sets, setSets] = useState<[string, string][]>([['', ''], ['', ''], ['', '']]);
+  const [wo, setWo] = useState(false);
+  const [retiredId, setRetiredId] = useState('');
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !loading) onClose(); }
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen || !challenge || !currentPlayer) return null;
 
   const player1 = challenge.challenger!;
   const player2 = challenge.challenged!;
 
-  const resetForm = () => {
-    setSet1Player1(''); setSet1Player2('');
-    setSet2Player1(''); setSet2Player2('');
-    setSet3Player1(''); setSet3Player2('');
-    setStPlayer1('');   setStPlayer2('');
-    setHasRetirement(false);
-    setRetiredPlayerId('');
-  };
+  function setVal(col: number, row: number, v: string) {
+    const copy: [string, string][] = sets.map(s => [s[0], s[1]]);
+    copy[col][row] = v.replace(/[^0-9]/g, '').slice(0, 2);
+    setSets(copy);
+  }
 
-  const hasAnyScore = () => set1Player1 !== '' || set1Player2 !== '';
+  function hasAnyScore() { return sets[0][0] !== '' || sets[0][1] !== ''; }
 
-  const calculateWinner = (): { winnerId: string; score: string } | null => {
-    // WO puro sin sets
-    if (hasRetirement && !hasAnyScore()) {
-      if (!retiredPlayerId) {
-        alert('Selecciona quién se retiró / hizo W.O.');
-        return null;
-      }
-      const winnerId = retiredPlayerId === player1.id ? player2.id : player1.id;
-      return { winnerId, score: 'W.O.' };
+  function handleSubmit() {
+    setErr('');
+    if (wo && !hasAnyScore()) {
+      if (!retiredId) { setErr('Selecciona quién se retiró / hizo W.O.'); return; }
+      const winnerId = retiredId === player1.id ? player2.id : player1.id;
+      onSubmit(winnerId, 'W.O.');
+      return;
     }
+    if (!sets[0][0] || !sets[0][1]) { setErr('El primer set es obligatorio'); return; }
 
-    if (!set1Player1 || !set1Player2) {
-      alert('Debes ingresar al menos el primer set');
-      return null;
-    }
-
-    const s1p1 = parseInt(set1Player1) || 0;
-    const s1p2 = parseInt(set1Player2) || 0;
-    const s2p1 = parseInt(set2Player1) || 0;
-    const s2p2 = parseInt(set2Player2) || 0;
-    const s3p1 = parseInt(set3Player1) || 0;
-    const s3p2 = parseInt(set3Player2) || 0;
-    const stp1 = parseInt(stPlayer1)   || 0;
-    const stp2 = parseInt(stPlayer2)   || 0;
-
-    let setsPlayer1 = 0;
-    let setsPlayer2 = 0;
-
-    if (s1p1 > s1p2) setsPlayer1++; else if (s1p2 > s1p1) setsPlayer2++;
-    if (set2Player1 && set2Player2) {
-      if (s2p1 > s2p2) setsPlayer1++; else if (s2p2 > s2p1) setsPlayer2++;
-    }
-    if (set3Player1 && set3Player2) {
-      if (s3p1 > s3p2) setsPlayer1++; else if (s3p2 > s3p1) setsPlayer2++;
-    }
-    if (stPlayer1 && stPlayer2) {
-      if (stp1 > stp2) setsPlayer1++; else if (stp2 > stp1) setsPlayer2++;
+    const nums = sets.map(s => [parseInt(s[0]) || 0, parseInt(s[1]) || 0]);
+    let w1 = 0, w2 = 0;
+    for (let i = 0; i < 3; i++) {
+      if (!sets[i][0] && !sets[i][1]) continue;
+      if (nums[i][0] > nums[i][1]) w1++;
+      else if (nums[i][1] > nums[i][0]) w2++;
     }
 
     let winnerId: string;
-
-    // Si hay retiro con sets: ganador es quien NO se retiró
-    if (hasRetirement && retiredPlayerId) {
-      winnerId = retiredPlayerId === player1.id ? player2.id : player1.id;
+    if (wo && retiredId) {
+      winnerId = retiredId === player1.id ? player2.id : player1.id;
+    } else if (w1 > w2) {
+      winnerId = player1.id;
+    } else if (w2 > w1) {
+      winnerId = player2.id;
     } else {
-      if (setsPlayer1 > setsPlayer2) {
-        winnerId = player1.id;
-      } else if (setsPlayer2 > setsPlayer1) {
-        winnerId = player2.id;
-      } else {
-        alert('El resultado no es válido. Debe haber un ganador.');
-        return null;
-      }
+      setErr('El resultado no es válido. Debe haber un ganador.');
+      return;
     }
 
-    const scoreParts: string[] = [];
-    if (set1Player1 && set1Player2) scoreParts.push(`${s1p1}-${s1p2}`);
-    if (set2Player1 && set2Player2) scoreParts.push(`${s2p1}-${s2p2}`);
-    if (set3Player1 && set3Player2) scoreParts.push(`${s3p1}-${s3p2}`);
-    if (stPlayer1   && stPlayer2)   scoreParts.push(`[${stp1}-${stp2}]`);
+    const parts: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      if (sets[i][0] && sets[i][1]) parts.push(`${nums[i][0]}-${nums[i][1]}`);
+    }
+    let score = parts.join(', ');
+    if (wo) score += ' (Retiro)';
+    onSubmit(winnerId, score);
+  }
 
-    let score = scoreParts.join(', ');
-    if (hasRetirement) score += ' (Retiro)';
-
-    return { winnerId, score };
-  };
-
-  const handleSubmit = () => {
-    const result = calculateWinner();
-    if (!result) return;
-    onSubmit(result.winnerId, result.score);
-    resetForm();
-  };
+  const rows = [
+    { player: player1, vals: sets.map(s => s[0]), rowIdx: 0 },
+    { player: player2, vals: sets.map(s => s[1]), rowIdx: 1 },
+  ];
 
   return (
-    <div
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 99999,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: 'white', borderRadius: '16px', padding: '40px',
-          maxWidth: '650px', width: '100%', position: 'relative'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          disabled={loading}
-          style={{
-            position: 'absolute', top: '15px', right: '15px',
-            background: '#1e5128', color: 'white', border: 'none',
-            borderRadius: '50%', width: '35px', height: '35px',
-            cursor: loading ? 'not-allowed' : 'pointer', fontSize: '24px', fontWeight: 'bold'
-          }}
-        >
-          ×
-        </button>
-
-        <h2 style={{ color: '#1e5128', marginBottom: '24px', fontSize: '28px', fontWeight: 'bold', textAlign: 'center' }}>
-          Ingresar Resultado
-        </h2>
-
-        {/* Retiro / WO */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer',
-            padding: '10px', backgroundColor: '#fff3cd', borderRadius: '8px'
-          }}>
-            <input
-              type="checkbox"
-              checked={hasRetirement}
-              onChange={(e) => { setHasRetirement(e.target.checked); if (!e.target.checked) setRetiredPlayerId(''); }}
-              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#856404' }}>
-              ⚠️ Hubo retiro / W.O.
-            </span>
-          </label>
-
-          {hasRetirement && (
-            <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#fff8e1', borderRadius: '8px' }}>
-              <p style={{ fontSize: '13px', color: '#856404', marginBottom: '8px', fontWeight: 'bold' }}>
-                ¿Quién se retiró?
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {[player1, player2].map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => setRetiredPlayerId(p.id)}
-                    style={{
-                      flex: 1, padding: '8px', borderRadius: '6px', border: '2px solid',
-                      borderColor: retiredPlayerId === p.id ? '#856404' : '#ddd',
-                      backgroundColor: retiredPlayerId === p.id ? '#fff3cd' : 'white',
-                      fontWeight: 'bold', cursor: 'pointer', fontSize: '13px'
-                    }}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-              {!hasAnyScore() && (
-                <p style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
-                  Sin sets → se registrará como W.O.
-                </p>
-              )}
+    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8 animate-fade-in">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={loading ? undefined : onClose} />
+      <div className="relative w-full max-w-lg animate-scale-in">
+        <div className="bg-[#0f2211] border border-ctg-green/15 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+          {/* Header */}
+          <div className="bg-[#152b18] border-b border-[#1e4020] px-6 py-4 flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-xl font-bold text-[#F0F7E8]">Ingresar Resultado</h3>
+              <p className="text-[#F0F7E8]/45 text-sm mt-0.5">Hasta 3 sets · solo el primero es obligatorio</p>
             </div>
-          )}
-        </div>
+            <button
+              onClick={loading ? undefined : onClose}
+              disabled={loading}
+              className="text-[#F0F7E8]/30 hover:text-[#F0F7E8] text-2xl leading-none transition"
+            >×</button>
+          </div>
 
-        {/* Tabla sets */}
-        <div style={{ marginBottom: '25px' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
-            <thead>
-              <tr>
-                {['Jugador', 'Set 1', 'Set 2', 'Set 3', 'ST'].map((h, i) => (
-                  <th key={h} style={{
-                    textAlign: i === 0 ? 'left' : 'center', padding: '12px',
-                    backgroundColor: '#f5f5f5', fontWeight: 'bold', fontSize: '14px', color: '#666',
-                    borderTopLeftRadius: i === 0 ? '8px' : 0,
-                    borderTopRightRadius: i === 4 ? '8px' : 0,
-                    width: i === 0 ? 'auto' : '80px'
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                {
-                  name: player1.name,
-                  vals: [set1Player1, set2Player1, set3Player1, stPlayer1],
-                  setters: [setSet1Player1, setSet2Player1, setSet3Player1, setStPlayer1]
-                },
-                {
-                  name: player2.name,
-                  vals: [set1Player2, set2Player2, set3Player2, stPlayer2],
-                  setters: [setSet1Player2, setSet2Player2, setSet3Player2, setStPlayer2]
-                },
-              ].map((row, ri) => (
-                <tr key={ri}>
-                  <td style={{
-                    padding: '15px 12px',
-                    borderBottom: ri === 0 ? '1px solid #e5e5e5' : 'none',
-                    fontWeight: 'bold', fontSize: '16px'
-                  }}>
-                    {row.name}
-                  </td>
-                  {row.vals.map((val, ci) => (
-                    <td key={ci} style={{
-                      padding: '8px',
-                      borderBottom: ri === 0 ? '1px solid #e5e5e5' : 'none',
-                      textAlign: 'center'
-                    }}>
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={(e) => row.setters[ci](e.target.value)}
-                        min="0"
-                        max={ci === 3 ? undefined : '7'}
-                        style={{
-                          width: '60px', padding: '8px', fontSize: '18px', fontWeight: 'bold',
-                          textAlign: 'center', borderRadius: '6px',
-                          border: `2px solid ${ci === 0 ? '#1e5128' : '#ddd'}`
-                        }}
-                      />
-                    </td>
+          <div className="p-6 space-y-5">
+            {/* Score table */}
+            <div className="overflow-hidden rounded-xl border border-[#1e4020]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#152b18] text-[#F0F7E8]/45">
+                    <th className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wider">Jugador</th>
+                    {[1, 2, 3].map(i => (
+                      <th key={i} className="font-semibold text-xs uppercase tracking-wider text-center w-16">Set {i}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ player, vals, rowIdx }) => (
+                    <tr key={player.id} className="border-t border-[#1e4020]">
+                      <td className="px-4 py-3 text-[#F0F7E8] font-semibold">
+                        <div className="flex items-center gap-2">
+                          <AvatarEl player={player} size={26} />
+                          <span className="truncate">{player.name.split(' ')[0]}</span>
+                        </div>
+                      </td>
+                      {[0, 1, 2].map(col => (
+                        <td key={col} className="text-center px-1 py-2">
+                          <input
+                            disabled={wo}
+                            value={vals[col]}
+                            onChange={e => setVal(col, rowIdx, e.target.value)}
+                            className={'w-12 h-11 font-mono font-bold text-center bg-[#0f2211] border rounded-lg text-[#F0F7E8] text-lg focus:outline-none focus:border-ctg-green/70 focus:ring-2 focus:ring-ctg-green/20 transition ' +
+                              (col === 0 ? 'border-ctg-green/40' : 'border-[#1e4020]') + (wo ? ' opacity-30' : '')}
+                            placeholder="–"
+                          />
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </tbody>
+              </table>
+            </div>
 
-        <div style={{ backgroundColor: '#f0f9ff', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', color: '#1e40af' }}>
-          💡 <strong>Set 1</strong> obligatorio. <strong>Set 2, 3 y ST</strong> solo si aplica.
-          Para W.O. sin sets, marca retiro y selecciona quién se retiró.
-        </div>
+            {/* WO toggle */}
+            <label className="flex items-center gap-2 text-sm text-[#F0F7E8]/80 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={wo}
+                onChange={e => { setWo(e.target.checked); if (!e.target.checked) setRetiredId(''); }}
+                className="accent-ctg-green w-4 h-4"
+              />
+              Hubo retiro / W.O.
+            </label>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={onClose}
-            disabled={loading}
-            style={{ flex: 1, padding: '14px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold' }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            style={{ flex: 1, padding: '14px', backgroundColor: '#4e9f3d', color: 'white', border: 'none', borderRadius: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold' }}
-          >
-            {loading ? 'Enviando...' : 'Confirmar Resultado'}
-          </button>
+            {/* WO retired player selection */}
+            {wo && (
+              <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl p-3 space-y-2">
+                <label className="label block">Motivo del retiro</label>
+                <div className="flex gap-2">
+                  {[player1, player2].map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setRetiredId(p.id)}
+                      className={'flex-1 py-2 px-3 rounded-lg text-xs font-bold transition border ' +
+                        (retiredId === p.id
+                          ? 'border-amber-500 bg-amber-900/40 text-amber-300'
+                          : 'border-[#1e4020] bg-[#152b18] text-[#F0F7E8]/60 hover:text-[#F0F7E8]')}
+                    >
+                      {p.name.split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+                {!hasAnyScore() && (
+                  <p className="text-[10px] text-[#F0F7E8]/35">Sin sets → se registrará como W.O.</p>
+                )}
+              </div>
+            )}
+
+            {/* Tip */}
+            <div className="bg-blue-900/20 border border-blue-500/20 rounded-xl p-3 text-blue-300/80 text-xs">
+              <strong className="text-blue-300">Tip:</strong> Si ganas, automáticamente se intercambian las posiciones.
+              El rival tendrá 24h para disputar el resultado.
+            </div>
+
+            {err && (
+              <div className="bg-red-900/30 border border-red-500/30 text-red-400 rounded-xl p-3 text-sm">{err}</div>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={loading ? undefined : onClose} disabled={loading} className="btn-ghost flex-1">Cancelar</button>
+              <button onClick={handleSubmit} disabled={loading} className="btn-primary flex-1">
+                {loading ? 'Enviando…' : 'Guardar resultado'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
