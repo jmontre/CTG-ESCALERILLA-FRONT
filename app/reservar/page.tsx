@@ -275,7 +275,7 @@ export default function ReservarPage() {
               <SummaryRow label="Hora" value={selectedSlot ? `${selectedSlot} hrs` : '—'} mono />
               {isProfe && schoolName && <SummaryRow label="Escuela" value={schoolName} />}
               {!isProfe && !hasGuest && partnerPlayerId && <SummaryRow label="Compañero" value={selectedPartnerName} />}
-              {!isProfe && hasGuest && <SummaryRow label="Invitado" value={`${guestName} (+$3.000)`} />}
+              {!isProfe && hasGuest && <SummaryRow label="Invitado" value={`${guestName} (+$4.000)`} />}
             </div>
             <div className="flex gap-3">
               <button

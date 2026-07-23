@@ -263,7 +263,9 @@ export const api = {
   },
 
   getAvailability: async (date: string) => {
-    const res = await fetch(`${API_URL}/reservations/availability?date=${date}`);
+    // authFetch envía el token: si hay sesión, el backend incluye partner_name/
+    // guest_name en las reservas (PII solo para socios logueados). Anónimo → sin token.
+    const res = await authFetch(`${API_URL}/reservations/availability?date=${date}`);
     if (!res.ok) return null;
     return res.json();
   },
