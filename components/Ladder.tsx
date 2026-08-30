@@ -2,6 +2,10 @@
 
 import { Player } from '@/types';
 import { formatPlayerName } from '@/lib/formatName';
+import {
+  CATEGORIES, CatKey, CAT_META, categoryOf, categoryBounds,
+  categoryRangeLabel, pyramidRows, canChallengePosition,
+} from '@/lib/ladder';
 
 /* ---- Types ---- */
 interface LadderProps {
@@ -10,21 +14,7 @@ interface LadderProps {
   onPlayerClick: (player: Player) => void;
 }
 
-/* ---- Category metadata ---- */
-type CatKey = 'A' | 'B' | 'C' | 'D';
-const CAT_META: Record<CatKey, { label: string; gradient: string; border: string; sub: string }> = {
-  A: { label: 'Élite',      gradient: 'from-yellow-900/50 to-yellow-950/30', border: 'border-yellow-700/20', sub: 'Pos. 1–12' },
-  B: { label: 'Avanzado',   gradient: 'from-gray-700/50 to-gray-800/30',     border: 'border-gray-600/20',  sub: 'Pos. 13–24' },
-  C: { label: 'Intermedio', gradient: 'from-orange-900/50 to-orange-950/30', border: 'border-orange-700/20', sub: 'Pos. 25–36' },
-  D: { label: 'Desarrollo', gradient: 'from-green-900/50 to-green-950/30',   border: 'border-green-700/20', sub: 'Pos. 37–48' },
-};
-
-const PYRAMID_ROWS: Record<CatKey, number[][]> = {
-  A: [[1], [2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]],
-  B: [[13, 14, 15], [16, 17, 18, 19], [20, 21, 22, 23, 24]],
-  C: [[25, 26, 27], [28, 29, 30, 31], [32, 33, 34, 35, 36]],
-  D: [[37, 38, 39], [40, 41, 42, 43], [44, 45, 46, 47, 48]],
-};
+/* ---- Category metadata: ver lib/ladder.ts (espejo del backend) ---- */
 
 /* ---- Icon ---- */
 const Icon = ({ d, size = 16, strokeWidth = 1.7 }: { d: string; size?: number; strokeWidth?: number }) => (
@@ -235,12 +225,16 @@ function PyramidRow({ row, ri, cat, onPlayerClick, currentPlayerId }: {
 }
 
 /* ---- Category Block ---- */
-function CategoryBlock({ cat, players, currentPlayerId, onPlayerClick }: {
-  cat: CatKey; players: Player[]; currentPlayerId?: string; onPlayerClick: (p: Player) => void;
+function CategoryBlock({ cat, players, ladderSize, currentPlayerId, onPlayerClick }: {
+  cat: CatKey; players: Player[]; ladderSize: number;
+  currentPlayerId?: string; onPlayerClick: (p: Player) => void;
 }) {
   const meta = CAT_META[cat];
   const byPos = Object.fromEntries(players.map(p => [p.position!, p]));
-  const rows = PYRAMID_ROWS[cat].map(positions =>
+  // La categoría C no tiene tope: las filas se generan según los jugadores que
+  // efectivamente hay, no sobre un rango fijo escrito a mano.
+  const { from, to } = categoryBounds(cat);
+  const rows = pyramidRows(from, to ?? ladderSize).map(positions =>
     positions.map(pos => byPos[pos]).filter((p): p is Player => !!p)
   ).filter(row => row.length > 0);
 
@@ -254,6 +248,7 @@ function CategoryBlock({ cat, players, currentPlayerId, onPlayerClick }: {
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#F0F7E8]/55">Categoría</div>
             <div className="font-display font-bold text-[#F0F7E8] text-xl mt-0.5">{meta.label}</div>
+            <div className="text-[#F0F7E8]/45 text-xs mt-0.5">{categoryRangeLabel(cat, ladderSize)}</div>
           </div>
         </div>
       </div>
@@ -277,12 +272,14 @@ function ChallengeZone({ currentPlayer, allPlayers, onPlayerClick }: {
 }) {
   const myPos = currentPlayer.position ?? 0;
   if (myPos <= 0) return null;
+  // La regla real es por niveles, no "5 puestos arriba": mismo nivel si está
+  // adelante, o el nivel inmediatamente superior (ver lib/ladder.ts).
   const targets = allPlayers
-    .filter(p => (p.position ?? 0) > 0 && p.position! < myPos && p.position! >= myPos - 5)
+    .filter(p => canChallengePosition(myPos, p.position))
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   if (targets.length === 0) return null;
 
-  const getCat = (pos: number): CatKey => pos <= 12 ? 'A' : pos <= 24 ? 'B' : pos <= 36 ? 'C' : 'D';
+  const getCat = (pos: number): CatKey => categoryOf(pos) ?? 'C';
 
   return (
     <div className="mb-10 bg-[#0f2211] border border-ctg-green/25 rounded-2xl p-5 relative overflow-hidden">
@@ -291,7 +288,7 @@ function ChallengeZone({ currentPlayer, allPlayers, onPlayerClick }: {
       <div className="flex items-baseline justify-between mb-3 relative">
         <div>
           <div className="text-[10px] uppercase tracking-[0.25em] font-bold text-ctg-green">Tu zona de desafío</div>
-          <div className="text-[#F0F7E8]/55 text-sm mt-0.5">Puedes retar hasta 5 posiciones arriba</div>
+          <div className="text-[#F0F7E8]/55 text-sm mt-0.5">Tu nivel y el de arriba</div>
         </div>
         <span className="text-[#F0F7E8]/30 text-xs font-mono">{targets.length} disponibles</span>
       </div>
@@ -323,12 +320,12 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
   const currentPlayer = players.find(p => p.id === currentPlayerId);
   const activePlayers = players.filter(p => (p.position ?? 0) > 0);
 
-  const byCategory: Record<CatKey, Player[]> = { A: [], B: [], C: [], D: [] };
+  const byCategory: Record<CatKey, Player[]> = { A: [], B: [], C: [] };
   for (const p of activePlayers) {
-    const pos = p.position!;
-    const cat: CatKey = pos <= 12 ? 'A' : pos <= 24 ? 'B' : pos <= 36 ? 'C' : 'D';
-    byCategory[cat].push(p);
+    const cat = categoryOf(p.position);
+    if (cat) byCategory[cat].push(p);
   }
+  const ladderSize = activePlayers.reduce((max, p) => Math.max(max, p.position ?? 0), 0);
 
   return (
     <div className="space-y-8">
@@ -338,9 +335,9 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
       )}
 
       {/* Category blocks */}
-      {(['A', 'B', 'C', 'D'] as CatKey[]).map(cat => (
+      {CATEGORIES.map(cat => (
         <CategoryBlock
-          key={cat} cat={cat} players={byCategory[cat]}
+          key={cat} cat={cat} players={byCategory[cat]} ladderSize={ladderSize}
           currentPlayerId={currentPlayerId} onPlayerClick={onPlayerClick}
         />
       ))}
@@ -363,11 +360,11 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
             </div>
           ))}
         </div>
-        <div className="mt-5 pt-5 border-t border-[#1e4020] grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-          {(['A', 'B', 'C', 'D'] as CatKey[]).map(c => (
+        <div className="mt-5 pt-5 border-t border-[#1e4020] grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+          {CATEGORIES.map(c => (
             <div key={c} className="flex items-center gap-2 text-[#F0F7E8]/65">
               <span className={'font-display font-black text-base cat-letter-' + c}>{c}</span>
-              <span>{CAT_META[c].sub} · {CAT_META[c].label}</span>
+              <span>{categoryRangeLabel(c, ladderSize)} · {CAT_META[c].label}</span>
             </div>
           ))}
         </div>

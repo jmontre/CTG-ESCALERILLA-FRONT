@@ -9,6 +9,7 @@ import NotificationsPanel from '@/components/NotificationsPanel';
 import OnboardingModal from '@/components/OnboardingModal';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useCelebrations } from '@/hooks/useCelebrations';
+import { categoryOf } from '@/lib/ladder';
 import SeasonSummaryModal from '@/components/SeasonSummaryModal';
 import AchievementUnlockedModal from '@/components/AchievementUnlockedModal';
 
@@ -72,11 +73,7 @@ function getActiveSection(pathname: string) {
 }
 
 function getCategoryFromPosition(position: number | null | undefined): string {
-  if (!position || position <= 0) return '—';
-  if (position <= 12) return 'A';
-  if (position <= 24) return 'B';
-  if (position <= 36) return 'C';
-  return 'D';
+  return categoryOf(position) ?? '—';
 }
 
 function LogoMark({ size = 28 }: { size?: number }) {

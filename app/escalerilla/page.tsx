@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { Player } from '@/types';
+import { CATEGORIES } from '@/lib/ladder';
 import { useEffect, useState } from 'react';
 
 function Avatar({ player, size = 42 }: { player: Player; size?: number }) {
@@ -125,7 +126,9 @@ export default function EscalerillaPage() {
           <div>
             <div className="text-ctg-green text-xs uppercase tracking-[0.28em] font-bold mb-2">Temporada 2026 · Pirámide</div>
             <h1 className="font-display font-extrabold text-[#F0F7E8] text-4xl md:text-5xl tracking-tight leading-[1.02]">Escalerilla</h1>
-            <p className="text-[#F0F7E8]/45 text-sm mt-2">{players.length} jugadores · 4 categorías · ranking en vivo</p>
+            <p className="text-[#F0F7E8]/45 text-sm mt-2">
+              {players.filter(p => (p.position ?? 0) > 0).length} jugadores · {CATEGORIES.length} categorías · ranking en vivo
+            </p>
           </div>
           {currentPlayer && hasPosition && (
             <div className="flex items-center gap-3 bg-[#152b18] border border-[#1e4020] rounded-2xl pl-4 pr-2 py-2">
