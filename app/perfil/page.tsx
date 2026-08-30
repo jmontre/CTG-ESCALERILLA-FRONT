@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import LoginPrompt from '@/components/LoginPrompt';
 import OnboardingModal from '@/components/OnboardingModal';
+import AchievementsGrid from '@/components/AchievementsGrid';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
+import { MyAchievements } from '@/types';
 
 function getInitials(name: string): string {
   const parts = name.trim().split(' ').filter(Boolean);
@@ -43,6 +45,7 @@ export default function PerfilPage() {
   const [avatarPreview, setAvatarPreview]         = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTour, setShowTour]                   = useState(false);
+  const [achievements, setAchievements]           = useState<MyAchievements | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +54,15 @@ export default function PerfilPage() {
     setName(player.name);
     setPhone(player.phone || '');
     setAvatarPreview(player.avatar_url || null);
+  }, [player]);
+
+  useEffect(() => {
+    if (!player) return;
+    let cancelled = false;
+    api.getMyAchievements().then((a) => {
+      if (!cancelled) setAchievements(a);
+    });
+    return () => { cancelled = true; };
   }, [player]);
 
   const handleSaveProfile = async () => {
@@ -211,6 +223,20 @@ export default function PerfilPage() {
             </div>
           </div>
         )}
+
+        {/* Logros */}
+        <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-5">
+          <h2 className="font-display font-bold text-[#F0F7E8] mb-4">Mis logros</h2>
+          {achievements ? (
+            <AchievementsGrid
+              achievements={achievements.achievements}
+              unlockedCount={achievements.unlocked_count}
+              total={achievements.total}
+            />
+          ) : (
+            <p className="text-[#F0F7E8]/35 text-sm">Cargando logros...</p>
+          )}
+        </div>
 
         {/* Personal info */}
         <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-5">
