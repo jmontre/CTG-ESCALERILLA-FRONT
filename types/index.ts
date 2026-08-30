@@ -87,7 +87,8 @@ export interface MasterMatch {
   id: string;
   group_id: string | null;
   season_id: string;
-  round: 'group' | 'semifinal' | 'final';
+  // 'playoff' es la ronda previa: los puestos 5-12 se juegan 4 cupos al round robin.
+  round: 'playoff' | 'group' | 'semifinal' | 'final';
   player1_id: string;
   player2_id: string;
   winner_id: string | null;
@@ -112,7 +113,7 @@ export interface MasterSeason {
   id: string;
   name: string;
   category: string;
-  status: 'pending' | 'active' | 'semifinals' | 'final' | 'completed';
+  status: 'pending' | 'playoffs' | 'active' | 'semifinals' | 'final' | 'completed';
   round_robin_start: string | null;
   round_robin_end: string | null;
   final_date: string | null;

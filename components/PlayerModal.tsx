@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Player, UnlockedAchievement } from '@/types';
 import { api } from '@/lib/api';
 import AchievementBadge from './AchievementBadge';
+import { CatKey, CAT_META, categoryOf } from '@/lib/ladder';
 import { formatPlayerName } from '@/lib/formatName';
 
 interface PlayerModalProps {
@@ -15,14 +16,6 @@ interface PlayerModalProps {
   /** Total de jugadores en la escalerilla: cambia en cada temporada. */
   ladderSize: number;
 }
-
-type CatKey = 'A' | 'B' | 'C' | 'D';
-const CAT_META: Record<CatKey, { label: string; gradient: string }> = {
-  A: { label: 'Élite',      gradient: 'from-yellow-900/50 to-yellow-950/30' },
-  B: { label: 'Avanzado',   gradient: 'from-gray-700/50 to-gray-800/30'     },
-  C: { label: 'Intermedio', gradient: 'from-orange-900/50 to-orange-950/30' },
-  D: { label: 'Desarrollo', gradient: 'from-green-900/50 to-green-950/30'   },
-};
 
 const SwordsIcon = () => (
   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
@@ -83,7 +76,7 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
   if (!isOpen || !player) return null;
 
   const pos = player.position ?? 0;
-  const cat: CatKey = pos <= 12 ? 'A' : pos <= 24 ? 'B' : pos <= 36 ? 'C' : 'D';
+  const cat: CatKey = categoryOf(pos) ?? 'C';
   const meta = CAT_META[cat];
   const now = new Date();
   const isImmune = !!(player.immune_until && new Date(player.immune_until) > now);

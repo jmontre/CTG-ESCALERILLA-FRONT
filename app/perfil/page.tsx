@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { MyAchievements } from '@/types';
+import { CAT_META, categoryOf } from '@/lib/ladder';
 
 function getInitials(name: string): string {
   const parts = name.trim().split(' ').filter(Boolean);
@@ -18,17 +19,7 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-function getCat(pos: number | null | undefined) {
-  const p = pos ?? 0;
-  if (p <= 12) return 'A';
-  if (p <= 24) return 'B';
-  if (p <= 36) return 'C';
-  return 'D';
-}
-
-const CAT_LABEL: Record<string, string> = {
-  A: 'Élite', B: 'Avanzado', C: 'Intermedio', D: 'Desarrollo',
-};
+// Categorías y rangos: lib/ladder.ts (espejo del backend).
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -144,7 +135,7 @@ export default function PerfilPage() {
   }
 
   const initials = getInitials(player.name);
-  const cat      = getCat(player.position);
+  const cat      = categoryOf(player.position) ?? 'C';
   const pos      = player.position ?? 0;
   const eff      = player.total_matches > 0 ? Math.round((player.wins / player.total_matches) * 100) : 0;
 
@@ -176,7 +167,7 @@ export default function PerfilPage() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className={`text-[10px] uppercase tracking-widest font-bold mb-0.5 cat-letter-${cat}`}>{CAT_LABEL[cat]}</div>
+              <div className={`text-[10px] uppercase tracking-widest font-bold mb-0.5 cat-letter-${cat}`}>{CAT_META[cat].label}</div>
               <div className="font-display font-bold text-[#F0F7E8] text-xl truncate">{player.name}</div>
               {pos > 0 && <div className="text-[#F0F7E8]/50 text-sm mt-0.5">#{pos} en la escalerilla</div>}
               <div className="flex gap-2 mt-3 flex-wrap">

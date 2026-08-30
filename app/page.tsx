@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import LoginModal from '@/components/LoginModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
+import { CatKey, categoryOf } from '@/lib/ladder';
 import type { Challenge } from '@/types';
 
 /* ---- Icon helper ---- */
@@ -24,15 +25,11 @@ const Icon = ({ d, size = 16, strokeWidth = 1.7 }: { d: string; size?: number; s
   </svg>
 );
 
-const CAT_COLORS = { A: '#FCD34D', B: '#D1D5DB', C: '#FBA76F', D: '#8BC234' };
-function getCategoryFromPosition(pos: number | null | undefined): 'A' | 'B' | 'C' | 'D' | null {
-  if (!pos || pos <= 0) return null;
-  if (pos <= 12) return 'A';
-  if (pos <= 24) return 'B';
-  if (pos <= 36) return 'C';
-  return 'D';
+const CAT_COLORS: Record<CatKey, string> = { A: '#FCD34D', B: '#D1D5DB', C: '#FBA76F' };
+function getCategoryFromPosition(pos: number | null | undefined): CatKey | null {
+  return categoryOf(pos);
 }
-function CatDot({ cat }: { cat: 'A' | 'B' | 'C' | 'D' }) {
+function CatDot({ cat }: { cat: CatKey }) {
   const color = CAT_COLORS[cat];
   return (
     <span className="inline-block rounded-full" style={{ width: 8, height: 8, background: color, boxShadow: `0 0 6px ${color}55` }} />

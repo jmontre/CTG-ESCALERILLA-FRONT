@@ -1,4 +1,5 @@
 'use client';
+import { CATEGORIES as LADDER_CATEGORIES } from '@/lib/ladder';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +14,7 @@ import AddPlayerModal from '@/components/admin/AddPlayerModal';
 import EditPlayerModal from '@/components/admin/EditPlayerModal';
 import ChallengeManagementModal from '@/components/admin/ChallengeManagementModal';
 
-const CATEGORIES = ['A', 'B', 'C', 'D'];
+const CATEGORIES = [...LADDER_CATEGORIES];
 const CATEGORY_NAMES: Record<string, string> = { A: 'Oro', B: 'Plata', C: 'Bronce', D: 'Verde' };
 const CATEGORY_RANGES: Record<string, string> = { A: '1-12', B: '13-24', C: '25-36', D: '37-48' };
 
