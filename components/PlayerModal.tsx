@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Player } from '@/types';
+import { useEffect, useState } from 'react';
+import { Player, UnlockedAchievement } from '@/types';
+import { api } from '@/lib/api';
+import AchievementBadge from './AchievementBadge';
 import { formatPlayerName } from '@/lib/formatName';
 
 interface PlayerModalProps {
@@ -10,6 +12,8 @@ interface PlayerModalProps {
   onClose: () => void;
   onChallenge: (player: Player) => void;
   canChallenge: boolean;
+  /** Total de jugadores en la escalerilla: cambia en cada temporada. */
+  ladderSize: number;
 }
 
 type CatKey = 'A' | 'B' | 'C' | 'D';
@@ -52,7 +56,22 @@ function StatBox({ label, value, colorClass }: { label: string; value: number; c
   );
 }
 
-export default function PlayerModal({ player, isOpen, onClose, onChallenge, canChallenge }: PlayerModalProps) {
+export default function PlayerModal({ player, isOpen, onClose, onChallenge, canChallenge, ladderSize }: PlayerModalProps) {
+  // Insignias del jugador. Se piden al abrir; si falla, la ficha se muestra igual.
+  // Se guarda junto al id para no pintar los logros del jugador anterior
+  // mientras llega la respuesta del nuevo.
+  const [badges, setBadges] = useState<{ playerId: string; items: UnlockedAchievement[] } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !player) return;
+    let cancelled = false;
+    const playerId = player.id;
+    api.getPlayerAchievements(playerId).then(items => {
+      if (!cancelled) setBadges({ playerId, items });
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, player]);
+
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
@@ -72,6 +91,8 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
   const hasPending = player.challenged_challenge?.status === 'pending';
   const hasAccepted = player.challenger_challenge?.status === 'accepted' || player.challenged_challenge?.status === 'accepted';
   const hasSent = player.challenger_challenge?.status === 'pending';
+
+  const shownBadges = badges?.playerId === player.id ? badges.items : [];
 
   const effectiveness = player.total_matches > 0
     ? Math.round((player.wins / player.total_matches) * 100)
@@ -109,7 +130,7 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
                 <div className="font-display font-bold text-white text-2xl truncate">{formatPlayerName(player.name)}</div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="font-display font-black text-white" style={{ fontSize: 28, lineHeight: 1 }}>#{pos}</span>
-                  <span className="text-white/60 text-xs">de 48</span>
+                  <span className="text-white/60 text-xs">de {ladderSize}</span>
                 </div>
               </div>
             </div>
@@ -141,6 +162,28 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
                     className="h-full bg-ctg-green rounded-full transition-all"
                     style={{ width: effectiveness + '%', boxShadow: '0 0 8px rgba(139,194,52,.5)' }}
                   />
+                </div>
+              </div>
+            )}
+
+            {shownBadges.length > 0 && (
+              <div className="mb-5">
+                <div className="label mb-2">Logros</div>
+                <div className="flex flex-wrap gap-2">
+                  {shownBadges.slice(0, 12).map(b => (
+                    <AchievementBadge
+                      key={b.code}
+                      emoji={b.emoji}
+                      group={b.group}
+                      size="sm"
+                      title={`${b.name} — ${b.description}`}
+                    />
+                  ))}
+                  {shownBadges.length > 12 && (
+                    <span className="self-center text-xs text-[#F0F7E8]/40 font-semibold">
+                      +{shownBadges.length - 12}
+                    </span>
+                  )}
                 </div>
               </div>
             )}

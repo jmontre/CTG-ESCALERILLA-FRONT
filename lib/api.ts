@@ -1,4 +1,7 @@
-import { Player, Challenge, AuthResponse, MasterSeason, ApiNotification } from '@/types';
+import {
+  Player, Challenge, AuthResponse, MasterSeason, ApiNotification,
+  MyAchievements, UnlockedAchievement, SeasonSummary,
+} from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -406,6 +409,65 @@ export const api = {
     const res = await authFetch(`${API_URL}/notifications/read-all`, { method: 'POST' });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al marcar notificaciones'); }
     return res.json();
+  },
+
+  // ── Logros ────────────────────────────────────────────────────────────────
+  // Todos degradan a vacío en error: un fallo acá no debe romper el perfil ni
+  // bloquear la carga de la app.
+
+  getMyAchievements: async (): Promise<MyAchievements> => {
+    try {
+      const res = await authFetch(`${API_URL}/achievements/me`);
+      if (!res.ok) return { total: 0, unlocked_count: 0, achievements: [] };
+      return res.json();
+    } catch {
+      return { total: 0, unlocked_count: 0, achievements: [] };
+    }
+  },
+
+  getPendingAchievements: async (): Promise<UnlockedAchievement[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/achievements/me/pending`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  markAchievementsSeen: async (ids: string[]) => {
+    if (ids.length === 0) return;
+    await authFetch(`${API_URL}/achievements/me/seen`, {
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ ids }),
+    });
+  },
+
+  getPlayerAchievements: async (playerId: string): Promise<UnlockedAchievement[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/achievements/player/${playerId}`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  // ── Temporadas ────────────────────────────────────────────────────────────
+
+  getSeasonSummary: async (): Promise<SeasonSummary> => {
+    try {
+      const res = await authFetch(`${API_URL}/seasons/me/summary`);
+      if (!res.ok) return { pending: false };
+      return res.json();
+    } catch {
+      return { pending: false };
+    }
+  },
+
+  markSeasonSummarySeen: async (slug: string) => {
+    await authFetch(`${API_URL}/seasons/me/summary/seen`, {
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ slug }),
+    });
   },
 
   // ── Admin Players (extended) ──────────────────────────────────────────────
