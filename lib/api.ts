@@ -411,6 +411,24 @@ export const api = {
     return res.json();
   },
 
+  // ── Desafíos disponibles ──────────────────────────────────────────────────
+
+  /**
+   * A quiénes puede desafiar este jugador, según el backend: filas, ocupación,
+   * inmunidad y la espera de 5 días para repetir rival. Es la fuente de verdad;
+   * el frontend no reimplementa esas reglas.
+   */
+  getAvailableChallenges: async (playerId: string): Promise<string[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/players/${playerId}/available-challenges`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.available_challenges ?? []).map((p: { id: string }) => p.id);
+    } catch {
+      return [];
+    }
+  },
+
   // ── Logros ────────────────────────────────────────────────────────────────
   // Todos degradan a vacío en error: un fallo acá no debe romper el perfil ni
   // bloquear la carga de la app.

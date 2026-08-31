@@ -11,6 +11,8 @@ import {
 interface LadderProps {
   players: Player[];
   currentPlayerId?: string;
+  /** Ids que el backend autoriza a desafiar. null = todavía no respondió. */
+  challengeableIds?: Set<string> | null;
   onPlayerClick: (player: Player) => void;
 }
 
@@ -266,16 +268,24 @@ function CategoryBlock({ cat, players, ladderSize, currentPlayerId, onPlayerClic
 }
 
 /* ---- Challenge Zone ---- */
-function ChallengeZone({ currentPlayer, allPlayers, ladderSize, onPlayerClick }: {
+function ChallengeZone({ currentPlayer, allPlayers, ladderSize, challengeableIds, onPlayerClick }: {
   currentPlayer: Player; allPlayers: Player[]; ladderSize: number;
+  challengeableIds?: Set<string> | null;
   onPlayerClick: (p: Player) => void;
 }) {
   const myPos = currentPlayer.position ?? 0;
   if (myPos <= 0) return null;
   // La regla real es por niveles, no "5 puestos arriba": mismo nivel si está
   // adelante, o el nivel inmediatamente superior (ver lib/ladder.ts).
+  // La lista del backend manda: sabe del historial de partidos, y por lo tanto
+  // de la espera de 5 días para repetir rival. Si aún no respondió, se muestra
+  // la regla de filas para no dejar la sección vacía.
   const targets = allPlayers
-    .filter(p => canChallengePosition(myPos, p.position, ladderSize))
+    .filter(p =>
+      challengeableIds
+        ? challengeableIds.has(p.id)
+        : canChallengePosition(myPos, p.position, ladderSize),
+    )
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   if (targets.length === 0) return null;
 
@@ -316,7 +326,7 @@ function ChallengeZone({ currentPlayer, allPlayers, ladderSize, onPlayerClick }:
 }
 
 /* ---- Main Ladder component ---- */
-export default function Ladder({ players, currentPlayerId, onPlayerClick }: LadderProps) {
+export default function Ladder({ players, currentPlayerId, challengeableIds, onPlayerClick }: LadderProps) {
   const currentPlayer = players.find(p => p.id === currentPlayerId);
   const activePlayers = players.filter(p => (p.position ?? 0) > 0);
 
@@ -332,7 +342,8 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
       {/* Challenge zone */}
       {currentPlayer && (currentPlayer.position ?? 0) > 0 && (
         <ChallengeZone currentPlayer={currentPlayer} allPlayers={activePlayers}
-          ladderSize={ladderSize} onPlayerClick={onPlayerClick} />
+          ladderSize={ladderSize} challengeableIds={challengeableIds}
+          onPlayerClick={onPlayerClick} />
       )}
 
       {/* Category blocks */}
