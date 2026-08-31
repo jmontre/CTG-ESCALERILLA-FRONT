@@ -38,6 +38,8 @@ function StatCard({ label, value, colorClass, glow }: { label: string; value: st
 
 export default function EscalerillaPage() {
   const [players, setPlayers] = useState<Player[]>([]);
+  /** Ids que el backend autoriza a desafiar. null = todavía no respondió. */
+  const [challengeableIds, setChallengeableIds] = useState<Set<string> | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
@@ -59,6 +61,12 @@ export default function EscalerillaPage() {
     try {
       const data = await api.getPlayers();
       setPlayers(data);
+      // Quiénes puedo desafiar lo decide el backend, que conoce el historial
+      // de partidos (la espera de 5 días para repetir rival no es deducible
+      // desde el listado público de jugadores).
+      if (currentPlayer?.id) {
+        setChallengeableIds(new Set(await api.getAvailableChallenges(currentPlayer.id)));
+      }
     } catch (err: any) {
       if (err?.message !== 'Sin sesión activa') {
         error('Error al cargar jugadores');
@@ -107,6 +115,10 @@ export default function EscalerillaPage() {
   const canChallenge = (player: Player): boolean => {
     if (!currentPlayer) return false;
     if (player.id === currentPlayer.id) return false;
+    // Si el backend alcanzó a responder, su lista manda. Si no (red caída),
+    // se cae a la verificación local para no bloquear la pantalla entera; el
+    // backend valida igual al crear el desafío.
+    if (challengeableIds !== null) return challengeableIds.has(player.id);
     if (player.immune_until && new Date(player.immune_until) > new Date()) return false;
     if (currentPlayer.vulnerable_until && new Date(currentPlayer.vulnerable_until) > new Date()) return false;
     return true;
@@ -171,7 +183,8 @@ export default function EscalerillaPage() {
                 <p className="text-[#F0F7E8]/50 text-sm">Cargando escalerilla…</p>
               </div>
             ) : (
-              <Ladder players={players} currentPlayerId={currentPlayer?.id} onPlayerClick={handlePlayerClick} />
+              <Ladder players={players} currentPlayerId={currentPlayer?.id}
+                challengeableIds={challengeableIds} onPlayerClick={handlePlayerClick} />
             )}
           </>
         )}
