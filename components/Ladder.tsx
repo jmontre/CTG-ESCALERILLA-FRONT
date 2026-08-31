@@ -3,8 +3,8 @@
 import { Player } from '@/types';
 import { formatPlayerName } from '@/lib/formatName';
 import {
-  CATEGORIES, CatKey, CAT_META, categoryOf, categoryBounds,
-  categoryRangeLabel, pyramidRows, canChallengePosition,
+  CATEGORIES, CatKey, CAT_META, categoryOf,
+  categoryRangeLabel, categoryRows, canChallengePosition,
 } from '@/lib/ladder';
 
 /* ---- Types ---- */
@@ -233,8 +233,7 @@ function CategoryBlock({ cat, players, ladderSize, currentPlayerId, onPlayerClic
   const byPos = Object.fromEntries(players.map(p => [p.position!, p]));
   // La categoría C no tiene tope: las filas se generan según los jugadores que
   // efectivamente hay, no sobre un rango fijo escrito a mano.
-  const { from, to } = categoryBounds(cat);
-  const rows = pyramidRows(from, to ?? ladderSize).map(positions =>
+  const rows = categoryRows(cat, ladderSize).map(positions =>
     positions.map(pos => byPos[pos]).filter((p): p is Player => !!p)
   ).filter(row => row.length > 0);
 
@@ -267,15 +266,16 @@ function CategoryBlock({ cat, players, ladderSize, currentPlayerId, onPlayerClic
 }
 
 /* ---- Challenge Zone ---- */
-function ChallengeZone({ currentPlayer, allPlayers, onPlayerClick }: {
-  currentPlayer: Player; allPlayers: Player[]; onPlayerClick: (p: Player) => void;
+function ChallengeZone({ currentPlayer, allPlayers, ladderSize, onPlayerClick }: {
+  currentPlayer: Player; allPlayers: Player[]; ladderSize: number;
+  onPlayerClick: (p: Player) => void;
 }) {
   const myPos = currentPlayer.position ?? 0;
   if (myPos <= 0) return null;
   // La regla real es por niveles, no "5 puestos arriba": mismo nivel si está
   // adelante, o el nivel inmediatamente superior (ver lib/ladder.ts).
   const targets = allPlayers
-    .filter(p => canChallengePosition(myPos, p.position))
+    .filter(p => canChallengePosition(myPos, p.position, ladderSize))
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   if (targets.length === 0) return null;
 
@@ -288,7 +288,7 @@ function ChallengeZone({ currentPlayer, allPlayers, onPlayerClick }: {
       <div className="flex items-baseline justify-between mb-3 relative">
         <div>
           <div className="text-[10px] uppercase tracking-[0.25em] font-bold text-ctg-green">Tu zona de desafío</div>
-          <div className="text-[#F0F7E8]/55 text-sm mt-0.5">Tu nivel y el de arriba</div>
+          <div className="text-[#F0F7E8]/55 text-sm mt-0.5">Tu fila y la de arriba</div>
         </div>
         <span className="text-[#F0F7E8]/30 text-xs font-mono">{targets.length} disponibles</span>
       </div>
@@ -331,7 +331,8 @@ export default function Ladder({ players, currentPlayerId, onPlayerClick }: Ladd
     <div className="space-y-8">
       {/* Challenge zone */}
       {currentPlayer && (currentPlayer.position ?? 0) > 0 && (
-        <ChallengeZone currentPlayer={currentPlayer} allPlayers={activePlayers} onPlayerClick={onPlayerClick} />
+        <ChallengeZone currentPlayer={currentPlayer} allPlayers={activePlayers}
+          ladderSize={ladderSize} onPlayerClick={onPlayerClick} />
       )}
 
       {/* Category blocks */}
