@@ -185,6 +185,16 @@ export type SeasonSummary =
       pending: true;
       season: { slug: string; name: string };
       next_season: { slug: string; name: string } | null;
+      /**
+       * Campeón y finalista de cada categoría: lo ve todo el club.
+       * Opcional porque el backend y el frontend no despliegan a la vez: si el
+       * front llega primero, esta clave todavía no viene.
+       */
+      podium?: Array<{
+        category: string;
+        champion: string | null;
+        finalist: string | null;
+      }>;
       player_name: string;
       start_position: number | null;
       final_position: number | null;

@@ -56,13 +56,16 @@ export default function SeasonSummaryModal({
 
   // Pantallas según lo que este jugador tenga para mostrar.
   const screens = useMemo(() => {
-    const list: Array<'podium' | 'balance' | 'achievements' | 'next'> = [];
+    const list: Array<'podium' | 'campeones' | 'balance' | 'achievements' | 'next'> = [];
+    // Quien ganó algo ve primero su trofeo...
     if (podium) list.push('podium');
+    // ...y el podio del club lo ven todos, hayan ganado o no.
+    if ((summary.podium?.length ?? 0) > 0) list.push('campeones');
     list.push('balance');
     if (summary.achievements.length > 0) list.push('achievements');
     list.push('next');
     return list;
-  }, [podium, summary.achievements.length]);
+  }, [podium, summary.podium?.length, summary.achievements.length]);
 
   const [step, setStep] = useState(0);
   const isLast = step === screens.length - 1;
@@ -124,7 +127,10 @@ export default function SeasonSummaryModal({
           ) : (
             <>
               <span className="text-5xl" aria-hidden>
-                {screen === 'next' ? '🎾' : screen === 'achievements' ? '🎯' : '📋'}
+                {screen === 'next' ? '🎾'
+                  : screen === 'achievements' ? '🎯'
+                  : screen === 'campeones' ? '🏆'
+                  : '📋'}
               </span>
               <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-ctg-green">
                 {/* La última pantalla ya habla de la temporada que arranca. */}
@@ -146,6 +152,50 @@ export default function SeasonSummaryModal({
               <p className="text-[#F0F7E8]/60 text-sm leading-relaxed mt-3 animate-slide-up">
                 {podium.body}
               </p>
+            </>
+          )}
+
+          {screen === 'campeones' && (
+            <>
+              <h2 className="font-display text-2xl font-black text-[#F0F7E8] animate-slide-up">
+                Campeones del semestre
+              </h2>
+              <p className="text-[#F0F7E8]/60 text-sm leading-relaxed mt-2 animate-slide-up">
+                ¡Felicitaciones a los campeones y finalistas de cada categoría!
+                Se jugaron los cuatro cuadros completos.
+              </p>
+
+              <div className="mt-5 space-y-2 text-left">
+                {(summary.podium ?? []).map((row) => (
+                  <div
+                    key={row.category}
+                    className="flex items-center gap-3 bg-[#152b18] border border-[#1e4020] rounded-xl px-3 py-2.5"
+                  >
+                    <span
+                      className="font-display font-black text-lg w-6 shrink-0 text-center"
+                      style={{ color: '#e8b923' }}
+                    >
+                      {row.category}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <span aria-hidden>🏆</span>
+                        <span className="font-semibold text-[#F0F7E8] truncate">
+                          {row.champion ?? '—'}
+                        </span>
+                      </div>
+                      {row.finalist && (
+                        <div className="flex items-center gap-1.5 text-xs mt-0.5">
+                          <span aria-hidden>🥈</span>
+                          <span className="text-[#F0F7E8]/50 truncate">
+                            {row.finalist}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </>
           )}
 
