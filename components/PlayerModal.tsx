@@ -40,6 +40,23 @@ function AvatarEl({ player, size = 72 }: { player: Player; size?: number }) {
   return <div className="inline-flex items-center justify-center rounded-full font-display font-bold text-[#0a1608] shrink-0" style={style}>{initials}</div>;
 }
 
+/** "Categoría A · 30 ago 2026" cuando el contexto aporta algo mostrable. */
+function badgeContext(b: UnlockedAchievement): string {
+  const parts: string[] = [];
+  const c = b.context as Record<string, unknown> | null;
+  if (c) {
+    if (typeof c.categoria === 'string') parts.push(`Categoría ${c.categoria}`);
+    else if (typeof c.racha === 'number') parts.push(`${c.racha} al hilo`);
+    else if (typeof c.puestos === 'number') parts.push(`+${c.puestos} puestos`);
+    else if (typeof c.partidos === 'number') parts.push(`${c.partidos} partidos`);
+    else if (typeof c.rivales === 'number') parts.push(`${c.rivales} rivales`);
+  }
+  parts.push(new Date(b.unlocked_at).toLocaleDateString('es-CL', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  }));
+  return parts.join(' · ');
+}
+
 function StatBox({ label, value, colorClass }: { label: string; value: number; colorClass: string }) {
   return (
     <div className="text-center bg-[#152b18] border border-[#1e4020] rounded-xl py-3">
@@ -54,6 +71,11 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
   // Se guarda junto al id para no pintar los logros del jugador anterior
   // mientras llega la respuesta del nuevo.
   const [badges, setBadges] = useState<{ playerId: string; items: UnlockedAchievement[] } | null>(null);
+
+  // Insignia desplegada, para mostrar de qué se trata. Guarda también de quién
+  // es: así al abrir la ficha de otro jugador no queda desplegada la insignia
+  // del anterior, sin necesidad de resetear el estado dentro de un efecto.
+  const [openBadge, setOpenBadge] = useState<{ playerId: string; code: string } | null>(null);
 
   useEffect(() => {
     if (!isOpen || !player) return;
@@ -86,6 +108,10 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
   const hasSent = player.challenger_challenge?.status === 'pending';
 
   const shownBadges = badges?.playerId === player.id ? badges.items : [];
+  const openDetail =
+    openBadge?.playerId === player.id
+      ? (shownBadges.find(b => b.code === openBadge.code) ?? null)
+      : null;
 
   const effectiveness = player.total_matches > 0
     ? Math.round((player.wins / player.total_matches) * 100)
@@ -161,23 +187,49 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
 
             {shownBadges.length > 0 && (
               <div className="mb-5">
-                <div className="label mb-2">Logros</div>
-                <div className="flex flex-wrap gap-2">
-                  {shownBadges.slice(0, 12).map(b => (
-                    <AchievementBadge
-                      key={b.code}
-                      emoji={b.emoji}
-                      group={b.group}
-                      size="sm"
-                      title={`${b.name} — ${b.description}`}
-                    />
-                  ))}
-                  {shownBadges.length > 12 && (
-                    <span className="self-center text-xs text-[#F0F7E8]/40 font-semibold">
-                      +{shownBadges.length - 12}
-                    </span>
-                  )}
+                <div className="label mb-2">
+                  Logros <span className="text-[#F0F7E8]/30">· {shownBadges.length}</span>
                 </div>
+
+                {/* Con el nombre al lado: una insignia suelta no dice nada.
+                    Al tocar una se despliega qué hay que hacer para ganarla. */}
+                <div className="flex flex-wrap gap-1.5">
+                  {shownBadges.map(b => {
+                    const isOpen = openDetail?.code === b.code;
+                    return (
+                      <button
+                        key={b.code}
+                        type="button"
+                        onClick={() =>
+                          setOpenBadge(isOpen ? null : { playerId: player.id, code: b.code })
+                        }
+                        aria-expanded={isOpen}
+                        className={
+                          'flex items-center gap-1.5 rounded-full border pl-1 pr-2.5 py-1 transition ' +
+                          (isOpen
+                            ? 'bg-ctg-green/15 border-ctg-green/50'
+                            : 'bg-[#152b18] border-[#1e4020] hover:border-ctg-green/40')
+                        }
+                      >
+                        <AchievementBadge emoji={b.emoji} group={b.group} size="sm" />
+                        <span className="text-xs font-semibold text-[#F0F7E8]/80 whitespace-nowrap">
+                          {b.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {openDetail && (
+                  <div className="mt-2 bg-[#0a1608]/50 border border-[#1e4020] rounded-xl px-3 py-2.5 animate-slide-up">
+                    <div className="text-xs text-[#F0F7E8]/60 leading-snug">
+                      {openDetail.description}
+                    </div>
+                    <div className="text-[10px] text-ctg-green/70 font-semibold mt-1">
+                      {badgeContext(openDetail)}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
