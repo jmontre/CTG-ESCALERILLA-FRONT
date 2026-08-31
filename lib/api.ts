@@ -1,6 +1,6 @@
 import {
   Player, Challenge, AuthResponse, MasterSeason, ApiNotification,
-  MyAchievements, UnlockedAchievement, SeasonSummary, HistoryResponse,
+  MyAchievements, UnlockedAchievement, SeasonSummary, HistoryResponse, HistoryPeriod,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -425,6 +425,20 @@ export const api = {
       return res.json();
     } catch {
       return null;
+    }
+  },
+
+  /**
+   * Períodos disponibles con sus rangos. Los calcula el backend para que el
+   * fixture y el historial usen los mismos cortes de temporada.
+   */
+  getPeriods: async (): Promise<HistoryPeriod[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/seasons/periods`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
     }
   },
 

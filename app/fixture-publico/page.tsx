@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import LoginModal from '@/components/LoginModal';
 import LoginPrompt from '@/components/LoginPrompt';
-import { Challenge } from '@/types';
+import { Challenge, HistoryPeriod } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -65,17 +65,31 @@ export default function FixturePublicoPage() {
 
   const [search,     setSearch]     = useState('');
   const [statusF,    setStatusF]    = useState<'all' | 'pending' | 'accepted' | 'completed' | 'disputed' | 'cancelled'>('all');
-  const [dateF,      setDateF]      = useState<'all' | 'week' | 'month' | 'year'>('all');
+  const [periods,    setPeriods]    = useState<HistoryPeriod[]>([]);
+  const [periodId,   setPeriodId]   = useState('all');
   const [sortBy,     setSortBy]     = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     if (authLoading) return;
     if (!player) { setLoading(false); return; }
     loadChallenges();
+    api.getPeriods().then(setPeriods);
   }, [authLoading, player?.id]);
 
+  /** Partidos dentro del período elegido. Base para la lista Y para las stats. */
+  const enPeriodo = useMemo(() => {
+    const p = periods.find(x => x.id === periodId);
+    if (!p?.from && !p?.to) return challenges;
+    const desde = p.from ? new Date(p.from).getTime() : -Infinity;
+    const hasta = p.to ? new Date(p.to).getTime() : Infinity;
+    return challenges.filter(c => {
+      const t = new Date(c.played_at || c.resolved_at || c.created_at).getTime();
+      return t >= desde && t < hasta;
+    });
+  }, [challenges, periods, periodId]);
+
   useEffect(() => {
-    let list = [...challenges];
+    let list = [...enPeriodo];
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(c =>
@@ -84,16 +98,12 @@ export default function FixturePublicoPage() {
       );
     }
     if (statusF !== 'all') list = list.filter(c => c.status === statusF);
-    if (dateF !== 'all') {
-      const ms = { week: 7, month: 30, year: 365 }[dateF] * 86400000;
-      list = list.filter(c => Date.now() - new Date(c.created_at).getTime() <= ms);
-    }
     list.sort((a, b) => {
       const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       return sortBy === 'newest' ? -diff : diff;
     });
     setFiltered(list);
-  }, [challenges, search, statusF, dateF, sortBy]);
+  }, [enPeriodo, search, statusF, sortBy]);
 
   const loadChallenges = async () => {
     try { setChallenges(await api.getChallenges()); }
@@ -121,13 +131,15 @@ export default function FixturePublicoPage() {
     );
   }
 
+  // Las tarjetas cuentan lo del período elegido, igual que en el historial.
   const stats = {
-    total:     challenges.length,
-    pending:   challenges.filter(c => c.status === 'pending').length,
-    active:    challenges.filter(c => c.status === 'accepted').length,
-    completed: challenges.filter(c => c.status === 'completed').length,
-    disputed:  challenges.filter(c => c.status === 'disputed').length,
+    total:     enPeriodo.length,
+    pending:   enPeriodo.filter(c => c.status === 'pending').length,
+    active:    enPeriodo.filter(c => c.status === 'accepted').length,
+    completed: enPeriodo.filter(c => c.status === 'completed').length,
+    disputed:  enPeriodo.filter(c => c.status === 'disputed').length,
   };
+  const años = [...new Set(periods.filter(p => p.type !== 'all').map(p => p.year!))];
 
   return (
     <div className="min-h-screen bg-[#0a1608]">
@@ -138,6 +150,30 @@ export default function FixturePublicoPage() {
           <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Escalerilla</p>
           <h1 className="font-display text-3xl font-extrabold text-[#F0F7E8]">Ver Partidos</h1>
         </div>
+
+        {/* Período: mismos cortes que el historial */}
+        {periods.length > 0 && (
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-4 mb-6">
+            <div className="label mb-2.5">Ver</div>
+            <div className="flex flex-wrap gap-2">
+              {periods.filter(p => p.type === 'all').map(p => (
+                <PeriodChip key={p.id} activo={periodId === p.id} onClick={() => setPeriodId(p.id)}>
+                  {p.label}
+                </PeriodChip>
+              ))}
+              {años.map(year => (
+                <div key={year} className="flex items-center gap-2 pl-2 ml-1 border-l border-[#1e4020]">
+                  {periods.filter(p => p.year === year).map(p => (
+                    <PeriodChip key={p.id} activo={periodId === p.id} destacado={p.type === 'year'}
+                      onClick={() => setPeriodId(p.id)}>
+                      {p.label}
+                    </PeriodChip>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
@@ -157,7 +193,7 @@ export default function FixturePublicoPage() {
 
         {/* Filters */}
         <div className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-5 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="label block mb-1.5">Buscar jugador</label>
               <input type="text" value={search} onChange={e => setSearch(e.target.value)}
@@ -172,15 +208,6 @@ export default function FixturePublicoPage() {
                 <option value="completed">Completados</option>
                 <option value="disputed">En disputa</option>
                 <option value="cancelled">Cancelados</option>
-              </select>
-            </div>
-            <div>
-              <label className="label block mb-1.5">Período</label>
-              <select value={dateF} onChange={e => setDateF(e.target.value as typeof dateF)} className="select w-full">
-                <option value="all">Todo el tiempo</option>
-                <option value="week">Última semana</option>
-                <option value="month">Último mes</option>
-                <option value="year">Último año</option>
               </select>
             </div>
             <div>
@@ -238,5 +265,26 @@ export default function FixturePublicoPage() {
       <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)}
         onSuccess={() => { setShowLogin(false); refreshPlayer(); }} />
     </div>
+  );
+}
+
+function PeriodChip({ activo, destacado, onClick, children }: {
+  activo: boolean; destacado?: boolean; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        'px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors border ' +
+        (activo
+          ? 'bg-ctg-green text-[#0a1608] border-ctg-green'
+          : destacado
+            ? 'bg-[#152b18] border-[#1e4020] text-[#F0F7E8]/80 hover:border-ctg-green/40'
+            : 'bg-transparent border-[#1e4020] text-[#F0F7E8]/55 hover:text-[#F0F7E8] hover:border-ctg-green/40')
+      }
+    >
+      {children}
+    </button>
   );
 }
