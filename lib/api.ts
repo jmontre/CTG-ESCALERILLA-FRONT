@@ -1,6 +1,6 @@
 import {
   Player, Challenge, AuthResponse, MasterSeason, ApiNotification,
-  MyAchievements, UnlockedAchievement, SeasonSummary,
+  MyAchievements, UnlockedAchievement, SeasonSummary, HistoryResponse,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -409,6 +409,23 @@ export const api = {
     const res = await authFetch(`${API_URL}/notifications/read-all`, { method: 'POST' });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al marcar notificaciones'); }
     return res.json();
+  },
+
+  // ── Historial ─────────────────────────────────────────────────────────────
+
+  /**
+   * Historial del jugador con las stats del período elegido. Se calcula en el
+   * backend desde los desafíos: las stats de `Player` se reinician en cada
+   * cierre de temporada y no sirven para mirar hacia atrás.
+   */
+  getHistory: async (period = 'all'): Promise<HistoryResponse | null> => {
+    try {
+      const res = await authFetch(`${API_URL}/challenges/history?period=${encodeURIComponent(period)}`);
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
   },
 
   // ── Desafíos disponibles ──────────────────────────────────────────────────
