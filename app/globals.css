@@ -11,8 +11,16 @@ body {
   text-rendering: optimizeLegibility;
   margin: 0;
   padding: 0;
+  /* Le dice al navegador con qué tema pintar los controles que dibuja el
+     sistema operativo: el desplegable abierto de un <select>, las barras de
+     scroll y el selector de fecha. Sin esto seguían el tema del SO, no el de
+     la app. */
+  color-scheme: light;
 }
-body.dark { background-color: #0a1608; color: #F0F7E8; }
+body.dark {
+  background-color: #0a1608; color: #F0F7E8;
+  color-scheme: dark;
+}
 
 /* ── Scrollbar hide ── */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -83,25 +91,40 @@ body.dark .btn-danger       { background: rgba(127,29,29,.5); border-color: rgba
 body.dark .btn-danger:hover { background: rgba(127,29,29,.7); }
 
 /* ── Form fields ── */
-.field {
-  background: #ffffff; border: 1px solid #dde6cd; color: #1a2410;
+/* .select se usa SOLO (className="select"), sin .field, así que necesita la
+   misma caja. Antes solo traía la flecha y `appearance:none`: sin fondo ni
+   color, el navegador lo pintaba con su estilo por defecto —claro— sobre una
+   página oscura, y el texto quedaba ilegible. */
+.field,
+.select {
+  background-color: #ffffff; border: 1px solid #dde6cd; color: #1a2410;
   border-radius: .75rem; padding: .65rem 1rem; width: 100%;
   transition: all .18s ease; font-size: .95rem; box-sizing: border-box;
 }
 .field::placeholder { color: rgba(26,36,16,.4); }
-.field:focus { outline: none; border-color: #5d8b1f; box-shadow: 0 0 0 3px rgba(139,194,52,.18); }
-body.dark .field             { background: #0f2211; border-color: #1e4020; color: #F0F7E8; }
+.field:focus,
+.select:focus { outline: none; border-color: #5d8b1f; box-shadow: 0 0 0 3px rgba(139,194,52,.18); }
+
+body.dark .field,
+body.dark .select            { background-color: #0f2211; border-color: #1e4020; color: #F0F7E8; }
 body.dark .field::placeholder{ color: rgba(240,247,232,.35); }
-body.dark .field:focus       { border-color: rgba(139,194,52,.6); box-shadow: 0 0 0 3px rgba(139,194,52,.18); }
+body.dark .field:focus,
+body.dark .select:focus      { border-color: rgba(139,194,52,.6); box-shadow: 0 0 0 3px rgba(139,194,52,.18); }
 
 .select {
   -webkit-appearance: none; appearance: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%235d8b1f' d='M0 0l5 6 5-6z'/></svg>");
   background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.4rem;
+  cursor: pointer;
 }
 body.dark .select {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238BC234' d='M0 0l5 6 5-6z'/></svg>");
 }
+
+/* El desplegable abierto lo pinta el sistema operativo: sin esto hereda el
+   tema del SO y en modo oscuro puede salir blanco sobre blanco. */
+.select option { background-color: #ffffff; color: #1a2410; }
+body.dark .select option { background-color: #0f2211; color: #F0F7E8; }
 
 .label {
   font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
