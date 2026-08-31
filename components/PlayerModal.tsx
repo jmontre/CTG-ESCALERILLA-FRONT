@@ -72,13 +72,14 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
   // mientras llega la respuesta del nuevo.
   const [badges, setBadges] = useState<{ playerId: string; items: UnlockedAchievement[] } | null>(null);
 
-  // Insignia desplegada, para mostrar de qué se trata.
-  const [openBadge, setOpenBadge] = useState<string | null>(null);
+  // Insignia desplegada, para mostrar de qué se trata. Guarda también de quién
+  // es: así al abrir la ficha de otro jugador no queda desplegada la insignia
+  // del anterior, sin necesidad de resetear el estado dentro de un efecto.
+  const [openBadge, setOpenBadge] = useState<{ playerId: string; code: string } | null>(null);
 
   useEffect(() => {
     if (!isOpen || !player) return;
     let cancelled = false;
-    setOpenBadge(null);
     const playerId = player.id;
     api.getPlayerAchievements(playerId).then(items => {
       if (!cancelled) setBadges({ playerId, items });
@@ -107,7 +108,10 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
   const hasSent = player.challenger_challenge?.status === 'pending';
 
   const shownBadges = badges?.playerId === player.id ? badges.items : [];
-  const openDetail = shownBadges.find(b => b.code === openBadge) ?? null;
+  const openDetail =
+    openBadge?.playerId === player.id
+      ? (shownBadges.find(b => b.code === openBadge.code) ?? null)
+      : null;
 
   const effectiveness = player.total_matches > 0
     ? Math.round((player.wins / player.total_matches) * 100)
@@ -191,12 +195,14 @@ export default function PlayerModal({ player, isOpen, onClose, onChallenge, canC
                     Al tocar una se despliega qué hay que hacer para ganarla. */}
                 <div className="flex flex-wrap gap-1.5">
                   {shownBadges.map(b => {
-                    const isOpen = openBadge === b.code;
+                    const isOpen = openDetail?.code === b.code;
                     return (
                       <button
                         key={b.code}
                         type="button"
-                        onClick={() => setOpenBadge(isOpen ? null : b.code)}
+                        onClick={() =>
+                          setOpenBadge(isOpen ? null : { playerId: player.id, code: b.code })
+                        }
                         aria-expanded={isOpen}
                         className={
                           'flex items-center gap-1.5 rounded-full border pl-1 pr-2.5 py-1 transition ' +
