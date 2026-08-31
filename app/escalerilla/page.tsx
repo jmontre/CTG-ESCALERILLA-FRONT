@@ -182,7 +182,7 @@ export default function EscalerillaPage() {
         onClose={() => setPlayerModalOpen(false)}
         onChallenge={handleChallenge}
         canChallenge={selectedPlayer ? canChallenge(selectedPlayer) : false}
-        ladderSize={players.length}
+        ladderSize={players.filter(p => (p.position ?? 0) > 0).length}
       />
 
       {currentPlayer && selectedPlayer && (
