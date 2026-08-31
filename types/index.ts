@@ -223,6 +223,10 @@ export interface HistoryPeriod {
   label: string;
   type: 'all' | 'year' | 'season';
   year?: number;
+  /** ISO. Inclusive; null en "todo". */
+  from?: string | null;
+  /** ISO. Exclusivo; null si el período sigue abierto. */
+  to?: string | null;
 }
 
 export interface HistoryResponse {
