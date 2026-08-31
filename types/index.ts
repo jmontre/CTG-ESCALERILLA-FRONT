@@ -87,7 +87,8 @@ export interface MasterMatch {
   id: string;
   group_id: string | null;
   season_id: string;
-  round: 'group' | 'semifinal' | 'final';
+  // 'playoff' es la ronda previa: los puestos 5-12 se juegan 4 cupos al round robin.
+  round: 'playoff' | 'group' | 'semifinal' | 'final';
   player1_id: string;
   player2_id: string;
   winner_id: string | null;
@@ -112,7 +113,7 @@ export interface MasterSeason {
   id: string;
   name: string;
   category: string;
-  status: 'pending' | 'active' | 'semifinals' | 'final' | 'completed';
+  status: 'pending' | 'playoffs' | 'active' | 'semifinals' | 'final' | 'completed';
   round_robin_start: string | null;
   round_robin_end: string | null;
   final_date: string | null;
@@ -120,3 +121,87 @@ export interface MasterSeason {
   groups: MasterGroup[];
   matches: MasterMatch[];
 }
+
+// ── Logros ──────────────────────────────────────────────────────────────────
+
+export type AchievementGroup = 'temporada' | 'escalerilla' | 'partidos' | 'constancia' | 'club';
+
+/** Definición del catálogo (backend: achievements.catalog.ts). */
+export interface AchievementDef {
+  code: string;
+  name: string;
+  description: string;
+  emoji: string;
+  group: AchievementGroup;
+  scope: 'season' | 'global';
+  family?: string;
+  tier?: number;
+}
+
+/** Catálogo + estado de desbloqueo del jugador logueado (GET /achievements/me). */
+export interface AchievementWithStatus extends AchievementDef {
+  unlocked: boolean;
+  unlocked_at: string | null;
+  season_slug: string | null;
+  context: Record<string, unknown> | null;
+  /** Veces conseguido: uno por temporada. */
+  times: number;
+}
+
+export interface MyAchievements {
+  total: number;
+  unlocked_count: number;
+  achievements: AchievementWithStatus[];
+}
+
+/** Insignia desbloqueada, para el perfil público y el modal de celebración. */
+export interface UnlockedAchievement {
+  id?: string;
+  code: string;
+  name: string;
+  emoji: string;
+  description: string;
+  group: AchievementGroup;
+  unlocked_at: string;
+  season_slug: string;
+  context: Record<string, unknown> | null;
+}
+
+// ── Temporadas ──────────────────────────────────────────────────────────────
+
+export interface Season {
+  id: string;
+  slug: string;
+  name: string;
+  status: 'active' | 'closed';
+  started_at: string;
+  closed_at: string | null;
+}
+
+/** Resumen de cierre de temporada (GET /seasons/me/summary). */
+export type SeasonSummary =
+  | { pending: false }
+  | {
+      pending: true;
+      season: { slug: string; name: string };
+      next_season: { slug: string; name: string } | null;
+      player_name: string;
+      start_position: number | null;
+      final_position: number | null;
+      category: string | null;
+      wins: number;
+      losses: number;
+      total_matches: number;
+      master_result: 'champion' | 'finalist' | 'semifinalist' | null;
+      /** Puestos ganados en el semestre; null si no se conoce la posición inicial. */
+      climbed: number | null;
+      new_position: number | null;
+      in_new_season: boolean;
+      achievements: Array<{
+        code: string;
+        name: string;
+        emoji: string;
+        description: string;
+        context: Record<string, unknown> | null;
+      }>;
+    };

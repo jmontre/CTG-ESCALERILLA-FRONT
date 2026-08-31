@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { Player } from '@/types';
+import { categoryOf } from '@/lib/ladder';
 
 interface ChallengeModalProps {
   challenger: Player;
@@ -27,14 +28,6 @@ function AvatarEl({ player, size = 56 }: { player: Player; size?: number }) {
     return <div className="rounded-full overflow-hidden ring-2 ring-ctg-green/50 ring-offset-1 ring-offset-[#0a1608] shrink-0" style={style}><img src={player.avatar_url} alt="" className="w-full h-full object-cover" /></div>;
   }
   return <div className="inline-flex items-center justify-center rounded-full font-display font-bold text-[#0a1608] ring-2 ring-ctg-green/50 ring-offset-1 ring-offset-[#0a1608] shrink-0" style={style}>{initials}</div>;
-}
-
-function getCat(position: number | null | undefined): string {
-  const pos = position ?? 0;
-  if (pos <= 12) return 'A';
-  if (pos <= 24) return 'B';
-  if (pos <= 36) return 'C';
-  return 'D';
 }
 
 export default function ChallengeModal({ challenger, challenged, isOpen, onClose, onConfirm }: ChallengeModalProps) {
@@ -75,7 +68,7 @@ export default function ChallengeModal({ challenger, challenged, isOpen, onClose
                 <AvatarEl player={challenger} size={56} />
                 <div className="text-[10px] uppercase tracking-widest text-ctg-green/70 font-bold mt-2">Desafiante</div>
                 <div className="font-semibold text-[#F0F7E8] text-sm mt-0.5">{challenger.name.split(' ')[0]}</div>
-                <div className="text-[#F0F7E8]/40 text-xs">#{challenger.position} · Cat {getCat(challenger.position)}</div>
+                <div className="text-[#F0F7E8]/40 text-xs">#{challenger.position} · Cat {categoryOf(challenger.position) ?? '—'}</div>
               </div>
               <div className="flex flex-col items-center">
                 <SwordsIcon />
@@ -85,7 +78,7 @@ export default function ChallengeModal({ challenger, challenged, isOpen, onClose
                 <AvatarEl player={challenged} size={56} />
                 <div className="text-[10px] uppercase tracking-widest text-amber-400/80 font-bold mt-2">Desafiado</div>
                 <div className="font-semibold text-[#F0F7E8] text-sm mt-0.5">{challenged.name.split(' ')[0]}</div>
-                <div className="text-[#F0F7E8]/40 text-xs">#{challenged.position} · Cat {getCat(challenged.position)}</div>
+                <div className="text-[#F0F7E8]/40 text-xs">#{challenged.position} · Cat {categoryOf(challenged.position) ?? '—'}</div>
               </div>
             </div>
 

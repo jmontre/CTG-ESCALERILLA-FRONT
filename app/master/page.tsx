@@ -1,4 +1,5 @@
 'use client';
+import { CATEGORIES } from '@/lib/ladder';
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -122,7 +123,11 @@ function MasterScheduleModal({ match, onClose, onSubmit, minDate, maxDate }: {
 
   const fmt = (d: Date) => d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
   const formatDisplay = (d: Date) => d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
-  const roundLabel = match.round === 'group' ? 'Round Robin' : 'Semifinal';
+  const roundLabel =
+    match.round === 'group' ? 'Round Robin'
+    : match.round === 'playoff' ? 'Playoff'
+    : match.round === 'final' ? 'Final'
+    : 'Semifinal';
 
   // Slots de la cancha elegida: ocupado (reserva/bloqueo) o pasado (hoy) → no disponible
   const getAvailableSlots = () => {
@@ -470,6 +475,11 @@ function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
 
   const getDateRange = () => {
     const now = new Date();
+    // El playoff se juega ANTES del round robin: su tope es el inicio del round.
+    if (match.round === 'playoff') return {
+      minDate: now,
+      maxDate: season.round_robin_start ? toLocalMidnight(season.round_robin_start) : now,
+    };
     if (match.round === 'group') return {
       minDate: season.round_robin_start ? toLocalMidnight(season.round_robin_start) : now,
       maxDate: season.round_robin_end   ? toLocalMidnight(season.round_robin_end)   : now,
@@ -585,7 +595,7 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
 function CategoryTabs({ active, onSelect }: { active: string; onSelect: (cat: string) => void }) {
   return (
     <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-[#1e4020] mb-8 flex-wrap">
-      {(['A', 'B', 'C', 'D'] as const).map(cat => {
+      {CATEGORIES.map(cat => {
         const isActive = cat === active;
         return (
           <button key={cat} type="button" onClick={() => onSelect(cat)}
@@ -605,15 +615,18 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 }) {
   const colors = CATEGORY_COLORS[season.category];
   const seasonMatches = (season.matches ?? []) as MasterMatchExt[];
-  const semiMatches   = seasonMatches.filter(m => m.round === 'semifinal');
-  const finalMatches  = seasonMatches.filter(m => m.round === 'final');
-  const hasBracket    = semiMatches.length > 0;
+  const semiMatches    = seasonMatches.filter(m => m.round === 'semifinal');
+  const finalMatches   = seasonMatches.filter(m => m.round === 'final');
+  const playoffMatches = seasonMatches.filter(m => m.round === 'playoff');
+  const hasBracket     = semiMatches.length > 0;
+  // Mientras el playoff está en curso todavía no hay grupos que mostrar.
+  const inPlayoffs     = season.status === 'playoffs' && playoffMatches.length > 0;
 
   const [subTab, setSubTab] = useState<'groups' | 'bracket'>('groups');
 
   const statusLabel: Record<string, string> = {
-    active: '🟢 Round Robin en curso', semifinals: '🔵 Semifinales',
-    final: '🟡 Final', completed: '✅ Completado',
+    playoffs: '🎯 Playoff de clasificación', active: '🟢 Round Robin en curso',
+    semifinals: '🔵 Semifinales', final: '🟡 Final', completed: '✅ Completado',
   };
 
   const handleSchedule = async (matchId: string, isoDate: string, courtId: string) => {
@@ -677,7 +690,25 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
           </div>
         )}
 
-        {(!hasBracket || subTab === 'groups') && (
+        {inPlayoffs && (
+          <div className="mb-6">
+            <div className="text-center mb-4">
+              <h3 className="font-display font-bold text-[#F0F7E8]">Playoff de clasificación</h3>
+              <p className="text-xs text-[#F0F7E8]/45 mt-1">
+                Los 4 primeros de la categoría ya están en el round robin. Estos 8
+                se juegan los 4 cupos restantes a partido único.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {playoffMatches.map(match => (
+                <MatchCard key={match.id} match={match} currentPlayerId={currentPlayerId}
+                  onSchedule={handleSchedule} onResult={handleResult} season={season} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!inPlayoffs && (!hasBracket || subTab === 'groups') && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {season.groups.map(group => (
               <div key={group.id} className="border border-[#1e4020] bg-[#0a1608]/40 rounded-xl overflow-hidden">
@@ -729,7 +760,7 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-const VALID_CATEGORIES = ['A', 'B', 'C', 'D'];
+const VALID_CATEGORIES: string[] = [...CATEGORIES];
 
 function MasterPageContent() {
   const { player, loading: authLoading } = useAuth();
@@ -805,7 +836,7 @@ function MasterPageContent() {
             <p className="text-[#F0F7E8]/50 mb-4">El Master se habilita el <strong className="text-[#F0F7E8]">22 de junio de 2026</strong></p>
             <p className="text-sm text-[#F0F7E8]/35">Clasifican los 8 primeros de cada categoría (A, B, C y D)</p>
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto">
-              {['A','B','C','D'].map(cat => (
+              {CATEGORIES.map(cat => (
                 <div key={cat} className={`rounded-xl p-3 bg-[#152b18] border border-[#1e4020]`}>
                   <p className={`font-display font-black text-lg cat-letter-${cat}`}>Cat. {cat}</p>
                   <p className="text-xs text-[#F0F7E8]/45">{CATEGORY_NAMES[cat]}</p>

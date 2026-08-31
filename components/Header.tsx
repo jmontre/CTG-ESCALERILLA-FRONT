@@ -8,6 +8,10 @@ import { useNotifications } from '@/hooks/useNotifications';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import OnboardingModal from '@/components/OnboardingModal';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useCelebrations } from '@/hooks/useCelebrations';
+import { categoryOf } from '@/lib/ladder';
+import SeasonSummaryModal from '@/components/SeasonSummaryModal';
+import AchievementUnlockedModal from '@/components/AchievementUnlockedModal';
 
 const I = {
   chevDown:  'M6 9l6 6 6-6',
@@ -69,11 +73,7 @@ function getActiveSection(pathname: string) {
 }
 
 function getCategoryFromPosition(position: number | null | undefined): string {
-  if (!position || position <= 0) return '—';
-  if (position <= 12) return 'A';
-  if (position <= 24) return 'B';
-  if (position <= 36) return 'C';
-  return 'D';
+  return categoryOf(position) ?? '—';
 }
 
 function LogoMark({ size = 28 }: { size?: number }) {
@@ -183,6 +183,12 @@ export default function Header({ onLoginClick }: HeaderProps) {
   const router = useRouter();
   const { unreadCount } = useNotifications();
   const { showOnboarding, closeOnboarding } = useOnboarding(!!player);
+  const {
+    seasonSummary,
+    pendingAchievements,
+    dismissSummary,
+    dismissAchievements,
+  } = useCelebrations(!!player);
 
   const [showAccount, setShowAccount] = useState(false);
   const [showNotifs, setShowNotifs]   = useState(false);
@@ -430,6 +436,17 @@ export default function Header({ onLoginClick }: HeaderProps) {
       </nav>
 
       <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} />
+
+      {/* Celebraciones: nunca encima del tour de bienvenida ni entre ellas. */}
+      {!showOnboarding && seasonSummary && (
+        <SeasonSummaryModal summary={seasonSummary} onClose={dismissSummary} />
+      )}
+      {!showOnboarding && !seasonSummary && pendingAchievements.length > 0 && (
+        <AchievementUnlockedModal
+          achievements={pendingAchievements}
+          onDismiss={dismissAchievements}
+        />
+      )}
     </>
   );
 }

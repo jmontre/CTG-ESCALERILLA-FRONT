@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import LoginPrompt from '@/components/LoginPrompt';
 import OnboardingModal from '@/components/OnboardingModal';
+import AchievementsGrid from '@/components/AchievementsGrid';
 import Toast from '@/components/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
+import { MyAchievements } from '@/types';
+import { CAT_META, categoryOf } from '@/lib/ladder';
 
 function getInitials(name: string): string {
   const parts = name.trim().split(' ').filter(Boolean);
@@ -16,17 +19,7 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-function getCat(pos: number | null | undefined) {
-  const p = pos ?? 0;
-  if (p <= 12) return 'A';
-  if (p <= 24) return 'B';
-  if (p <= 36) return 'C';
-  return 'D';
-}
-
-const CAT_LABEL: Record<string, string> = {
-  A: 'Élite', B: 'Avanzado', C: 'Intermedio', D: 'Desarrollo',
-};
+// Categorías y rangos: lib/ladder.ts (espejo del backend).
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -43,6 +36,7 @@ export default function PerfilPage() {
   const [avatarPreview, setAvatarPreview]         = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTour, setShowTour]                   = useState(false);
+  const [achievements, setAchievements]           = useState<MyAchievements | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +45,15 @@ export default function PerfilPage() {
     setName(player.name);
     setPhone(player.phone || '');
     setAvatarPreview(player.avatar_url || null);
+  }, [player]);
+
+  useEffect(() => {
+    if (!player) return;
+    let cancelled = false;
+    api.getMyAchievements().then((a) => {
+      if (!cancelled) setAchievements(a);
+    });
+    return () => { cancelled = true; };
   }, [player]);
 
   const handleSaveProfile = async () => {
@@ -132,7 +135,7 @@ export default function PerfilPage() {
   }
 
   const initials = getInitials(player.name);
-  const cat      = getCat(player.position);
+  const cat      = categoryOf(player.position) ?? 'C';
   const pos      = player.position ?? 0;
   const eff      = player.total_matches > 0 ? Math.round((player.wins / player.total_matches) * 100) : 0;
 
@@ -164,7 +167,7 @@ export default function PerfilPage() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className={`text-[10px] uppercase tracking-widest font-bold mb-0.5 cat-letter-${cat}`}>{CAT_LABEL[cat]}</div>
+              <div className={`text-[10px] uppercase tracking-widest font-bold mb-0.5 cat-letter-${cat}`}>{CAT_META[cat].label}</div>
               <div className="font-display font-bold text-[#F0F7E8] text-xl truncate">{player.name}</div>
               {pos > 0 && <div className="text-[#F0F7E8]/50 text-sm mt-0.5">#{pos} en la escalerilla</div>}
               <div className="flex gap-2 mt-3 flex-wrap">
@@ -211,6 +214,20 @@ export default function PerfilPage() {
             </div>
           </div>
         )}
+
+        {/* Logros */}
+        <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-5">
+          <h2 className="font-display font-bold text-[#F0F7E8] mb-4">Mis logros</h2>
+          {achievements ? (
+            <AchievementsGrid
+              achievements={achievements.achievements}
+              unlockedCount={achievements.unlocked_count}
+              total={achievements.total}
+            />
+          ) : (
+            <p className="text-[#F0F7E8]/35 text-sm">Cargando logros...</p>
+          )}
+        </div>
 
         {/* Personal info */}
         <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-5">
