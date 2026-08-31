@@ -63,11 +63,16 @@ export function categoryRangeLabel(
 }
 
 /**
- * Filas de la pirámide de una categoría: anchos crecientes, y lo que sobra al
- * final para no dejar una fila de uno o dos sueltos.
+ * Las filas que se dibujan en la escalerilla SON los niveles de desafío.
+ * Espejo de `src/common/ladder.ts` del backend — si allá cambia, acá también.
  *
- * Se genera en vez de estar escrita a mano porque la categoría C no tiene tope:
- * la escalerilla puede tener 46 jugadores este semestre y 60 el próximo.
+ * Antes eran dos cosas distintas (una tabla de niveles fija por un lado y este
+ * generador por otro) y no calzaban: la zona de desafío ofrecía rivales que
+ * visualmente estaban dos filas más arriba.
+ *
+ * Anchos crecientes, y lo que sobra al final para no dejar una fila de uno o
+ * dos sueltos. Se genera porque la última categoría no tiene tope: la
+ * escalerilla puede tener 46 jugadores este semestre y 60 el próximo.
  */
 export function pyramidRows(from: number, to: number): number[][] {
   if (to < from) return [];
@@ -88,34 +93,40 @@ export function pyramidRows(from: number, to: number): number[][] {
   return rows;
 }
 
-// ──────────────────────────── Niveles ─────────────────────────────
-
-/**
- * Nivel de desafío de una posición. Espejo de `getLevel` en el backend
- * (`src/common/ladder.ts`): un jugador puede desafiar a su mismo nivel, solo a
- * quien esté adelante, o al nivel inmediatamente superior.
- */
-const FIXED_LEVELS = [1, 4, 9, 14, 19, 24, 28];
-const OPEN_ZONE_FROM = 29;
-const OPEN_ZONE_BLOCK = 5;
-
-export function getLevel(position: number | null | undefined): number {
-  if (!position || position < 1) return FIXED_LEVELS.length + 1;
-  for (let i = 0; i < FIXED_LEVELS.length; i++) {
-    if (position <= FIXED_LEVELS[i]) return i + 1;
-  }
-  const offset = position - OPEN_ZONE_FROM;
-  return FIXED_LEVELS.length + 1 + Math.floor(offset / OPEN_ZONE_BLOCK);
+/** Filas de una categoría, acotadas al final real de la escalerilla. */
+export function categoryRows(category: CatKey, ladderSize: number): number[][] {
+  const { from, to } = categoryBounds(category);
+  return pyramidRows(from, Math.min(to ?? ladderSize, ladderSize));
 }
 
-/** ¿`target` es un rival válido para quien está en `myPosition`? */
+/** Todas las filas de la escalerilla, de la cima al fondo. */
+export function ladderRows(ladderSize: number): number[][] {
+  return CATEGORIES.flatMap((c) => categoryRows(c, ladderSize));
+}
+
+/** Nivel de un puesto: el número de la fila en la que cae (1 = la cima). */
+export function getLevel(
+  position: number | null | undefined,
+  ladderSize: number,
+): number {
+  if (!position || position < 1) return 0;
+  const rows = ladderRows(Math.max(ladderSize, position));
+  const index = rows.findIndex((row) => row.includes(position));
+  return index === -1 ? 0 : index + 1;
+}
+
+/**
+ * ¿`target` es un rival válido para quien está en `myPosition`?
+ * Misma fila y por delante, o la fila inmediatamente superior.
+ */
 export function canChallengePosition(
   myPosition: number | null | undefined,
   target: number | null | undefined,
+  ladderSize: number,
 ): boolean {
   if (!myPosition || !target || target >= myPosition) return false;
-  const myLevel = getLevel(myPosition);
-  const targetLevel = getLevel(target);
-  // Mismo nivel (y adelante, ya verificado) o exactamente un nivel arriba.
-  return targetLevel === myLevel || targetLevel === myLevel - 1;
+  const mine = getLevel(myPosition, ladderSize);
+  const theirs = getLevel(target, ladderSize);
+  if (mine === 0 || theirs === 0) return false;
+  return theirs === mine || theirs === mine - 1;
 }
