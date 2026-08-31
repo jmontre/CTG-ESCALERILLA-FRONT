@@ -215,3 +215,28 @@ export type SeasonSummary =
         context: Record<string, unknown> | null;
       }>;
     };
+
+// ── Historial por período ───────────────────────────────────────────────────
+
+export interface HistoryPeriod {
+  id: string;                       // "all" | "2026" | "2026-1"
+  label: string;
+  type: 'all' | 'year' | 'season';
+  year?: number;
+}
+
+export interface HistoryResponse {
+  periods: HistoryPeriod[];
+  selected: string;
+  stats: {
+    played: number;
+    wins: number;
+    losses: number;
+    effectiveness: number;
+    /** Solo al elegir una temporada: cómo terminó en ella. */
+    final_position?: number | null;
+    category?: string | null;
+    master_result?: 'champion' | 'finalist' | 'semifinalist' | null;
+  };
+  matches: Challenge[];
+}
