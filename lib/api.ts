@@ -163,9 +163,15 @@ export const api = {
     return res.json();
   },
 
-  deletePlayer: async (id: string): Promise<void> => {
+  /**
+   * Da de baja la cuenta. Si el socio nunca jugó nada se borra de verdad; si
+   * tiene historial se anonimiza, y sus partidos quedan en el fixture del club
+   * a nombre de "Socio retirado". La respuesta dice cuál de las dos pasó.
+   */
+  deletePlayer: async (id: string): Promise<{ message: string; mode: 'deleted' | 'anonymized' }> => {
     const res = await authFetch(`${API_URL}/admin/players/${id}`, { method: 'DELETE' });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al eliminar jugador'); }
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al dar de baja al jugador'); }
+    return res.json();
   },
 
   movePlayer: async (id: string, newPosition: number): Promise<Player> => {
@@ -565,6 +571,20 @@ export const api = {
   getAllPlayersAdmin: async () => {
     const res = await authFetch(`${API_URL}/admin/players/all`);
     if (!res.ok) return null;
+    return res.json();
+  },
+
+  /**
+   * Guarda el orden completo de la escalerilla (drag & drop del panel).
+   * El backend valida que la lista siga siendo exactamente la escalerilla de
+   * hoy: si cambió mientras editabas, rechaza en vez de pisar ese cambio.
+   */
+  adminReorderLadder: async (playerIds: string[]) => {
+    const res = await authFetch(`${API_URL}/admin/players/reorder`, {
+      method: 'POST', headers: JSON_HEADERS,
+      body: JSON.stringify({ player_ids: playerIds }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar el orden'); }
     return res.json();
   },
 

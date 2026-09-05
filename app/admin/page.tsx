@@ -13,6 +13,7 @@ import { getStatusBadge } from '@/lib/challengeStatus';
 import AddPlayerModal from '@/components/admin/AddPlayerModal';
 import EditPlayerModal from '@/components/admin/EditPlayerModal';
 import ChallengeManagementModal from '@/components/admin/ChallengeManagementModal';
+import LadderEditor from '@/components/admin/LadderEditor';
 
 const CATEGORIES = [...LADDER_CATEGORIES];
 const CATEGORY_NAMES: Record<string, string> = { A: 'Oro', B: 'Plata', C: 'Bronce', D: 'Verde' };
@@ -26,7 +27,7 @@ export default function AdminPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [masterSeasons, setMasterSeasons] = useState<MasterSeason[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'challenges' | 'master' | 'temporadas'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'escalerilla' | 'challenges' | 'master' | 'temporadas'>('dashboard');
   const [loadingData, setLoadingData] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -44,6 +45,7 @@ export default function AdminPage() {
   } | null>(null);
   const [bajas, setBajas] = useState<Set<string>>(new Set());
   const [rollingOver, setRollingOver] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
   const [entryLimit, setEntryLimit] = useState<number | null>(null);
   const [savingLimit, setSavingLimit] = useState(false);
 
@@ -85,12 +87,32 @@ export default function AdminPage() {
   };
 
   const handleDeletePlayer = async (id: string, name: string) => {
-    if (!confirm(`¿Estás seguro de eliminar a ${name}?`)) return;
+    if (!confirm(
+      `¿Dar de baja la cuenta de ${name}?\n\n` +
+      `Desaparece del panel y de la escalerilla, y no vuelve a poder entrar.\n\n` +
+      `Si ya jugó partidos, esos partidos NO se borran: quedan en el fixture y en ` +
+      `el historial de sus rivales a nombre de "Socio retirado". Borrarlos se los ` +
+      `borraría también a ellos.`
+    )) return;
     try {
-      await api.deletePlayer(id);
+      const res = await api.deletePlayer(id);
       await fetchData();
-      success(`Jugador ${name} eliminado correctamente.`);
-    } catch (err: any) { error(err.message || 'Error al eliminar jugador'); }
+      success(res.message);
+    } catch (err: any) { error(err.message || 'Error al dar de baja al jugador'); }
+  };
+
+  const handleReorderLadder = async (playerIds: string[]) => {
+    setSavingOrder(true);
+    try {
+      const res = await api.adminReorderLadder(playerIds);
+      await fetchData();
+      success(res.message);
+    } catch (err: any) {
+      error(err.message || 'Error al guardar el orden');
+      await fetchData();   // la escalerilla cambió: se recarga el orden real
+    } finally {
+      setSavingOrder(false);
+    }
   };
 
   // ── Escalerilla: bajas y reincorporaciones ────────────────────────────────
@@ -315,7 +337,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-8 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-1.5 overflow-x-auto">
-          {(['dashboard', 'players', 'challenges', 'master', 'temporadas'] as const).map((tab) => (
+          {(['dashboard', 'players', 'escalerilla', 'challenges', 'master', 'temporadas'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -325,9 +347,10 @@ export default function AdminPage() {
             >
               {tab === 'dashboard' ? 'Dashboard'
                 : tab === 'players' ? 'Jugadores'
-                  : tab === 'challenges' ? 'Desafíos'
-                    : tab === 'master' ? 'Master'
-                      : 'Temporadas'}
+                  : tab === 'escalerilla' ? 'Escalerilla'
+                    : tab === 'challenges' ? 'Desafíos'
+                      : tab === 'master' ? 'Master'
+                        : 'Temporadas'}
             </button>
           ))}
         </div>
@@ -405,7 +428,7 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                         <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
                         <button onClick={() => handleRetire(p.id, p.name)} className="btn-ghost text-xs px-2.5 py-1.5 mr-2" title="Sale de la escalerilla conservando todos sus datos">Sacar</button>
-                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5">Eliminar</button>
+                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club">Dar de baja</button>
                       </td>
                     </tr>
                   ))}
@@ -449,7 +472,7 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                             <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
                             <button onClick={() => handleRejoin(p.id, p.name)} className="btn-primary text-xs px-2.5 py-1.5 mr-2">Reincorporar</button>
-                            <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5">Eliminar</button>
+                            <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club">Dar de baja</button>
                           </td>
                         </tr>
                       ))}
@@ -459,6 +482,11 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Escalerilla — orden por arrastrar y soltar */}
+        {activeTab === 'escalerilla' && (
+          <LadderEditor players={players} saving={savingOrder} onSave={handleReorderLadder} />
         )}
 
         {/* Temporadas */}
