@@ -164,13 +164,37 @@ export const api = {
   },
 
   /**
-   * Da de baja la cuenta. Si el socio nunca jugó nada se borra de verdad; si
-   * tiene historial se desactiva: desaparece de la app pero sus partidos
-   * quedan en el fixture con su nombre. La respuesta dice cuál de las dos pasó.
+   * Da de baja la cuenta: soft delete. El socio desaparece de la app y no puede
+   * entrar, pero no se borra ni un dato — se restaura con `restorePlayer`.
    */
-  deletePlayer: async (id: string): Promise<{ message: string; mode: 'deleted' | 'deactivated' }> => {
+  deletePlayer: async (id: string): Promise<{ message: string; mode: 'deactivated' }> => {
     const res = await authFetch(`${API_URL}/admin/players/${id}`, { method: 'DELETE' });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al dar de baja al jugador'); }
+    return res.json();
+  },
+
+  /** Cuentas dadas de baja. Es la única vista donde aparecen. */
+  getDeactivatedPlayers: async (): Promise<Player[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/admin/players/deactivated`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  /** Deshace la baja: el socio vuelve con su cuenta y su récord intactos. */
+  adminRestorePlayer: async (id: string) => {
+    const res = await authFetch(`${API_URL}/admin/players/${id}/restore`, { method: 'POST' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al restaurar'); }
+    return res.json();
+  },
+
+  /** Borrado definitivo. Solo cuentas ya dadas de baja y sin ningún partido. */
+  adminPurgePlayer: async (id: string) => {
+    const res = await authFetch(`${API_URL}/admin/players/${id}/purge`, { method: 'DELETE' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al eliminar'); }
     return res.json();
   },
 

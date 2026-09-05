@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [masterSeasons, setMasterSeasons] = useState<MasterSeason[]>([]);
+  const [deactivated, setDeactivated] = useState<Player[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'escalerilla' | 'challenges' | 'master' | 'temporadas'>('dashboard');
   const [loadingData, setLoadingData] = useState(true);
 
@@ -67,14 +68,16 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [playersData, challengesData, masterData, seasonData, limit] = await Promise.all([
+      const [playersData, challengesData, masterData, seasonData, limit, bajas] = await Promise.all([
         api.getAllPlayersAdmin(),   // endpoint admin: incluye email/phone/has_debt
         api.getChallenges(),
         api.getMaster(),
         api.adminNextSeason(),
         api.adminGetEntryLimit(),
+        api.getDeactivatedPlayers(),
       ]);
       setPlayers(playersData || []);
+      setDeactivated(bajas || []);
       setChallenges(challengesData);
       setMasterSeasons(masterData || []);
       setNextSeason(seasonData);
@@ -90,14 +93,37 @@ export default function AdminPage() {
     if (!confirm(
       `¿Dar de baja la cuenta de ${name}?\n\n` +
       `Desaparece del panel y de la escalerilla, y no vuelve a poder entrar.\n\n` +
-      `Si ya jugó partidos, esos partidos NO se borran: quedan en el fixture y en el ` +
-      `historial de sus rivales, con su nombre. Borrarlos se los borraría también a ellos.`
+      `No se borra ningún dato: si vuelve, lo restauras con su misma cuenta, su misma ` +
+      `contraseña y su récord. Sus partidos siguen en el fixture y en el historial de ` +
+      `sus rivales, con su nombre.`
     )) return;
     try {
       const res = await api.deletePlayer(id);
       await fetchData();
       success(res.message);
     } catch (err: any) { error(err.message || 'Error al dar de baja al jugador'); }
+  };
+
+  const handleRestorePlayer = async (id: string, name: string) => {
+    try {
+      const res = await api.adminRestorePlayer(id);
+      await fetchData();
+      success(res.message || `${name} vuelve a estar activo.`);
+    } catch (err: any) { error(err.message || 'Error al restaurar'); }
+  };
+
+  const handlePurgePlayer = async (id: string, name: string) => {
+    if (!confirm(
+      `¿Eliminar definitivamente a ${name}?\n\n` +
+      `Esto sí es irreversible: se borra la cuenta y no se puede restaurar.\n\n` +
+      `Solo funciona con cuentas que nunca jugaron ni reservaron nada — si tiene ` +
+      `partidos, el sistema lo va a rechazar, porque esos partidos también son del rival.`
+    )) return;
+    try {
+      const res = await api.adminPurgePlayer(id);
+      await fetchData();
+      success(res.message);
+    } catch (err: any) { error(err.message || 'Error al eliminar'); }
   };
 
   const handleReorderLadder = async (playerIds: string[]) => {
@@ -472,6 +498,48 @@ export default function AdminPage() {
                             <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
                             <button onClick={() => handleRejoin(p.id, p.name)} className="btn-primary text-xs px-2.5 py-1.5 mr-2">Reincorporar</button>
                             <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club, con su nombre">Dar de baja</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Cuentas dadas de baja — no aparecen en ningún otro listado */}
+            {deactivated.length > 0 && (
+              <div className="mt-8">
+                <h3 className="font-display font-bold text-[#F0F7E8] text-base mb-1">Dados de baja</h3>
+                <p className="text-[#F0F7E8]/40 text-sm mb-4">
+                  No aparecen en la app ni pueden entrar, pero no se borró nada de lo suyo.
+                  Al restaurarlos vuelven con su misma cuenta, su contraseña y su récord.
+                </p>
+                <div className="overflow-x-auto rounded-2xl border border-[#1e4020]">
+                  <table className="w-full">
+                    <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                        <th className="px-4 py-3 text-left font-semibold">Email</th>
+                        <th className="px-4 py-3 text-left font-semibold">W-L</th>
+                        <th className="px-4 py-3 text-right font-semibold">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1e4020]">
+                      {deactivated.map((p) => (
+                        <tr key={p.id} className="hover:bg-ctg-green/4 transition-colors opacity-70">
+                          <td className="px-4 py-3 text-sm font-semibold text-[#F0F7E8]">{p.name}</td>
+                          <td className="px-4 py-3 text-sm text-[#F0F7E8]/50">{p.email}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="text-ctg-green font-medium">{p.wins}</span>-
+                            <span className="text-red-400 font-medium">{p.losses}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                            <button onClick={() => handleRestorePlayer(p.id, p.name)} className="btn-primary text-xs px-2.5 py-1.5 mr-2">Restaurar</button>
+                            <button onClick={() => handlePurgePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5"
+                              title="Irreversible. Solo para cuentas que nunca jugaron nada">
+                              Eliminar definitivamente
+                            </button>
                           </td>
                         </tr>
                       ))}
