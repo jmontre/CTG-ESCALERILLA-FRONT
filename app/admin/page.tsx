@@ -90,9 +90,8 @@ export default function AdminPage() {
     if (!confirm(
       `¿Dar de baja la cuenta de ${name}?\n\n` +
       `Desaparece del panel y de la escalerilla, y no vuelve a poder entrar.\n\n` +
-      `Si ya jugó partidos, esos partidos NO se borran: quedan en el fixture y en ` +
-      `el historial de sus rivales a nombre de "Socio retirado". Borrarlos se los ` +
-      `borraría también a ellos.`
+      `Si ya jugó partidos, esos partidos NO se borran: quedan en el fixture y en el ` +
+      `historial de sus rivales, con su nombre. Borrarlos se los borraría también a ellos.`
     )) return;
     try {
       const res = await api.deletePlayer(id);
@@ -428,7 +427,7 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                         <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
                         <button onClick={() => handleRetire(p.id, p.name)} className="btn-ghost text-xs px-2.5 py-1.5 mr-2" title="Sale de la escalerilla conservando todos sus datos">Sacar</button>
-                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club">Dar de baja</button>
+                        <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club, con su nombre">Dar de baja</button>
                       </td>
                     </tr>
                   ))}
@@ -472,7 +471,7 @@ export default function AdminPage() {
                           <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                             <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
                             <button onClick={() => handleRejoin(p.id, p.name)} className="btn-primary text-xs px-2.5 py-1.5 mr-2">Reincorporar</button>
-                            <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club">Dar de baja</button>
+                            <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5" title="Cierra la cuenta; sus partidos quedan en el historial del club, con su nombre">Dar de baja</button>
                           </td>
                         </tr>
                       ))}

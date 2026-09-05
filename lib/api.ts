@@ -165,10 +165,10 @@ export const api = {
 
   /**
    * Da de baja la cuenta. Si el socio nunca jugó nada se borra de verdad; si
-   * tiene historial se anonimiza, y sus partidos quedan en el fixture del club
-   * a nombre de "Socio retirado". La respuesta dice cuál de las dos pasó.
+   * tiene historial se desactiva: desaparece de la app pero sus partidos
+   * quedan en el fixture con su nombre. La respuesta dice cuál de las dos pasó.
    */
-  deletePlayer: async (id: string): Promise<{ message: string; mode: 'deleted' | 'anonymized' }> => {
+  deletePlayer: async (id: string): Promise<{ message: string; mode: 'deleted' | 'deactivated' }> => {
     const res = await authFetch(`${API_URL}/admin/players/${id}`, { method: 'DELETE' });
     if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al dar de baja al jugador'); }
     return res.json();
