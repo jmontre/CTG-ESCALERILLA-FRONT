@@ -1,11 +1,11 @@
 'use client';
 import { CATEGORIES } from '@/lib/ladder';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import LoginPrompt from '@/components/LoginPrompt';
-import { MasterSeason, MasterGroup, MasterMatch } from '@/types';
+import { MasterSeason, MasterGroup, MasterMatch, MasterSeasonOption } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -592,10 +592,12 @@ function BracketMatch({ match, label }: { match: MasterMatchExt; label: string }
 }
 
 // ── Category Tabs ────────────────────────────────────────────────────────────
-function CategoryTabs({ active, onSelect }: { active: string; onSelect: (cat: string) => void }) {
+function CategoryTabs({ active, categories, onSelect }: {
+  active: string; categories: string[]; onSelect: (cat: string) => void;
+}) {
   return (
     <div className="flex justify-center gap-6 sm:gap-8 border-b-2 border-[#1e4020] mb-8 flex-wrap">
-      {CATEGORIES.map(cat => {
+      {categories.map(cat => {
         const isActive = cat === active;
         return (
           <button key={cat} type="button" onClick={() => onSelect(cat)}
@@ -762,38 +764,94 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const VALID_CATEGORIES: string[] = [...CATEGORIES];
 
+const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+function fechaCorta(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getUTCDate()} ${MESES_CORTOS[d.getUTCMonth()]}`;
+}
+
+/**
+ * Fechas del cuadro tomadas de los propios torneos, no escritas a mano: antes
+ * el encabezado decía "Round Robin: 22 Jun — 12 Jul" para siempre, aunque se
+ * estuviera mirando otra temporada.
+ */
+function fechasDelCuadro(seasons: MasterSeason[]) {
+  const inicio = seasons.map(s => s.round_robin_start).filter(Boolean).sort()[0];
+  const fin    = seasons.map(s => s.round_robin_end).filter(Boolean).sort().slice(-1)[0];
+  const final  = seasons.map(s => s.final_date).filter(Boolean).sort().slice(-1)[0];
+  return {
+    roundRobin: inicio && fin ? `Round Robin: ${fechaCorta(inicio)} — ${fechaCorta(fin)}` : null,
+    final: final ? `Final: ${fechaCorta(final)}` : null,
+  };
+}
+
+/** Chip de temporada, mismo lenguaje visual que el filtro del fixture. */
+function SeasonChip({ activo, destacado, onClick, children }: {
+  activo: boolean; destacado?: boolean; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border
+        ${activo
+          ? 'bg-ctg-green text-[#0a1608] border-ctg-green'
+          : destacado
+            ? 'bg-[#152b18] text-[#F0F7E8]/70 border-[#1e4020] hover:text-[#F0F7E8]'
+            : 'bg-transparent text-[#F0F7E8]/45 border-[#1e4020] hover:text-[#F0F7E8]/75'}`}>
+      {children}
+    </button>
+  );
+}
+
 function MasterPageContent() {
   const { player, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [seasons, setSeasons] = useState<MasterSeason[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const [options, setOptions]   = useState<MasterSeasonOption[]>([]);
+  const [seasonSlug, setSlug]   = useState<string | null>(null);
+  const [seasons, setSeasons]   = useState<MasterSeason[]>([]);
+  const [loading, setLoading]   = useState(true);
 
   const catParam = searchParams.get('cat') || '';
-  const activeCategory = VALID_CATEGORIES.includes(catParam) ? catParam : 'A';
+  const seasonOption = options.find(o => o.slug === seasonSlug) ?? null;
 
-  const ROUND_ROBIN_START = new Date('2026-06-22');
-  const isBeforeStart = new Date() < ROUND_ROBIN_START;
+  // Las categorías del filtro son las que tuvo ESA temporada: el 1er semestre
+  // 2026 se jugó con cuatro (incluida la D, que ya no existe).
+  const categories = seasonOption?.categories?.length
+    ? seasonOption.categories
+    : VALID_CATEGORIES;
+  const activeCategory = categories.includes(catParam) ? catParam : categories[0] ?? 'A';
 
-  const loadData = () => {
+  // Temporadas del filtro. Al entrar se parte en la abierta, que es la que el
+  // socio espera ver, aunque todavía no tenga cuadro.
+  useEffect(() => {
+    if (authLoading || !player) { setLoading(false); return; }
+    api.getMasterSeasons().then(list => {
+      setOptions(list);
+      setSlug(prev => prev ?? (list.find(o => o.is_active)?.slug ?? list[0]?.slug ?? null));
+      if (list.length === 0) setLoading(false);
+    });
+  }, [authLoading, player?.id]);
+
+  const loadData = useCallback(() => {
+    if (!seasonSlug) return;
     setLoading(true);
-    api.getMaster()
+    api.getMaster(seasonSlug)
       .then(data => setSeasons(data || []))
       .catch(() => setSeasons([]))
       .finally(() => setLoading(false));
-  };
+  }, [seasonSlug]);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!player) { setLoading(false); return; }
-    loadData();
-  }, [authLoading, player?.id]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleSelectCategory = (cat: string) => {
     router.replace(`/master?cat=${cat}`, { scroll: false });
   };
 
-  if (loading) {
+  if (authLoading || (loading && seasons.length === 0 && options.length === 0)) {
     return (
       <div className="min-h-screen bg-[#0a1608] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
@@ -813,45 +871,89 @@ function MasterPageContent() {
   }
 
   const activeSeason = seasons.find(s => s.category === activeCategory);
+  const fechas = fechasDelCuadro(seasons);
+  const años = [...new Set(options.map(o => o.year))].sort((a, b) => b - a);
+  const temporadaAbiertaSinCuadro =
+    !!seasonOption?.is_active && seasons.length === 0 && !loading;
+  const anteriores = options.filter(o => o.has_master && !o.is_active);
 
   return (
     <div className="min-h-screen bg-[#0a1608]">
       <Header onLoginClick={() => {}} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 md:pb-10">
-        <div className="mb-10">
-          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">Temporada 2026</p>
+        <div className="mb-8">
+          <p className="text-ctg-green/70 text-xs font-bold uppercase tracking-[0.2em] mb-1">
+            {seasonOption ? seasonOption.name.replace(/^Escalerilla\s*/i, '') : 'Torneo del club'}
+          </p>
           <h1 className="font-display text-4xl font-extrabold text-[#F0F7E8]">Master</h1>
-          <div className="flex gap-6 mt-3 text-sm text-[#F0F7E8]/40 flex-wrap">
-            <span>Round Robin: 22 Jun — 12 Jul</span>
-            <span>Final: Sáb 18 de Julio</span>
-          </div>
+          {(fechas.roundRobin || fechas.final) && (
+            <div className="flex gap-6 mt-3 text-sm text-[#F0F7E8]/40 flex-wrap">
+              {fechas.roundRobin && <span>{fechas.roundRobin}</span>}
+              {fechas.final && <span>{fechas.final}</span>}
+            </div>
+          )}
         </div>
 
-        {isBeforeStart && seasons.length === 0 && (
-          <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-12 text-center mb-8">
-            <div className="w-20 h-20 rounded-full bg-ctg-green/15 border border-ctg-green/30 flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">🏆</span>
-            </div>
-            <h2 className="font-display text-2xl font-bold text-[#F0F7E8] mb-2">Próximamente</h2>
-            <p className="text-[#F0F7E8]/50 mb-4">El Master se habilita el <strong className="text-[#F0F7E8]">22 de junio de 2026</strong></p>
-            <p className="text-sm text-[#F0F7E8]/35">Clasifican los 8 primeros de cada categoría (A, B, C y D)</p>
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto">
-              {CATEGORIES.map(cat => (
-                <div key={cat} className={`rounded-xl p-3 bg-[#152b18] border border-[#1e4020]`}>
-                  <p className={`font-display font-black text-lg cat-letter-${cat}`}>Cat. {cat}</p>
-                  <p className="text-xs text-[#F0F7E8]/45">{CATEGORY_NAMES[cat]}</p>
-                  <p className="text-xs text-[#F0F7E8]/35 mt-1">Top 8</p>
+        {/* Filtro de temporada — mismo criterio que el fixture del club */}
+        {options.length > 1 && (
+          <div className="mb-8">
+            <p className="text-[10px] uppercase tracking-widest text-[#F0F7E8]/35 font-semibold mb-2">Temporada</p>
+            <div className="flex flex-col gap-2">
+              {años.map(year => (
+                <div key={year} className="flex gap-2 items-center flex-wrap">
+                  <span className="text-xs font-bold text-[#F0F7E8]/30 w-10">{year}</span>
+                  {options.filter(o => o.year === year).map(o => (
+                    <SeasonChip key={o.slug} activo={seasonSlug === o.slug} destacado={o.is_active}
+                      onClick={() => setSlug(o.slug)}>
+                      {o.label}{o.is_active ? ' · en curso' : ''}
+                    </SeasonChip>
+                  ))}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {seasons.length > 0 ? (
+        {temporadaAbiertaSinCuadro ? (
+          <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-12 text-center">
+            <div className="w-20 h-20 rounded-full bg-ctg-green/15 border border-ctg-green/30 flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🏆</span>
+            </div>
+            <h2 className="font-display text-2xl font-bold text-[#F0F7E8] mb-2">
+              Aún no está disponible
+            </h2>
+            <p className="text-[#F0F7E8]/50 max-w-md mx-auto">
+              El Master de {seasonOption?.label.toLowerCase()} se arma al terminar la escalerilla,
+              y todavía queda mucho por jugarse. Cuando estén los cuadros van a aparecer acá.
+            </p>
+            {anteriores.length > 0 && (
+              <>
+                <p className="text-sm text-[#F0F7E8]/35 mt-8 mb-3">Mientras tanto, mira los Master anteriores:</p>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {anteriores.map(o => (
+                    <SeasonChip key={o.slug} activo={false} destacado onClick={() => setSlug(o.slug)}>
+                      {o.label} {o.year}
+                    </SeasonChip>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 rounded-full border-2 border-ctg-green/20 border-t-ctg-green animate-spin" />
+          </div>
+        ) : seasons.length > 0 ? (
           <>
-            <CategoryTabs active={activeCategory} onSelect={handleSelectCategory} />
+            {!seasonOption?.is_active && (
+              <div className="bg-[#152b18] border border-[#1e4020] rounded-xl px-4 py-3 mb-6 text-sm text-[#F0F7E8]/55">
+                📅 Estás viendo el Master de {seasonOption?.label.toLowerCase()} {seasonOption?.year}, una temporada ya cerrada.
+              </div>
+            )}
+            <CategoryTabs active={activeCategory} categories={categories} onSelect={handleSelectCategory} />
             {activeSeason ? (
-              <CategoryTournament key={activeCategory} season={activeSeason} currentPlayerId={player?.id} onRefresh={loadData} />
+              <CategoryTournament key={`${seasonSlug}-${activeCategory}`} season={activeSeason}
+                currentPlayerId={player?.id} onRefresh={loadData} />
             ) : (
               <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6 mb-6 opacity-50">
                 <p className={`font-bold cat-letter-${activeCategory}`}>Categoría {activeCategory} — {CATEGORY_NAMES[activeCategory]}</p>
@@ -859,12 +961,12 @@ function MasterPageContent() {
               </div>
             )}
           </>
-        ) : !isBeforeStart ? (
+        ) : (
           <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-12 text-center">
-            <p className="text-[#F0F7E8]/50">No hay torneos generados aún.</p>
-            <p className="text-sm text-[#F0F7E8]/30 mt-1">El administrador debe generar los cuadros desde el panel admin.</p>
+            <p className="text-[#F0F7E8]/50">No hay cuadros generados en esta temporada.</p>
+            <p className="text-sm text-[#F0F7E8]/30 mt-1">El administrador debe generarlos desde el panel admin.</p>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

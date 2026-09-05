@@ -24,6 +24,8 @@ export interface Player {
   has_debt: boolean;
   extra_high_demand_slots?: number;
   school_names?: string[];                          // ← nuevo
+  /** Tiene pendiente su partido de ingreso (socio nuevo o reincorporado). */
+  entry_match_available?: boolean;
   created_at: string;
   is_admin?: boolean;
   admin_role?: 'escalerilla' | 'reservas' | 'all' | null;
@@ -112,6 +114,8 @@ export interface MasterGroup {
 export interface MasterSeason {
   id: string;
   name: string;
+  /** Temporada de escalerilla a la que pertenece el cuadro. */
+  season_id?: string | null;
   category: string;
   status: 'pending' | 'playoffs' | 'active' | 'semifinals' | 'final' | 'completed';
   round_robin_start: string | null;
@@ -120,6 +124,43 @@ export interface MasterSeason {
   created_at: string;
   groups: MasterGroup[];
   matches: MasterMatch[];
+}
+
+/** Temporada elegible en el filtro del Master (backend: GET /master/seasons). */
+export interface MasterSeasonOption {
+  slug: string;             // "2026-1"
+  name: string;             // "Escalerilla 2026 · 1er Semestre"
+  label: string;            // "1er Semestre"
+  year: number;
+  is_active: boolean;
+  category_scheme: 'legacy4' | 'v2';
+  /** Categorías con cuadro generado en esa temporada (en 2026-1 incluye la D). */
+  categories: string[];
+  has_master: boolean;
+  completed: boolean;
+}
+
+/** Rival posible para el partido de ingreso. */
+export interface EntryMatchTarget {
+  id: string;
+  name: string;
+  position: number | null;
+  avatar_url?: string | null;
+}
+
+export interface EntryMatchInfo {
+  available: boolean;
+  /** Puesto más alto al que se puede apuntar. */
+  top_limit: number;
+  targets: EntryMatchTarget[];
+  /** El partido ya pedido: mientras exista no se puede elegir otro rival. */
+  pending: {
+    id: string;
+    status: string;
+    accept_deadline: string;
+    play_deadline: string;
+    challenged: { id: string; name: string; position: number | null };
+  } | null;
 }
 
 // ── Logros ──────────────────────────────────────────────────────────────────
