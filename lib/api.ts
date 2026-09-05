@@ -1,6 +1,7 @@
 import {
   Player, Challenge, AuthResponse, MasterSeason, ApiNotification,
   MyAchievements, UnlockedAchievement, SeasonSummary, HistoryResponse, HistoryPeriod,
+  MasterSeasonOption, EntryMatchInfo,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -239,15 +240,55 @@ export const api = {
   },
 
   // Master
-  getMaster: async (): Promise<MasterSeason[]> => {
-    const res = await authFetch(`${API_URL}/master`);
+  /**
+   * Cuadros de una temporada. Sin `season`, los de la temporada abierta —que
+   * puede no tener ninguno todavía, y ahí la página avisa que aún no está
+   * disponible en vez de mostrar el del semestre pasado.
+   */
+  getMaster: async (season?: string): Promise<MasterSeason[]> => {
+    const query = season ? `?season=${encodeURIComponent(season)}` : '';
+    const res = await authFetch(`${API_URL}/master${query}`);
     if (!res.ok) throw new Error('Sin sesión activa');
     return res.json();
   },
 
-  getMasterCategory: async (category: string): Promise<MasterSeason | null> => {
-    const res = await authFetch(`${API_URL}/master/${category}`);
+  /** Temporadas elegibles en el filtro del Master, de la más nueva a la más vieja. */
+  getMasterSeasons: async (): Promise<MasterSeasonOption[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/master/seasons`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  getMasterCategory: async (category: string, season?: string): Promise<MasterSeason | null> => {
+    const query = season ? `?season=${encodeURIComponent(season)}` : '';
+    const res = await authFetch(`${API_URL}/master/${category}${query}`);
     if (!res.ok) throw new Error('Sin sesión activa');
+    return res.json();
+  },
+
+  // ── Partido de ingreso ────────────────────────────────────────────────────
+
+  /** Rivales a los que puede apuntar el jugador logueado, y el tope vigente. */
+  getEntryMatchTargets: async (): Promise<EntryMatchInfo> => {
+    try {
+      const res = await authFetch(`${API_URL}/challenges/entry/targets`);
+      if (!res.ok) return { available: false, top_limit: 0, targets: [], pending: null };
+      return res.json();
+    } catch {
+      return { available: false, top_limit: 0, targets: [], pending: null };
+    }
+  },
+
+  createEntryChallenge: async (challengedId: string) => {
+    const res = await authFetch(`${API_URL}/challenges/entry`, {
+      method: 'POST', headers: JSON_HEADERS,
+      body: JSON.stringify({ challenged_id: challengedId }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al crear el partido de ingreso'); }
     return res.json();
   },
 
@@ -524,6 +565,77 @@ export const api = {
   getAllPlayersAdmin: async () => {
     const res = await authFetch(`${API_URL}/admin/players/all`);
     if (!res.ok) return null;
+    return res.json();
+  },
+
+  /** Saca al jugador de la escalerilla sin borrar nada de lo suyo. */
+  adminRetirePlayer: async (playerId: string) => {
+    const res = await authFetch(`${API_URL}/admin/players/${playerId}/retire`, { method: 'POST' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al sacar de la escalerilla'); }
+    return res.json();
+  },
+
+  /**
+   * Reincorpora al retirado. Sin `position` le habilita el partido de ingreso;
+   * con `position` lo ubica directo en ese puesto.
+   */
+  adminRejoinPlayer: async (playerId: string, position?: number) => {
+    const res = await authFetch(`${API_URL}/admin/players/${playerId}/rejoin`, {
+      method: 'POST', headers: JSON_HEADERS,
+      body: JSON.stringify(position != null ? { position } : {}),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al reincorporar'); }
+    return res.json();
+  },
+
+  // ── Admin Temporadas ──────────────────────────────────────────────────────
+
+  /** Temporada abierta y cómo se llamaría la siguiente. */
+  adminNextSeason: async (): Promise<{
+    current: { slug: string; name: string };
+    next: { slug: string; name: string };
+  } | null> => {
+    try {
+      const res = await authFetch(`${API_URL}/seasons/next`);
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Cambio de temporada completo: cierra la abierta reordenando por el Master,
+   * da de baja a los que no siguen y abre la nueva.
+   */
+  adminRollover: async (body: {
+    retire_player_ids?: string[];
+    next_slug?: string;
+    next_name?: string;
+  }) => {
+    const res = await authFetch(`${API_URL}/seasons/rollover`, {
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al cambiar de temporada'); }
+    return res.json();
+  },
+
+  /** Tope de puesto del partido de ingreso. */
+  adminGetEntryLimit: async (): Promise<number | null> => {
+    try {
+      const res = await authFetch(`${API_URL}/admin/challenges/entry-limit`);
+      if (!res.ok) return null;
+      return (await res.json()).top_limit;
+    } catch {
+      return null;
+    }
+  },
+
+  adminSetEntryLimit: async (topLimit: number) => {
+    const res = await authFetch(`${API_URL}/admin/challenges/entry-limit`, {
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ top_limit: topLimit }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar el tope'); }
     return res.json();
   },
 };

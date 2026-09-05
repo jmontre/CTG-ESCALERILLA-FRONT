@@ -8,6 +8,7 @@ import LoginModal from '@/components/LoginModal';
 import LoginPrompt from '@/components/LoginPrompt';
 import PlayerModal from '@/components/PlayerModal';
 import Toast from '@/components/Toast';
+import EntryMatchCard from '@/components/EntryMatchCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
@@ -163,6 +164,14 @@ export default function EscalerillaPage() {
 
         {currentPlayer && (
           <>
+            {/* Partido de ingreso — solo para quien todavía no tiene puesto */}
+            {!hasPosition && currentPlayer.entry_match_available && (
+              <EntryMatchCard
+                onCreated={(rival) => success(`Partido de ingreso enviado a ${rival}. Tiene 24 horas para responder.`)}
+                onError={(msg) => error(msg)}
+              />
+            )}
+
             {/* Stats — logged in with position */}
             {hasPosition && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">

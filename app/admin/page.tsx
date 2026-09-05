@@ -26,7 +26,7 @@ export default function AdminPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [masterSeasons, setMasterSeasons] = useState<MasterSeason[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'challenges' | 'master'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'players' | 'challenges' | 'master' | 'temporadas'>('dashboard');
   const [loadingData, setLoadingData] = useState(true);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -37,14 +37,25 @@ export default function AdminPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Temporadas
+  const [nextSeason, setNextSeason] = useState<{
+    current: { slug: string; name: string };
+    next: { slug: string; name: string };
+  } | null>(null);
+  const [bajas, setBajas] = useState<Set<string>>(new Set());
+  const [rollingOver, setRollingOver] = useState(false);
+  const [entryLimit, setEntryLimit] = useState<number | null>(null);
+  const [savingLimit, setSavingLimit] = useState(false);
+
   // Master
   const [generatingCategory, setGeneratingCategory] = useState<string | null>(null);
   const [deletingSeasonId, setDeletingSeasonId] = useState<string | null>(null);
+  // El nombre del cuadro ya no se escribe acá: lo deriva el backend de la
+  // temporada abierta, que es lo que después lo engancha con el cierre.
   const [masterDates, setMasterDates] = useState({
-    name: '1er Semestre 2026',
-    round_robin_start: '2026-06-22',
-    round_robin_end: '2026-07-12',
-    final_date: '2026-07-18',
+    round_robin_start: '',
+    round_robin_end: '',
+    final_date: '',
   });
 
   useEffect(() => {
@@ -54,14 +65,18 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [playersData, challengesData, masterData] = await Promise.all([
+      const [playersData, challengesData, masterData, seasonData, limit] = await Promise.all([
         api.getAllPlayersAdmin(),   // endpoint admin: incluye email/phone/has_debt
         api.getChallenges(),
         api.getMaster(),
+        api.adminNextSeason(),
+        api.adminGetEntryLimit(),
       ]);
       setPlayers(playersData || []);
       setChallenges(challengesData);
       setMasterSeasons(masterData || []);
+      setNextSeason(seasonData);
+      setEntryLimit(limit);
     } catch (err) {
       console.error('Error cargando datos:', err);
     } finally {
@@ -76,6 +91,94 @@ export default function AdminPage() {
       await fetchData();
       success(`Jugador ${name} eliminado correctamente.`);
     } catch (err: any) { error(err.message || 'Error al eliminar jugador'); }
+  };
+
+  // ── Escalerilla: bajas y reincorporaciones ────────────────────────────────
+
+  const handleRetire = async (id: string, name: string) => {
+    if (!confirm(
+      `¿Sacar a ${name} de la escalerilla?\n\n` +
+      `Los de abajo suben un puesto. NO se borra nada suyo: récord, historial, ` +
+      `logros y temporadas jugadas quedan guardados, y puede volver cuando quiera.`
+    )) return;
+    try {
+      const res = await api.adminRetirePlayer(id);
+      await fetchData();
+      success(res.message || `${name} salió de la escalerilla.`);
+    } catch (err: any) { error(err.message || 'Error al sacar de la escalerilla'); }
+  };
+
+  const handleRejoin = async (id: string, name: string) => {
+    const respuesta = prompt(
+      `Reincorporar a ${name}.\n\n` +
+      `Deja el campo vacío para que juegue su partido de ingreso (elige rival y ` +
+      `se gana el puesto), o escribe un número de puesto para ubicarlo directo.`,
+      ''
+    );
+    if (respuesta === null) return;
+    const puesto = respuesta.trim() === '' ? undefined : Number(respuesta.trim());
+    if (puesto !== undefined && (!Number.isFinite(puesto) || puesto < 1)) {
+      error('El puesto debe ser un número mayor o igual a 1.');
+      return;
+    }
+    try {
+      const res = await api.adminRejoinPlayer(id, puesto);
+      await fetchData();
+      success(res.message || `${name} reincorporado.`);
+    } catch (err: any) { error(err.message || 'Error al reincorporar'); }
+  };
+
+  // ── Cambio de temporada ───────────────────────────────────────────────────
+
+  const toggleBaja = (id: string) => {
+    setBajas(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleRollover = async () => {
+    if (!nextSeason) return;
+    const nombres = players
+      .filter(p => bajas.has(p.id))
+      .map(p => p.name)
+      .join(', ');
+    if (!confirm(
+      `¿Cerrar ${nextSeason.current.name} y abrir ${nextSeason.next.name}?\n\n` +
+      `· Cada categoría se reordena según cómo terminó su Master.\n` +
+      `· Se congela el histórico del semestre (posiciones, récord y campeones).\n` +
+      (nombres ? `· Salen de la escalerilla: ${nombres}.\n` : '· Nadie sale de la escalerilla.\n') +
+      `\nEsto no se deshace con un botón.`
+    )) return;
+
+    setRollingOver(true);
+    try {
+      const res = await api.adminRollover({ retire_player_ids: [...bajas] });
+      setBajas(new Set());
+      await fetchData();
+      const reordenadas = res.closed?.reorder?.reordered ?? [];
+      success(
+        `${res.opened.name} abierta con ${res.opened.players} jugadores. ` +
+        (reordenadas.length
+          ? `Reordenadas por Master: ${reordenadas.join(', ')}.`
+          : 'Ninguna categoría se reordenó (sin Master terminado).')
+      );
+    } catch (err: any) {
+      error(err.message || 'Error al cambiar de temporada');
+    } finally {
+      setRollingOver(false);
+    }
+  };
+
+  const handleSaveEntryLimit = async (value: number) => {
+    setSavingLimit(true);
+    try {
+      const res = await api.adminSetEntryLimit(value);
+      setEntryLimit(res.top_limit);
+      success(res.message);
+    } catch (err: any) { error(err.message || 'Error al guardar el tope'); }
+    finally { setSavingLimit(false); }
   };
 
   const handleResetImmunity = async (id: string) => {
@@ -137,7 +240,12 @@ export default function AdminPage() {
   // ── Master ───────────────────────────────────────────────────────────────────
 
   const handleGenerateMaster = async (category: string) => {
-    if (!confirm(`¿Generar torneo Master para Categoría ${category}?\n\nSe tomarán los 8 primeros jugadores de la categoría y se armarán los grupos con serpenteo.`)) return;
+    if (!confirm(
+      `¿Generar torneo Master para Categoría ${category}?\n\n` +
+      `Los 4 primeros de la categoría clasifican directo al round robin, del 5° al 12° ` +
+      `juegan un playoff a partido único por los 4 cupos restantes, y del 13° en adelante ` +
+      `quedan fuera. El cuadro queda ligado a la temporada abierta.`
+    )) return;
     setGeneratingCategory(category);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/generate`, {
@@ -207,7 +315,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-8 bg-[#0f2211] border border-[#1e4020] rounded-2xl p-1.5 overflow-x-auto">
-          {(['dashboard', 'players', 'challenges', 'master'] as const).map((tab) => (
+          {(['dashboard', 'players', 'challenges', 'master', 'temporadas'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -218,7 +326,8 @@ export default function AdminPage() {
               {tab === 'dashboard' ? 'Dashboard'
                 : tab === 'players' ? 'Jugadores'
                   : tab === 'challenges' ? 'Desafíos'
-                    : 'Master'}
+                    : tab === 'master' ? 'Master'
+                      : 'Temporadas'}
             </button>
           ))}
         </div>
@@ -295,12 +404,144 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                         <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
+                        <button onClick={() => handleRetire(p.id, p.name)} className="btn-ghost text-xs px-2.5 py-1.5 mr-2" title="Sale de la escalerilla conservando todos sus datos">Sacar</button>
                         <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5">Eliminar</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Fuera de la escalerilla — no están borrados, solo no juegan */}
+            {players.filter(p => !p.is_admin && (p.position ?? 0) <= 0).length > 0 && (
+              <div className="mt-8">
+                <h3 className="font-display font-bold text-[#F0F7E8] text-base mb-1">Fuera de la escalerilla</h3>
+                <p className="text-[#F0F7E8]/40 text-sm mb-4">
+                  Conservan récord, historial y logros. Al reincorporarlos pueden jugar su
+                  partido de ingreso o entrar directo en un puesto.
+                </p>
+                <div className="overflow-x-auto rounded-2xl border border-[#1e4020]">
+                  <table className="w-full">
+                    <thead className="bg-[#152b18] text-[#F0F7E8]/45 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+                        <th className="px-4 py-3 text-left font-semibold">Email</th>
+                        <th className="px-4 py-3 text-left font-semibold">W-L</th>
+                        <th className="px-4 py-3 text-left font-semibold">Estado</th>
+                        <th className="px-4 py-3 text-right font-semibold">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1e4020]">
+                      {players.filter(p => !p.is_admin && (p.position ?? 0) <= 0).map((p) => (
+                        <tr key={p.id} className="hover:bg-ctg-green/4 transition-colors">
+                          <td className="px-4 py-3 text-sm font-semibold text-[#F0F7E8]">{p.name}</td>
+                          <td className="px-4 py-3 text-sm text-[#F0F7E8]/50">{p.email}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="text-ctg-green font-medium">{p.wins}</span>-
+                            <span className="text-red-400 font-medium">{p.losses}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {p.entry_match_available
+                              ? <span className="chip chip-info">🎾 Partido de ingreso pendiente</span>
+                              : <span className="chip chip-muted">Sin escalerilla</span>}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                            <button onClick={() => { setSelectedPlayer(p); setShowEditModal(true); }} className="btn-ghost text-xs px-2.5 py-1.5 mr-2">Editar</button>
+                            <button onClick={() => handleRejoin(p.id, p.name)} className="btn-primary text-xs px-2.5 py-1.5 mr-2">Reincorporar</button>
+                            <button onClick={() => handleDeletePlayer(p.id, p.name)} className="btn-danger text-xs px-2.5 py-1.5">Eliminar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Temporadas */}
+        {activeTab === 'temporadas' && (
+          <div className="space-y-6">
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-1">Cambio de temporada</h2>
+              <p className="text-[#F0F7E8]/45 text-sm mb-6">
+                Un solo paso: cierra el semestre reordenando cada categoría por su Master,
+                da de baja a los que no siguen y abre la temporada nueva.
+              </p>
+
+              {!nextSeason ? (
+                <p className="text-[#F0F7E8]/40 text-sm">
+                  No hay ninguna temporada abierta. Ábrela desde la API antes de cerrar.
+                </p>
+              ) : (
+                <>
+                  <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                    <div className="bg-[#152b18] border border-[#1e4020] rounded-xl p-4">
+                      <p className="text-[10px] uppercase tracking-widest text-[#F0F7E8]/35 font-semibold mb-1">Se cierra</p>
+                      <p className="text-[#F0F7E8] font-semibold">{nextSeason.current.name}</p>
+                      <p className="text-[#F0F7E8]/35 text-xs mt-0.5">{nextSeason.current.slug}</p>
+                    </div>
+                    <div className="bg-[#152b18] border border-ctg-green/30 rounded-xl p-4">
+                      <p className="text-[10px] uppercase tracking-widest text-ctg-green/70 font-semibold mb-1">Se abre</p>
+                      <p className="text-[#F0F7E8] font-semibold">{nextSeason.next.name}</p>
+                      <p className="text-[#F0F7E8]/35 text-xs mt-0.5">{nextSeason.next.slug}</p>
+                    </div>
+                  </div>
+
+                  <h3 className="font-semibold text-[#F0F7E8] text-sm mb-1">
+                    ¿Quién no juega el semestre nuevo?
+                  </h3>
+                  <p className="text-[#F0F7E8]/40 text-sm mb-3">
+                    Marca a los que salen. Se van de la escalerilla conservando todos sus
+                    datos, y los de abajo suben para no dejar huecos.
+                    {bajas.size > 0 && <span className="text-ctg-green font-semibold"> {bajas.size} marcado{bajas.size === 1 ? '' : 's'}.</span>}
+                  </p>
+                  <div className="max-h-72 overflow-y-auto border border-[#1e4020] rounded-xl divide-y divide-[#1e4020] mb-6">
+                    {players
+                      .filter(p => !p.is_admin && (p.position ?? 0) > 0)
+                      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                      .map(p => (
+                        <label key={p.id}
+                          className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-ctg-green/5 transition-colors">
+                          <input type="checkbox" checked={bajas.has(p.id)} onChange={() => toggleBaja(p.id)}
+                            className="w-4 h-4 accent-ctg-green" />
+                          <span className="font-mono text-xs font-bold text-ctg-green w-9">#{p.position}</span>
+                          <span className={`text-sm ${bajas.has(p.id) ? 'text-[#F0F7E8]/40 line-through' : 'text-[#F0F7E8]'}`}>
+                            {p.name}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+
+                  <button onClick={handleRollover} disabled={rollingOver} className="btn-primary">
+                    {rollingOver ? 'Cambiando de temporada…' : `Cerrar y abrir ${nextSeason.next.slug}`}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
+              <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-1">Partido de ingreso</h2>
+              <p className="text-[#F0F7E8]/45 text-sm mb-5">
+                Quien entra o vuelve a la escalerilla elige un rival de este puesto hacia
+                abajo. Si gana entra en su puesto; si pierde, entra último.
+              </p>
+              <div className="flex items-end gap-3 flex-wrap">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-[#F0F7E8]/35 font-semibold mb-1.5">
+                    Puesto más alto al que puede apuntar
+                  </label>
+                  <input type="number" min={1} value={entryLimit ?? ''}
+                    onChange={(e) => setEntryLimit(Number(e.target.value))}
+                    className="w-32 bg-[#152b18] border border-[#1e4020] rounded-xl px-4 py-2.5 text-sm text-[#F0F7E8] focus:outline-none focus:border-ctg-green/50" />
+                </div>
+                <button onClick={() => entryLimit && handleSaveEntryLimit(entryLimit)}
+                  disabled={savingLimit || !entryLimit} className="btn-primary">
+                  {savingLimit ? 'Guardando…' : 'Guardar tope'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -372,17 +613,12 @@ export default function AdminPage() {
             {/* Config fechas */}
             <div className="bg-[#0f2211] border border-[#1e4020] rounded-2xl p-6">
               <h2 className="font-display font-bold text-[#F0F7E8] text-xl mb-1">Configuración del Master</h2>
-              <p className="text-sm text-[#F0F7E8]/40 mb-4">Estas fechas se aplicarán al generar cada categoría.</p>
+              <p className="text-sm text-[#F0F7E8]/40 mb-4">
+                Estas fechas se aplicarán al generar cada categoría. El cuadro queda ligado a{' '}
+                <strong className="text-[#F0F7E8]/70">{nextSeason?.current.name ?? 'la temporada abierta'}</strong>,
+                que es lo que hace que la página muestre el Master del semestre correcto.
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="label block mb-1">Nombre de temporada</label>
-                  <input
-                    type="text"
-                    value={masterDates.name}
-                    onChange={(e) => setMasterDates(d => ({ ...d, name: e.target.value }))}
-                    className="field w-full"
-                  />
-                </div>
                 <div>
                   <label className="label block mb-1">Inicio Round Robin</label>
                   <input
