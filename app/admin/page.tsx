@@ -93,6 +93,7 @@ export default function AdminPage() {
     if (!confirm(
       `¿Dar de baja la cuenta de ${name}?\n\n` +
       `Desaparece del panel y de la escalerilla, y no vuelve a poder entrar.\n\n` +
+      `Sus reservas futuras se cancelan y esas canchas quedan libres para el resto.\n\n` +
       `No se borra ningún dato: si vuelve, lo restauras con su misma cuenta, su misma ` +
       `contraseña y su récord. Sus partidos siguen en el fixture y en el historial de ` +
       `sus rivales, con su nombre.`
