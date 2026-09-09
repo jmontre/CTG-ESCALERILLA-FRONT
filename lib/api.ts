@@ -163,9 +163,39 @@ export const api = {
     return res.json();
   },
 
-  deletePlayer: async (id: string): Promise<void> => {
+  /**
+   * Da de baja la cuenta: soft delete. El socio desaparece de la app y no puede
+   * entrar, pero no se borra ni un dato — se restaura con `restorePlayer`.
+   */
+  deletePlayer: async (id: string): Promise<{ message: string; mode: 'deactivated' }> => {
     const res = await authFetch(`${API_URL}/admin/players/${id}`, { method: 'DELETE' });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al eliminar jugador'); }
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al dar de baja al jugador'); }
+    return res.json();
+  },
+
+  /** Cuentas dadas de baja. Es la única vista donde aparecen. */
+  getDeactivatedPlayers: async (): Promise<Player[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/admin/players/deactivated`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  /** Deshace la baja: el socio vuelve con su cuenta y su récord intactos. */
+  adminRestorePlayer: async (id: string) => {
+    const res = await authFetch(`${API_URL}/admin/players/${id}/restore`, { method: 'POST' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al restaurar'); }
+    return res.json();
+  },
+
+  /** Borrado definitivo. Solo cuentas ya dadas de baja y sin ningún partido. */
+  adminPurgePlayer: async (id: string) => {
+    const res = await authFetch(`${API_URL}/admin/players/${id}/purge`, { method: 'DELETE' });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al eliminar'); }
+    return res.json();
   },
 
   movePlayer: async (id: string, newPosition: number): Promise<Player> => {
@@ -565,6 +595,20 @@ export const api = {
   getAllPlayersAdmin: async () => {
     const res = await authFetch(`${API_URL}/admin/players/all`);
     if (!res.ok) return null;
+    return res.json();
+  },
+
+  /**
+   * Guarda el orden completo de la escalerilla (drag & drop del panel).
+   * El backend valida que la lista siga siendo exactamente la escalerilla de
+   * hoy: si cambió mientras editabas, rechaza en vez de pisar ese cambio.
+   */
+  adminReorderLadder: async (playerIds: string[]) => {
+    const res = await authFetch(`${API_URL}/admin/players/reorder`, {
+      method: 'POST', headers: JSON_HEADERS,
+      body: JSON.stringify({ player_ids: playerIds }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Error al guardar el orden'); }
     return res.json();
   },
 
