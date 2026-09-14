@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Player } from '@/types';
-import { CAT_META, categoryOf } from '@/lib/ladder';
+import { CAT_META, categoryOf, isAdminPlayer, isInLadder } from '@/lib/ladder';
 
 /**
  * Editor de la escalerilla por arrastrar y soltar.
@@ -30,7 +30,7 @@ export default function LadderEditor({
   const original = useMemo(
     () =>
       [...players]
-        .filter((p) => (p.position ?? 0) > 0 && !p.is_admin)
+        .filter((p) => isInLadder(p.position) && !isAdminPlayer(p))
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
     [players],
   );
