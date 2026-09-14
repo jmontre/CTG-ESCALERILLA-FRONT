@@ -1,5 +1,5 @@
 'use client';
-import { CATEGORIES as LADDER_CATEGORIES } from '@/lib/ladder';
+import { CATEGORIES as LADDER_CATEGORIES, isAdminPlayer, isInLadder } from '@/lib/ladder';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -463,7 +463,7 @@ export default function AdminPage() {
             </div>
 
             {/* Fuera de la escalerilla — no están borrados, solo no juegan */}
-            {players.filter(p => !p.is_admin && (p.position ?? 0) <= 0).length > 0 && (
+            {players.filter(p => !isAdminPlayer(p) && !isInLadder(p.position)).length > 0 && (
               <div className="mt-8">
                 <h3 className="font-display font-bold text-[#F0F7E8] text-base mb-1">Fuera de la escalerilla</h3>
                 <p className="text-[#F0F7E8]/40 text-sm mb-4">
@@ -482,7 +482,7 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1e4020]">
-                      {players.filter(p => !p.is_admin && (p.position ?? 0) <= 0).map((p) => (
+                      {players.filter(p => !isAdminPlayer(p) && !isInLadder(p.position)).map((p) => (
                         <tr key={p.id} className="hover:bg-ctg-green/4 transition-colors">
                           <td className="px-4 py-3 text-sm font-semibold text-[#F0F7E8]">{p.name}</td>
                           <td className="px-4 py-3 text-sm text-[#F0F7E8]/50">{p.email}</td>
@@ -596,7 +596,7 @@ export default function AdminPage() {
                   </p>
                   <div className="max-h-72 overflow-y-auto border border-[#1e4020] rounded-xl divide-y divide-[#1e4020] mb-6">
                     {players
-                      .filter(p => !p.is_admin && (p.position ?? 0) > 0)
+                      .filter(p => !isAdminPlayer(p) && isInLadder(p.position))
                       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
                       .map(p => (
                         <label key={p.id}

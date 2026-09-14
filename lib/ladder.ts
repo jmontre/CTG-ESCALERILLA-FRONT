@@ -16,6 +16,24 @@ const BOUNDS: Array<{ category: CatKey; upTo: number | null }> = [
   { category: 'C', upTo: null },
 ];
 
+/**
+ * ¿Está en la escalerilla? Misma regla que `LadderService.ordered()` en el
+ * backend: puesto entre 1 y 999. Los admins tienen puesto ≥ 1000 por
+ * convención, así que `position > 0` NO alcanza: dejaba al admin (#1001)
+ * dentro del editor de la escalerilla y el guardado se rechazaba siempre.
+ */
+export function isInLadder(position: number | null | undefined): boolean {
+  return !!position && position >= 1 && position < 1000;
+}
+
+/**
+ * ¿Es admin? `/admin/players/all` lo trae anidado en `user`, no arriba, así que
+ * leer solo `player.is_admin` da `undefined` para todos.
+ */
+export function isAdminPlayer(p: { is_admin?: boolean; user?: { is_admin: boolean } | null }): boolean {
+  return !!(p.is_admin || p.user?.is_admin);
+}
+
 export function categoryOf(position: number | null | undefined): CatKey | null {
   if (!position || position < 1 || position >= 1000) return null;
   for (const { category, upTo } of BOUNDS) {
