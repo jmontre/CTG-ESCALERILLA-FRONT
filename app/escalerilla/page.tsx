@@ -41,6 +41,7 @@ export default function EscalerillaPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   /** Ids que el backend autoriza a desafiar. null = todavía no respondió. */
   const [challengeableIds, setChallengeableIds] = useState<Set<string> | null>(null);
+  const [entryTopLimit, setEntryTopLimit] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [playerModalOpen, setPlayerModalOpen] = useState(false);
@@ -60,8 +61,9 @@ export default function EscalerillaPage() {
 
   const loadPlayers = async () => {
     try {
-      const data = await api.getPlayers();
+      const [data, limite] = await Promise.all([api.getPlayers(), api.getEntryMatchLimit()]);
       setPlayers(data);
+      setEntryTopLimit(limite);
       // Quiénes puedo desafiar lo decide el backend, que conoce el historial
       // de partidos (la espera de 5 días para repetir rival no es deducible
       // desde el listado público de jugadores).
@@ -193,7 +195,8 @@ export default function EscalerillaPage() {
               </div>
             ) : (
               <Ladder players={players} currentPlayerId={currentPlayer?.id}
-                challengeableIds={challengeableIds} onPlayerClick={handlePlayerClick} />
+                challengeableIds={challengeableIds} onPlayerClick={handlePlayerClick}
+                entryTopLimit={entryTopLimit} />
             )}
           </>
         )}

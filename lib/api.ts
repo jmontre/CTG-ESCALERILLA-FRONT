@@ -302,6 +302,17 @@ export const api = {
 
   // ── Partido de ingreso ────────────────────────────────────────────────────
 
+  /** Puesto más alto al que puede apuntar un partido de ingreso (para mostrarlo a todos). */
+  getEntryMatchLimit: async (): Promise<number | null> => {
+    try {
+      const res = await authFetch(`${API_URL}/challenges/entry/limit`);
+      if (!res.ok) return null;
+      return (await res.json()).top_limit ?? null;
+    } catch {
+      return null;
+    }
+  },
+
   /** Rivales a los que puede apuntar el jugador logueado, y el tope vigente. */
   getEntryMatchTargets: async (): Promise<EntryMatchInfo> => {
     try {
