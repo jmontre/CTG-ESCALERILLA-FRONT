@@ -14,6 +14,8 @@ interface LadderProps {
   /** Ids que el backend autoriza a desafiar. null = todavía no respondió. */
   challengeableIds?: Set<string> | null;
   onPlayerClick: (player: Player) => void;
+  /** Puesto más alto al que puede apuntar un partido de ingreso. */
+  entryTopLimit?: number | null;
 }
 
 /* ---- Category metadata: ver lib/ladder.ts (espejo del backend) ---- */
@@ -325,10 +327,52 @@ function ChallengeZone({ currentPlayer, allPlayers, ladderSize, challengeableIds
   );
 }
 
+/* ---- Por ingresar ---- */
+/**
+ * Socios con su partido de ingreso pendiente. Todavía no tienen puesto, así que
+ * no caben en la pirámide; sin este bloque eran invisibles y nadie sabía que
+ * un socio nuevo podía desafiarlos.
+ */
+function PorIngresar({ entrants, topLimit }: { entrants: Player[]; topLimit?: number | null }) {
+  if (entrants.length === 0) return null;
+  return (
+    <div className="card p-4 md:p-5 border-ctg-green/30">
+      <div className="text-ctg-green text-[10px] uppercase tracking-[0.22em] font-bold">Por ingresar</div>
+      <p className="text-[#F0F7E8]/55 text-xs mt-1 mb-4">
+        Socios nuevos con su partido de ingreso: pueden desafiar a cualquiera
+        {topLimit ? <> desde el <strong className="text-[#F0F7E8]/80">#{topLimit}</strong> hacia abajo</> : ' de la escalerilla'}.
+        Si ganan, entran en ese puesto; si pierden, entran últimos.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {entrants.map(p => {
+          // Si ya eligió rival, "libre" sería falso: se muestra contra quién.
+          const enCurso = p.challenger_challenge;
+          const rival = enCurso?.challenged;
+          return (
+            <div key={p.id}
+              className="flex items-center gap-2.5 bg-[#152b18] border border-[#1e4020] rounded-xl pl-1.5 pr-3 py-1.5">
+              <PlayerAvatar player={p} size={32} ring={false} />
+              <div className="leading-tight">
+                <div className="text-sm font-semibold text-[#F0F7E8]">{formatPlayerName(p.name)}</div>
+                <div className="text-[11px] font-semibold mt-0.5">
+                  {rival
+                    ? <span className="text-amber-300/90">🎾 Ingreso vs {formatPlayerName(rival.name)}{rival.position ? ` #${rival.position}` : ''}</span>
+                    : <span className="text-ctg-green">🎾 Partido de ingreso libre</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ---- Main Ladder component ---- */
-export default function Ladder({ players, currentPlayerId, challengeableIds, onPlayerClick }: LadderProps) {
+export default function Ladder({ players, currentPlayerId, challengeableIds, onPlayerClick, entryTopLimit }: LadderProps) {
   const currentPlayer = players.find(p => p.id === currentPlayerId);
   const activePlayers = players.filter(p => (p.position ?? 0) > 0);
+  const entrants = players.filter(p => !(p.position ?? 0) && p.entry_match_available && !p.is_admin);
 
   const byCategory: Record<CatKey, Player[]> = { A: [], B: [], C: [] };
   for (const p of activePlayers) {
@@ -345,6 +389,8 @@ export default function Ladder({ players, currentPlayerId, challengeableIds, onP
           ladderSize={ladderSize} challengeableIds={challengeableIds}
           onPlayerClick={onPlayerClick} />
       )}
+
+      <PorIngresar entrants={entrants} topLimit={entryTopLimit} />
 
       {/* Category blocks */}
       {CATEGORIES.map(cat => (
