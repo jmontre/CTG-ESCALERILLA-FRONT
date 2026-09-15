@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Challenge, Player } from '@/types';
+import { formatPlayerName } from '@/lib/formatName';
 
 interface ResultModalProps {
   challenge: Challenge | null;
@@ -22,6 +23,18 @@ function AvatarEl({ player, size = 26 }: { player: Player; size?: number }) {
     return <div className="rounded-full overflow-hidden shrink-0" style={style}><img src={player.avatar_url} alt="" className="w-full h-full object-cover" /></div>;
   }
   return <div className="inline-flex items-center justify-center rounded-full font-display font-bold text-[#0a1608] shrink-0" style={style}>{initials}</div>;
+}
+
+/**
+ * "Tú · #2" / "Rival · #4". Es lo que distingue las filas cuando dos jugadores
+ * comparten nombre e iniciales (Claudio Pinilla y Claudio Pineda salían los dos
+ * como "CP Claudio"). El puesto es único; el ingresante de un partido de
+ * ingreso todavía no tiene, y se dice así.
+ */
+function quienEs(player: Player, currentPlayerId: string) {
+  const rol = player.id === currentPlayerId ? 'Tú' : 'Rival';
+  const puesto = player.position ? `#${player.position}` : 'sin puesto';
+  return { rol, puesto, esYo: player.id === currentPlayerId };
 }
 
 export default function ResultModal({ challenge, currentPlayer, isOpen, onClose, onSubmit, loading = false }: ResultModalProps) {
@@ -129,10 +142,23 @@ export default function ResultModal({ challenge, currentPlayer, isOpen, onClose,
                 <tbody>
                   {rows.map(({ player, vals, rowIdx }) => (
                     <tr key={player.id} className="border-t border-[#1e4020]">
-                      <td className="px-4 py-3 text-[#F0F7E8] font-semibold">
-                        <div className="flex items-center gap-2">
+                      <td className="px-3 py-2 text-[#F0F7E8]">
+                        <div className="flex items-center gap-2 min-w-0">
                           <AvatarEl player={player} size={26} />
-                          <span className="truncate">{player.name.split(' ')[0]}</span>
+                          {/* Sin truncar: "Claudio Pinilla" y "Claudio Pineda" cortados quedaban
+                              iguales ("Claudio Pi…"). Si no cabe, salta de línea. */}
+                          <div className="min-w-0 leading-tight">
+                            <div className="font-semibold text-sm break-words">{formatPlayerName(player.name)}</div>
+                            {(() => {
+                              const q = quienEs(player, currentPlayer.id);
+                              return (
+                                <div className="text-[10px] font-semibold mt-0.5">
+                                  <span className={q.esYo ? 'text-ctg-green' : 'text-[#F0F7E8]/45'}>{q.rol}</span>
+                                  <span className="text-[#F0F7E8]/45"> · {q.puesto}</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </td>
                       {[0, 1, 2].map(col => (
@@ -179,7 +205,7 @@ export default function ResultModal({ challenge, currentPlayer, isOpen, onClose,
                           ? 'border-amber-500 bg-amber-900/40 text-amber-300'
                           : 'border-[#1e4020] bg-[#152b18] text-[#F0F7E8]/60 hover:text-[#F0F7E8]')}
                     >
-                      {p.name.split(' ')[0]}
+                      {formatPlayerName(p.name)}{p.id === currentPlayer.id ? ' (tú)' : ''}
                     </button>
                   ))}
                 </div>
