@@ -8,7 +8,7 @@ interface ChallengeManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   challenge: Challenge | null;
-  onResolve: (challengeId: string, winnerId: string, score: string) => void;
+  onResolve: (challengeId: string, winnerId: string, score: string) => void | Promise<void>;
   onCancel: (challengeId: string) => void;
   onExtend: (challengeId: string, hours: number, type: 'accept' | 'play') => void;
 }
@@ -24,16 +24,26 @@ export default function ChallengeManagementModal({
   const [winnerId, setWinnerId] = useState('');
   const [score, setScore] = useState('');
   const [formError, setFormError] = useState('');
+  // Resolver tarda varios segundos (corrimiento, logros). Sin esto el botón
+  // quedaba activo, el admin volvía a apretarlo y el resultado se procesaba
+  // dos veces. El backend ya lo rechaza, pero no hay que llegar a eso.
+  const [resolving, setResolving] = useState(false);
 
   if (!isOpen || !challenge) return null;
 
-  const handleResolve = () => {
+  const handleResolve = async () => {
+    if (resolving) return;
     if (!winnerId || !score) {
       setFormError('Debes seleccionar un ganador e ingresar el marcador.');
       return;
     }
     setFormError('');
-    onResolve(challenge.id, winnerId, score);
+    setResolving(true);
+    try {
+      await onResolve(challenge.id, winnerId, score);
+    } finally {
+      setResolving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -221,14 +231,14 @@ export default function ChallengeManagementModal({
 
             {/* Botones */}
             <div className="flex gap-3 pt-2">
-              <button onClick={onClose} className="btn-ghost flex-1">
+              <button onClick={onClose} disabled={resolving} className="btn-ghost flex-1 disabled:opacity-40">
                 Cerrar
               </button>
-              <button onClick={handleCancel} className="btn-danger">
+              <button onClick={handleCancel} disabled={resolving} className="btn-danger disabled:opacity-40">
                 {isCompleted ? 'Anular Partido' : 'Cancelar Desafío'}
               </button>
-              <button onClick={handleResolve} className="btn-primary flex-1">
-                {isCompleted ? 'Actualizar Resultado' : 'Resolver'}
+              <button onClick={handleResolve} disabled={resolving} className="btn-primary flex-1 disabled:opacity-60 disabled:cursor-wait">
+                {resolving ? 'Guardando…' : isCompleted ? 'Actualizar Resultado' : 'Resolver'}
               </button>
             </div>
           </div>
