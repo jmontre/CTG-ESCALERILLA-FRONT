@@ -264,12 +264,19 @@ export default function Header({ onLoginClick }: HeaderProps) {
           {/* Right cluster */}
           {player ? (
             <div className="flex items-center gap-1.5 md:gap-2">
-              <button
-                onClick={() => go('/reservar')}
-                className="hidden lg:inline-flex btn-primary px-3.5 py-2 text-sm"
-              >
-                <Icon d={I.plus} size={14} strokeWidth={2.5} /> Reservar
-              </button>
+              {/* El `hidden` va en un contenedor y no en el botón: `.btn-primary` está
+                  definida en globals.css después de las utilidades de Tailwind y su
+                  `display: inline-flex` le ganaba a `hidden`. El botón de escritorio
+                  aparecía en los teléfonos, ensanchaba el encabezado ~57 px y toda la
+                  página se desbordaba — los modales quedaban cortados a la derecha. */}
+              <div className="hidden lg:block">
+                <button
+                  onClick={() => go('/reservar')}
+                  className="btn-primary px-3.5 py-2 text-sm"
+                >
+                  <Icon d={I.plus} size={14} strokeWidth={2.5} /> Reservar
+                </button>
+              </div>
 
               {/* Bell with badge */}
               <div className="relative">
