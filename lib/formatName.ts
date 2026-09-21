@@ -36,3 +36,20 @@ export function formatPlayerName(fullName: string): string {
 
   return base.join(' ');
 }
+
+/**
+ * Versión corta para espacios estrechos: "Daniel Soto Jr" → "D. Soto Jr".
+ *
+ * El sufijo NO se descarta: en el club hay padre e hijo con el mismo nombre
+ * y apellido, y sin el "Jr" la escalerilla diría que juegan contra la misma
+ * persona.
+ */
+export function shortPlayerName(fullName: string): string {
+  const formatted = formatPlayerName(fullName);
+  if (!formatted) return '';
+
+  const [nombre, ...resto] = formatted.split(' ');
+  if (resto.length === 0) return nombre; // un solo nombre: no hay qué abreviar
+
+  return `${nombre[0]}. ${resto.join(' ')}`;
+}

@@ -1,10 +1,10 @@
 'use client';
 
 import { Player } from '@/types';
-import { formatPlayerName } from '@/lib/formatName';
+import { formatPlayerName, shortPlayerName } from '@/lib/formatName';
 import {
   CATEGORIES, CatKey, CAT_META, categoryOf,
-  categoryRangeLabel, categoryRows, canChallengePosition,
+  categoryRangeLabel, categoryRows, canChallengePosition, activeRival,
 } from '@/lib/ladder';
 
 /* ---- Types ---- */
@@ -56,6 +56,23 @@ function getPlayerStates(player: Player): PlayerState[] {
   return states;
 }
 
+/** "vs D. Soto Jr #12" — el sufijo distingue al padre del hijo. */
+function RivalLine({ rival, showPosition = true, className = '' }: {
+  rival: { name: string; position?: number | null };
+  showPosition?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={'flex items-center gap-1 min-w-0 text-amber-300/90 ' + className}>
+      <span className="shrink-0 opacity-80"><Icon d={I_SWORDS} size={10} strokeWidth={2.2} /></span>
+      <span className="truncate">
+        vs {shortPlayerName(rival.name)}
+        {showPosition && rival.position ? <span className="text-amber-300/60"> #{rival.position}</span> : null}
+      </span>
+    </div>
+  );
+}
+
 const STATE_CHIP: Record<PlayerState, { label: string; cls: string }> = {
   inmune:    { label: 'Inmune',    cls: 'chip-info' },
   vulnerable:{ label: 'Vulnerable',cls: 'chip-warning' },
@@ -81,6 +98,7 @@ function PlayerCardMobile({ player, tier, cat, isMe, onClick }: {
     sm: { pad: 'p-2',   num: 'text-[30px]', avatar: 24, name: 'text-[11px]' },
   }[tier];
   const states = getPlayerStates(player);
+  const rival = activeRival(player);
   const firstName = tier === 'sm'
     ? (player.name.split(' ')[1] || player.name.split(' ')[0])
     : player.name.split(' ')[0];
@@ -107,6 +125,11 @@ function PlayerCardMobile({ player, tier, cat, isMe, onClick }: {
           <span className="text-red-400/70">{player.losses}D</span>
         </div>
       )}
+      {/* Solo en las filas anchas: en las de 4 o más el nombre se corta a
+          "vs L. M…" y no dice nada. Ahí queda el punto de estado. */}
+      {(tier === 'xl' || tier === 'lg') && rival && (
+        <RivalLine rival={rival} showPosition={false} className="text-[10px] w-full justify-center" />
+      )}
       {states.length > 0 && (
         <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full" style={{
           background: states[0] === 'inmune' || states[0] === 'enviado' ? '#60a5fa' :
@@ -130,6 +153,7 @@ function PlayerCardDesktop({ player, tier, cat, isMe, onClick }: {
     md: { pad: 'p-2.5', num: 32, avatar: 30, name: 'text-[13px]', showDivider: false, showPct: false, shortName: true  },
   }[tier];
   const states = getPlayerStates(player);
+  const rival = activeRival(player);
   const parts = player.name.split(' ');
   const displayName = conf.shortName ? `${parts[0]} ${parts[1]?.[0] ?? ''}.` : formatPlayerName(player.name);
 
@@ -166,6 +190,9 @@ function PlayerCardDesktop({ player, tier, cat, isMe, onClick }: {
               </>
             )}
           </div>
+          {rival && (
+            <RivalLine rival={rival} showPosition={tier !== 'md'} className="mt-0.5 text-[11px] font-medium" />
+          )}
           {states.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {states.slice(0, tier === 'md' ? 1 : 2).map(s => (
