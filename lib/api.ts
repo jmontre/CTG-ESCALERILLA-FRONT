@@ -1,6 +1,6 @@
 import {
   Player, Challenge, AuthResponse, MasterSeason, ApiNotification,
-  MyAchievements, UnlockedAchievement, SeasonSummary, HistoryResponse, HistoryPeriod,
+  MyAchievements, UnlockedAchievement, RecentMatch, SeasonSummary, HistoryResponse, HistoryPeriod,
   MasterSeasonOption, EntryMatchInfo,
 } from '@/types';
 
@@ -576,6 +576,17 @@ export const api = {
   getPlayerAchievements: async (playerId: string): Promise<UnlockedAchievement[]> => {
     try {
       const res = await authFetch(`${API_URL}/achievements/player/${playerId}`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  /** Últimos partidos de un jugador, para su ficha. Si falla, la ficha se muestra igual. */
+  getPlayerRecentMatches: async (playerId: string): Promise<RecentMatch[]> => {
+    try {
+      const res = await authFetch(`${API_URL}/players/${playerId}/recent-matches`);
       if (!res.ok) return [];
       return res.json();
     } catch {

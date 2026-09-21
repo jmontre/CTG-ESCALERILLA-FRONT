@@ -208,6 +208,18 @@ export interface UnlockedAchievement {
   context: Record<string, unknown> | null;
 }
 
+/** Un partido del historial reciente (GET /players/:id/recent-matches). */
+export interface RecentMatch {
+  id: string;
+  /** Lo ganó el jugador cuya ficha se está viendo. */
+  won: boolean;
+  rival: { id: string; name: string; position: number | null };
+  /** Marcador ya dado vuelta a la perspectiva del jugador de la ficha. */
+  score: string | null;
+  played_at: string | null;
+  type?: string | null;
+}
+
 // ── Temporadas ──────────────────────────────────────────────────────────────
 
 export interface Season {

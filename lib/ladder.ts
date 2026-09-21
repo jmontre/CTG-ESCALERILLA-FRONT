@@ -1,3 +1,5 @@
+import { Player } from '@/types';
+
 /**
  * Geometría de la escalerilla en el frontend. Espejo de `src/common/ladder.ts`
  * del backend: si allá cambian los rangos, acá también.
@@ -147,4 +149,22 @@ export function canChallengePosition(
   const theirs = getLevel(target, ladderSize);
   if (mine === 0 || theirs === 0) return false;
   return theirs === mine || theirs === mine - 1;
+}
+
+/**
+ * Rival del desafío abierto de un jugador, para mostrar quién juega con quién.
+ * Si tiene uno aceptado y otro pendiente manda el aceptado: ese es el partido
+ * que ya está por jugarse.
+ */
+export function activeRival(
+  player: Player,
+): { name: string; position?: number | null } | null {
+  const enviado = player.challenger_challenge;
+  const recibido = player.challenged_challenge;
+
+  if (enviado?.status === 'accepted' && enviado.challenged) return enviado.challenged;
+  if (recibido?.status === 'accepted' && recibido.challenger) return recibido.challenger;
+  if (enviado?.status === 'pending' && enviado.challenged) return enviado.challenged;
+  if (recibido?.status === 'pending' && recibido.challenger) return recibido.challenger;
+  return null;
 }
