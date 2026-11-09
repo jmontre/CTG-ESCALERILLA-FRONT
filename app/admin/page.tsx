@@ -15,6 +15,8 @@ import EditPlayerModal from '@/components/admin/EditPlayerModal';
 import ChallengeManagementModal from '@/components/admin/ChallengeManagementModal';
 import LadderEditor from '@/components/admin/LadderEditor';
 import MasterMatchesAdmin from '@/components/admin/MasterMatchesAdmin';
+import MasterGeneratePanel from '@/components/admin/MasterGeneratePanel';
+import { masterDraw } from '@/lib/master';
 
 const CATEGORIES = [...LADDER_CATEGORIES];
 const CATEGORY_NAMES: Record<string, string> = { A: 'Oro', B: 'Plata', C: 'Bronce', D: 'Verde' };
@@ -61,6 +63,15 @@ export default function AdminPage() {
   const [deletingSeasonId, setDeletingSeasonId] = useState<string | null>(null);
   // El nombre del cuadro ya no se escribe acá: lo deriva el backend de la
   // temporada abierta, que es lo que después lo engancha con el cierre.
+  // Jugadores marcados como "no juega" por categoría, antes de generar.
+  const [masterExcluded, setMasterExcluded] = useState<Record<string, Set<string>>>({});
+  const toggleExcluded = (cat: string, playerId: string) =>
+    setMasterExcluded((prev) => {
+      const next = new Set(prev[cat] ?? []);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return { ...prev, [cat]: next };
+    });
   const [masterDates, setMasterDates] = useState({
     round_robin_start: '',
     round_robin_end: '',
@@ -293,25 +304,21 @@ export default function AdminPage() {
 
   // ── Master ───────────────────────────────────────────────────────────────────
 
-  const handleGenerateMaster = async (category: string) => {
+  const handleGenerateMaster = async (category: (typeof CATEGORIES)[number]) => {
+    const excluded = masterExcluded[category] ?? new Set<string>();
+    const draw = masterDraw(players, category, excluded);
+    if (!draw.enough) { error(`La Categoría ${category} no tiene jugadores suficientes.`); return; }
+    if (!masterDates.round_robin_start) { error('Falta la fecha de inicio del round robin.'); return; }
     if (!confirm(
-      `¿Generar torneo Master para Categoría ${category}?\n\n` +
-      `Los 4 primeros de la categoría clasifican directo al round robin, del 5° al 12° ` +
-      `juegan un playoff a partido único por los 4 cupos restantes, y del 13° en adelante ` +
-      `quedan fuera. El cuadro queda ligado a la temporada abierta.`
+      `¿Generar el Master de la Categoría ${category}?\n\n` +
+      `Directos: ${draw.direct.map(p => p.name).join(', ')}\n\n` +
+      `Playoff:\n${draw.pairs.map(([a, b], i) => `  ${i + 1}. ${a.name} vs ${b.name}`).join('\n')}\n\n` +
+      (excluded.size ? `No juegan: ${draw.pool.filter(p => excluded.has(p.id)).map(p => p.name).join(', ')}\n\n` : '') +
+      `Se avisa por WhatsApp a cada jugador y al grupo.`
     )) return;
     setGeneratingCategory(category);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...masterDates, category }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Error al generar torneo');
-      }
+      await api.generateMaster({ ...masterDates, category, exclude_player_ids: [...excluded] });
       await fetchData();
       success(`✅ Torneo Master Categoría ${category} generado correctamente.`);
     } catch (err: any) {
@@ -325,10 +332,7 @@ export default function AdminPage() {
     if (!confirm(`¿Eliminar el torneo Master de Categoría ${category}?\n\nSe borrarán todos los grupos y partidos.`)) return;
     setDeletingSeasonId(seasonId);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/master/${seasonId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      await api.deleteMaster(seasonId);
       await fetchData();
       success(`Torneo Categoría ${category} eliminado.`);
     } catch (err: any) {
@@ -802,13 +806,20 @@ export default function AdminPage() {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => handleGenerateMaster(cat)}
-                        disabled={isGenerating}
-                        className="btn-primary w-full py-3 disabled:opacity-50"
-                      >
-                        {isGenerating ? 'Generando...' : 'Generar Master'}
-                      </button>
+                      <div className="space-y-4">
+                        <MasterGeneratePanel
+                          draw={masterDraw(players, cat, masterExcluded[cat] ?? new Set())}
+                          excluded={masterExcluded[cat] ?? new Set()}
+                          onToggle={(id) => toggleExcluded(cat, id)}
+                        />
+                        <button
+                          onClick={() => handleGenerateMaster(cat)}
+                          disabled={isGenerating}
+                          className="btn-primary w-full py-3 disabled:opacity-50"
+                        >
+                          {isGenerating ? 'Generando...' : 'Generar Master'}
+                        </button>
+                      </div>
                     )}
                   </div>
                 );

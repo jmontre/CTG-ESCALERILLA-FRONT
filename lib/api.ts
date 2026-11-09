@@ -293,6 +293,49 @@ export const api = {
     }
   },
 
+  /**
+   * Genera el cuadro Master de una categoría en la temporada abierta (admin).
+   * Manda los WhatsApp a todos los jugadores y al grupo.
+   */
+  generateMaster: async (data: {
+    category: string;
+    round_robin_start?: string;
+    round_robin_end?: string;
+    final_date?: string;
+    exclude_player_ids?: string[];
+  }): Promise<MasterSeason> => {
+    const res = await authFetch(`${API_URL}/master/generate`, {
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(data),
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || 'Error al generar el Master'); }
+    return res.json();
+  },
+
+  deleteMaster: async (masterSeasonId: string): Promise<void> => {
+    const res = await authFetch(`${API_URL}/master/${masterSeasonId}`, { method: 'DELETE' });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || 'Error al eliminar el torneo'); }
+  },
+
+  /** Resultado de un partido del Master cargado o resuelto por el admin. */
+  adminMasterResult: async (matchId: string, winnerId: string, score: string): Promise<void> => {
+    const res = await authFetch(`${API_URL}/master/matches/${matchId}/result`, {
+      method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ winner_id: winnerId, score }),
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || 'Error al registrar el resultado'); }
+  },
+
+  /** Reemplaza a un jugador de un partido de playoff pendiente (admin). */
+  replaceMasterPlayer: async (matchId: string, oldPlayerId: string, newPlayerId: string): Promise<void> => {
+    const res = await authFetch(`${API_URL}/master/matches/${matchId}/replace-player`, {
+      method: 'PATCH', headers: JSON_HEADERS,
+      body: JSON.stringify({ old_player_id: oldPlayerId, new_player_id: newPlayerId }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error((Array.isArray(e.message) ? e.message.join(', ') : e.message) || 'Error al reemplazar');
+    }
+  },
+
   getMasterCategory: async (category: string, season?: string): Promise<MasterSeason | null> => {
     const query = season ? `?season=${encodeURIComponent(season)}` : '';
     const res = await authFetch(`${API_URL}/master/${category}${query}`);

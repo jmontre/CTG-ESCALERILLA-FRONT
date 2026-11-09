@@ -263,13 +263,17 @@ POST /notifications/read-all     api.markAllNotificationsRead()
 ```
 GET   /master                              api.getMaster()
 GET   /master/:category                    api.getMasterCategory(category)
-PATCH /master/matches/:id/schedule         fijar fecha + reserva (jugador)   — fetch directo en app/master
-POST  /master/matches/:id/player-result    resultado del jugador (doble conf.) — fetch directo en app/master
-POST  /master/matches/:id/result           resultado / resolver disputa (admin) — components/admin/MasterMatchesAdmin
-PATCH /master/matches/:id/replace-player   reemplazar jugador del playoff (admin) — components/admin/MasterMatchesAdmin
+POST  /master/generate                     api.generateMaster({ category, fechas, exclude_player_ids })   # admin
+DEL   /master/:id                          api.deleteMaster(id)                                           # admin
+POST  /master/matches/:id/result           api.adminMasterResult(id, winnerId, score)                     # admin
+PATCH /master/matches/:id/replace-player   api.replaceMasterPlayer(id, oldId, newId)                      # admin
+PATCH /master/matches/:id/schedule         (fetch directo en app/master — pendiente pasar a api)
+POST  /master/matches/:id/player-result    (fetch directo en app/master — pendiente pasar a api)
 ```
 
 Los partidos de playoff, semifinal y final vienen en `masterSeason.matches`; los de grupo, en `groups[].matches`.
+
+Antes de generar, el panel muestra la vista previa del cuadro con `lib/master.ts` (`masterDraw`, espejo de `generateMaster` del backend) y deja marcar a quienes no juegan.
 
 ---
 
