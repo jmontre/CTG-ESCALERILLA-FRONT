@@ -1,5 +1,5 @@
 'use client';
-import { CATEGORIES as LADDER_CATEGORIES, isAdminPlayer, isInLadder } from '@/lib/ladder';
+import { CATEGORIES as LADDER_CATEGORIES, categoryBounds, isAdminPlayer, isInLadder } from '@/lib/ladder';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,10 +14,16 @@ import AddPlayerModal from '@/components/admin/AddPlayerModal';
 import EditPlayerModal from '@/components/admin/EditPlayerModal';
 import ChallengeManagementModal from '@/components/admin/ChallengeManagementModal';
 import LadderEditor from '@/components/admin/LadderEditor';
+import MasterMatchesAdmin from '@/components/admin/MasterMatchesAdmin';
 
 const CATEGORIES = [...LADDER_CATEGORIES];
 const CATEGORY_NAMES: Record<string, string> = { A: 'Oro', B: 'Plata', C: 'Bronce', D: 'Verde' };
-const CATEGORY_RANGES: Record<string, string> = { A: '1-12', B: '13-24', C: '25-36', D: '37-48' };
+// Rangos vigentes (lib/ladder). Antes estaban fijos en los 4 rangos de 12 del
+// esquema viejo y el panel decía "Posiciones 1-12" para la A.
+const categoryRange = (cat: (typeof CATEGORIES)[number]) => {
+  const { from, to } = categoryBounds(cat);
+  return to === null ? `${from}° en adelante` : `${from}-${to}`;
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -757,7 +763,7 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className={`font-bold text-lg cat-letter-${cat}`}>Categoría {cat} — {CATEGORY_NAMES[cat]}</h3>
-                        <p className="text-sm text-[#F0F7E8]/40">Posiciones {CATEGORY_RANGES[cat]}</p>
+                        <p className="text-sm text-[#F0F7E8]/40">Posiciones {categoryRange(cat)}</p>
                       </div>
                       {season ? (
                         <span className="chip chip-success">Activo</span>
@@ -771,8 +777,22 @@ export default function AdminPage() {
                         <div className="bg-[#152b18] border border-[#1e4020] rounded-lg p-3 text-sm text-[#F0F7E8]/60 space-y-1">
                           <p>Estado: <strong className="text-[#F0F7E8]">{season.status}</strong></p>
                           <p>Grupos: <strong className="text-[#F0F7E8]">{season.groups.length}</strong></p>
-                          <p>Partidos: <strong className="text-[#F0F7E8]">{season.groups.flatMap(g => g.matches).length}</strong></p>
+                          <p>Partidos: <strong className="text-[#F0F7E8]">{season.groups.flatMap(g => g.matches).length + (season.matches?.length ?? 0)}</strong></p>
                         </div>
+                        <details className="group">
+                          <summary className="cursor-pointer text-sm font-semibold text-ctg-green hover:text-ctg-lime select-none">
+                            Partidos y resultados
+                          </summary>
+                          <div className="mt-3">
+                            <MasterMatchesAdmin
+                              season={season}
+                              allSeasons={masterSeasons}
+                              players={players}
+                              onChanged={fetchData}
+                              notify={{ success, error }}
+                            />
+                          </div>
+                        </details>
                         <button
                           onClick={() => handleDeleteSeason(season.id, cat)}
                           disabled={isDeleting}

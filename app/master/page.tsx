@@ -475,10 +475,14 @@ function MatchCard({ match, currentPlayerId, onSchedule, onResult, season }: {
 
   const getDateRange = () => {
     const now = new Date();
-    // El playoff se juega ANTES del round robin: su tope es el inicio del round.
+    // El playoff se juega ANTES del round robin: su último día es la víspera del
+    // inicio del round. Con el tope justo en la medianoche del inicio, el
+    // calendario dejaba elegir ese día y después el envío lo rechazaba.
     if (match.round === 'playoff') return {
       minDate: now,
-      maxDate: season.round_robin_start ? toLocalMidnight(season.round_robin_start) : now,
+      maxDate: season.round_robin_start
+        ? new Date(toLocalMidnight(season.round_robin_start).getTime() - 1)
+        : now,
     };
     if (match.round === 'group') return {
       minDate: season.round_robin_start ? toLocalMidnight(season.round_robin_start) : now,
@@ -668,10 +672,12 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
             {statusLabel[season.status] || season.status}
           </span>
         </div>
+        {/* Las fechas del cuadro son días (medianoche UTC): en hora de Chile se
+            mostraban un día antes. */}
         {season.round_robin_start && (
           <p className="text-white/70 text-xs mt-2">
-            Round Robin: {new Date(season.round_robin_start).toLocaleDateString('es-CL')} — {season.round_robin_end ? new Date(season.round_robin_end).toLocaleDateString('es-CL') : '?'}
-            {season.final_date && ` · Final: ${new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+            Round Robin: {new Date(season.round_robin_start).toLocaleDateString('es-CL', { timeZone: 'UTC' })} — {season.round_robin_end ? new Date(season.round_robin_end).toLocaleDateString('es-CL', { timeZone: 'UTC' }) : '?'}
+            {season.final_date && ` · Final: ${new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}`}
           </p>
         )}
       </div>
@@ -745,7 +751,7 @@ function CategoryTournament({ season, currentPlayerId, onRefresh }: {
                   🏆 Final
                   {season.final_date && (
                     <span className="text-sm font-normal text-[#F0F7E8]/40 ml-2">
-                      · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      · {new Date(season.final_date).toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}
                     </span>
                   )}
                 </h3>
