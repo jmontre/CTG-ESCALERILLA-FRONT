@@ -261,9 +261,15 @@ POST /notifications/read-all     api.markAllNotificationsRead()
 
 **Master**
 ```
-GET  /master                     api.getMaster()
-GET  /master/:category           api.getMasterCategory(category)
+GET   /master                              api.getMaster()
+GET   /master/:category                    api.getMasterCategory(category)
+PATCH /master/matches/:id/schedule         fijar fecha + reserva (jugador)   — fetch directo en app/master
+POST  /master/matches/:id/player-result    resultado del jugador (doble conf.) — fetch directo en app/master
+POST  /master/matches/:id/result           resultado / resolver disputa (admin) — components/admin/MasterMatchesAdmin
+PATCH /master/matches/:id/replace-player   reemplazar jugador del playoff (admin) — components/admin/MasterMatchesAdmin
 ```
+
+Los partidos de playoff, semifinal y final vienen en `masterSeason.matches`; los de grupo, en `groups[].matches`.
 
 ---
 
@@ -319,11 +325,15 @@ accepted → expired_not_played
 ### MasterSeason
 ```ts
 {
-  status: 'pending' | 'active' | 'semifinals' | 'final' | 'completed'
-  category: 'A' | 'B' | 'C' | 'D'
+  status: 'playoffs' | 'active' | 'semifinals' | 'final' | 'completed'
+  category: 'A' | 'B' | 'C'
+  seed_player_ids: string[]   // 12 sembrados al generar (0-3 directos, 4-11 playoff)
   groups: MasterGroup[]
+  matches: MasterMatch[]      // playoff, semifinal y final
 }
 ```
+
+Fechas del cuadro (`round_robin_start`, `round_robin_end`, `final_date`) son días guardados a medianoche UTC: mostrarlas con `timeZone: 'UTC'` o salen un día antes en Chile. El playoff se agenda hasta la víspera de `round_robin_start`.
 
 ---
 

@@ -95,7 +95,11 @@ export interface MasterMatch {
   player2_id: string;
   winner_id: string | null;
   score: string | null;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'completed' | 'disputed';
+  scheduled_date?: string | null;
+  /** Resultado que reportó cada jugador (doble confirmación). */
+  player1_result?: { winnerId: string; score: string } | null;
+  player2_result?: { winnerId: string; score: string } | null;
   played_at: string | null;
   created_at: string;
   player1: Player;
@@ -121,6 +125,8 @@ export interface MasterSeason {
   round_robin_start: string | null;
   round_robin_end: string | null;
   final_date: string | null;
+  /** Los 12 que entraron al cuadro, en orden de sembrado (0-3 directos). */
+  seed_player_ids?: string[];
   created_at: string;
   groups: MasterGroup[];
   matches: MasterMatch[];
