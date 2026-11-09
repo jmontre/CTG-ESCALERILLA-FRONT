@@ -2,8 +2,7 @@
 import { useMemo, useState } from 'react';
 import { MasterMatch, MasterSeason, Player } from '@/types';
 import { isInLadder } from '@/lib/ladder';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { api } from '@/lib/api';
 
 const ROUND_LABEL: Record<MasterMatch['round'], string> = {
   playoff: 'Playoff',
@@ -11,21 +10,6 @@ const ROUND_LABEL: Record<MasterMatch['round'], string> = {
   semifinal: 'Semifinal',
   final: 'Final',
 };
-
-async function postJson(url: string, method: 'POST' | 'PATCH', body: unknown) {
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-    throw new Error(msg || 'Error en la operación');
-  }
-  return res.json();
-}
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -112,10 +96,7 @@ export default function MasterMatchesAdmin({
           match={resultFor}
           onClose={() => setResultFor(null)}
           onSubmit={async (winnerId, score) => {
-            await postJson(`${API_URL}/master/matches/${resultFor.id}/result`, 'POST', {
-              winner_id: winnerId,
-              score,
-            });
+            await api.adminMasterResult(resultFor.id, winnerId, score);
             setResultFor(null);
             notify.success('✅ Resultado registrado.');
             await onChanged();
@@ -131,10 +112,7 @@ export default function MasterMatchesAdmin({
             .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))}
           onClose={() => setReplaceFor(null)}
           onSubmit={async (oldId, newId, newName) => {
-            await postJson(`${API_URL}/master/matches/${replaceFor.id}/replace-player`, 'PATCH', {
-              old_player_id: oldId,
-              new_player_id: newId,
-            });
+            await api.replaceMasterPlayer(replaceFor.id, oldId, newId);
             setReplaceFor(null);
             notify.success(`✅ ${newName} entra al playoff.`);
             await onChanged();
