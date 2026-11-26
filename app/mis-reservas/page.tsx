@@ -7,6 +7,7 @@ import LoginPrompt from '@/components/LoginPrompt';
 import ModifyReservationModal from '@/components/ModifyReservationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api';
+import { hasSlotStarted } from '@/lib/utils';
 
 function formatDate(dateStr: string) {
   const datePart = dateStr.split('T')[0];
@@ -115,7 +116,11 @@ export default function MisReservasPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {active.map(r => (
+                  {active.map(r => {
+                    // Un turno ya iniciado no se modifica ni se cancela: el backend
+                    // lo rechaza y solo un admin puede anularlo.
+                    const started = hasSlotStarted(r.date, r.time_slot);
+                    return (
                     <div key={r.id} className="bg-[#0f2211] border border-[#1e4020] rounded-xl p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
@@ -135,8 +140,12 @@ export default function MisReservasPage() {
                             {r.is_challenge && (
                               <span className="chip chip-info text-[10px]">Desafío</span>
                             )}
+                            {started && (
+                              <span className="chip chip-success text-[10px]">En juego</span>
+                            )}
                           </div>
                         </div>
+                        {!started && (
                         <div className="flex flex-col gap-2 shrink-0">
                           {!r.is_challenge && (
                             <button
@@ -158,9 +167,11 @@ export default function MisReservasPage() {
                             ) : 'Cancelar'}
                           </button>
                         </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
